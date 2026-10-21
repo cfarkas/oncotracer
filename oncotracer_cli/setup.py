@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .sample_resources import parallel_value, parallel_argument
+
 import argparse
 import contextlib
 import csv
@@ -224,8 +226,8 @@ def command_setup(args: argparse.Namespace) -> int:
             args.start_dir = str(Path.cwd())
             return command_web(args)
         parallel = getattr(args, "variant_parallel_samples", None)
-        if parallel is not None and (type(parallel) is not int or parallel < 1):
-            raise OncoTracerError("variant_parallel_samples must be a positive integer")
+        if parallel is not None:
+            parallel_value(parallel)
         explicit_samples = any((args.samplesheet, args.fastq_1, args.fastq_2, args.sample_name,
                                 args.barcodes, args.sample_names, args.status))
         if getattr(args, "variant_config", None):
@@ -342,12 +344,9 @@ def _glimpse_variant_values(args, specimen: str, *, interactive: bool) -> dict[s
               "variant_callers": "bcftools,mutect2", "variant_annovar": "auto", "variant_varlociraptor": "off",
               "variant_ffperase": "required" if specimen == "ffpe" else "off"}
     parallel = getattr(args, "variant_parallel_samples", None)
-    if parallel is None:
-        parallel = 1
-    if type(parallel) is not int or parallel < 1:
-        raise OncoTracerError("variant_parallel_samples must be a positive integer")
+    parallel = parallel_value(parallel if parallel is not None else 'auto')
     values["variant_parallel_samples"] = parallel
-    values["variant_memory"] = getattr(args, "variant_memory", None) or "32GB"
+    values["variant_memory"] = getattr(args, "variant_memory", None) or "auto"
     pairs = getattr(args, "variant_matched_normals", None)
     if pairs:
         from .strelka2 import parse_matched_normals
@@ -407,7 +406,7 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
     if not isinstance(enabled, bool):
         raise OncoTracerError("--variants must be a boolean selection")
     if not enabled:
-        if any(getattr(args, key, None) not in (None, "") for key in VARIANT_FIELDS if key != "variant_specimen_type"):
+        if any(getattr(args, key, None) not in (None, "") for key in VARIANT_FIELDS if key not in {"variant_specimen_type", "variant_parallel_samples", "variant_memory"}):
             raise OncoTracerError("Variant options require --variants (Add small-variant calling).")
         specimen = getattr(args, "variant_specimen_type", None)
         if specimen not in (None, "", "fresh", "ffpe"):
@@ -425,10 +424,8 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
     if mode == "illumina":
         return _glimpse_variant_values(args, specimen, interactive=interactive)
     parallel = getattr(args, "variant_parallel_samples", None)
-    if parallel is not None and (type(parallel) is not int or parallel < 1):
-        raise OncoTracerError("variant_parallel_samples must be a positive integer")
-    if parallel is not None and parallel > 1:
-        raise OncoTracerError("--parallel-samples > 1 requires the Illumina GLIMPSE2 short-variant workflow")
+    if parallel is not None:
+        parallel_value(parallel)
     callers = _ask(getattr(args, "variant_callers", None),
                    "Variant callers (--variant-callers; comma-separated: " + ", ".join(VARIANT_CALLERS_BY_MODE[mode]) + ")",
                    default=VARIANT_DEFAULT_CALLER[mode], interactive=interactive)
@@ -442,6 +439,8 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
               "variant_annovar": _ask(getattr(args, "variant_annovar", None),
                   "ANNOVAR annotation (--variant-annovar; auto uses an existing local installation)",
                   default="auto", choices=("auto", "off"), interactive=interactive)}
+    values["variant_parallel_samples"] = parallel if parallel is not None else "auto"
+    values["variant_memory"] = getattr(args, "variant_memory", None) or "auto"
     from .strelka2 import parse_matched_normals
     pairs = getattr(args, "variant_matched_normals", None)
     if "strelka2_somatic" in selected:
@@ -688,6 +687,8 @@ def _command_setup(args: argparse.Namespace) -> int:
         ),
         "outdir": str(project / "results"),
         "threads": args.threads,
+        "parallel_samples": getattr(args, "variant_parallel_samples", None) or "auto",
+        "analysis_memory": getattr(args, "variant_memory", None) or "auto",
         "force": False,
         "run_cna_classifier": False,
         "run_gistic": False,
@@ -1302,8 +1303,8 @@ def add_setup_commands(subparsers) -> None:
         help="single Illumina library status (default: tumor)",
     )
     variant = parser.add_argument_group("Optional native small-variant calling")
-    variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=int, help="maximum simultaneous Illumina samples; CPU/memory budgets are shared (default: 1)")
-    variant.add_argument("--variant-memory", help="total memory budget across concurrent Illumina samples (default: 32GB)")
+    variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=parallel_argument, help="maximum simultaneous alignment/variant samples: auto or a positive integer; CPU/RAM budgets are shared")
+    variant.add_argument("--variant-memory", help="total memory budget across concurrent samples, or auto (detected at Run)")
     variant.add_argument("--variants", action="store_true", help="add native small-variant calling to the selected analysis")
     variant.add_argument('--variant-engine', choices=('glimpse2',), help='Complete Illumina short-variant workflow (required)')
     variant.add_argument('--variant-confidence-gwas', choices=('strict','medium','exploratory'), help='Trait evidence preset; default medium')

@@ -118,6 +118,8 @@ assert.equal(variantResourceField({id:'annovar_db',field:'variant_annovar_db'}),
                 script = r"""
 const assert=require('node:assert/strict');
 const nodes={
+  variant_parallel_samples:{value:'auto'},
+  variant_memory:{value:'auto'},
   'variant-clair3-source':{value:'auto'},
   variant_ont_profile:{value:'r1041_e82_400bps_sup_v500'},
   variant_download_resources:{checked:true},
@@ -132,6 +134,8 @@ let value=guidedVariantPayload({variant_callers:'clair3',variant_clair3_model:'/
   variant_varlociraptor:'required',variant_varlociraptor_scenario:'/previous/scenario.yml',
   variant_varlociraptor_events:'SOMATIC',variant_varlociraptor_sample:'tumor'});
 assert.equal(value.variant_clair3_model,'auto');
+assert.equal(value.variant_parallel_samples,'auto');
+assert.equal(value.variant_memory,'auto');
 assert.equal(value.variant_ont_profile,'r1041_e82_400bps_sup_v500');
 assert.equal(value.variant_varlociraptor_scenario,'');
 assert.equal(value.variant_varlociraptor_events,'PRESENT');

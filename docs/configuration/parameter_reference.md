@@ -28,7 +28,7 @@ Choose one command below. Conda/Poetry install the core CNA tools and verified s
 
 ```bash
 oncotracer install --conda
-oncotracer install --docker --image carlosfarkas/oncotracer:analysis-choice-20261019
+oncotracer install --docker --image carlosfarkas/oncotracer:multisample-20261020
 oncotracer install --singularity
 ./oncotracer install --poetry
 ```
@@ -117,7 +117,9 @@ oncotracer run --backend conda --config /work/my-study/config/run.yml
 | `--barcodes LIST`, `--sample-names LIST` | Matching comma-separated barcode folders and sample names |
 | `--hg38_build [PATH]` | Reuse prepared hg38; no path selects the default prebuilt download into `PROJECT/reference` when run starts |
 | `--build_reference` | Build missing hg38 indexes locally on CPU when run starts; cannot be combined with `--hg38_build` |
-| `--threads NUMBER` | CPU workers to request |
+| `--threads NUMBER` | Total CPU budget, checked against available workers |
+| `--parallel-samples auto` or `N` | Maximum concurrent alignment/variant samples; default `auto` |
+| `--variant-memory auto` or `64GB` | Total RAM budget for alignment and variants at setup |
 | `--non-interactive` | Skip questions; missing required inputs are errors, defaults still apply |
 | `--run` | Validate, prepare tools and run after setup; with `--terminal`, questions remain but the final save/run choice is skipped |
 | `--variant-config FILE` | Existing-BAM browser form; terminal equivalent is `oncotracer variants --config FILE` |
@@ -203,6 +205,7 @@ oncotracer run \
 | `--config FILE` | Required flat native YAML |
 | `--backend NAME` | `host`, `conda`, `docker`, `singularity`, or `poetry`; the global installation backend is used when omitted (fallback: host) |
 | `--threads N` | Thread limit passed to supported native stages |
+| `--parallel-samples auto` or `N` | Override saved concurrency for alignment and variants |
 | `--force` | Deliberate stage refresh |
 | `--dry-run` | Validate and print native commands without launching tools |
 | `--image IMAGE` | Docker image override |
@@ -231,6 +234,10 @@ Optional methylation is ONT-only and supports the `host`, `conda`, and `poetry` 
 | `mode` | required `illumina` or `ont` | Sequencing route |
 | `lpwgs_root` | required absolute directory | Project/reference/cache root visible to the backend |
 | `outdir` | required absolute directory | Dedicated absent, empty, or exact-runtime-owned native result tree |
+| `parallel_samples` | `auto` or positive integer | Alignment sample slots within the detected CPU/RAM budget |
+| `analysis_memory` | `auto` or e.g. `64GB` | Total alignment RAM budget, divided among slots |
+| `variant_parallel_samples` | `auto` or positive integer | Variant sample slots; applies to Illumina and ONT |
+| `variant_memory` | `auto` or e.g. `64GB` | Total variant RAM budget; minimum 32 GiB per complete Illumina sample |
 | `force` | Boolean, `false` | Scientific refresh request; normally keep false |
 | `run_cna_classifier` | Boolean, `false` | Add stage `05_cna_classifier` |
 

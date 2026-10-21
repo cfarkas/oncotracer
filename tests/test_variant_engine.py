@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import io
 import json
 import sys
 import tempfile
@@ -57,13 +58,18 @@ class VariantEngineTests(unittest.TestCase):
             with self.assertRaisesRegex(OncoTracerError, 'positive integer'):
                 engine.run_native(config, parallel_samples=True, dry_run=True)
 
-    def test_full_run_parallel_samples_requires_glimpse_branch(self):
+    def test_full_run_parallel_samples_also_supports_alignment_only(self):
         with tempfile.TemporaryDirectory() as directory:
-            config = Path(directory)/'config.yml'
-            config.write_text('mode: illumina\n')
-            with patch.object(engine, 'resolve_variant_request', return_value=None):
-                with self.assertRaisesRegex(OncoTracerError, 'requires the Illumina GLIMPSE2'):
-                    engine.run_native(config, parallel_samples=2, dry_run=True)
+            root = Path(directory)
+            runtime = make_runtime_root(root)
+            config = make_illumina_config(root, root/'results', 'SYNTHETIC')
+            original = config.read_bytes()
+            output = io.StringIO()
+            with patch.object(engine, 'resolve_variant_request', return_value=None), contextlib.redirect_stdout(output):
+                engine.run_native(config, root=runtime, parallel_samples=2, dry_run=True)
+            plan = json.loads(output.getvalue())
+            self.assertEqual(plan['alignment_resources']['requested_parallel_samples'], 2)
+            self.assertEqual(config.read_bytes(), original)
 
     def test_missing_variant_tool_does_not_prevent_cna_or_browsable_failure_report(self):
         with tempfile.TemporaryDirectory(prefix="oncotracer-variant-engine-") as directory:

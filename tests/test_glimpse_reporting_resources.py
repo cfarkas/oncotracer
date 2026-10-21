@@ -4,12 +4,13 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from tests.resource_fixture import ResourceFixtureCase
 from unittest.mock import patch
 from oncotracer_cli import glimpse_pipeline as pipeline
 from oncotracer_cli.variants import resolve_variant_request
 
 
-class ReportResourceTests(unittest.TestCase):
+class ReportResourceTests(ResourceFixtureCase):
     def test_child_params_keep_absolute_model_and_python_from_original_home(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);home=root/'original home';home.mkdir()

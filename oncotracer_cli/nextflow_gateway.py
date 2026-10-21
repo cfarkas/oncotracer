@@ -6,6 +6,9 @@ mistaken for completed sequencing analyses.
 """
 from __future__ import annotations
 
+from .runtime import OncoTracerError
+from .sample_resources import parallel_value, parallel_argument
+
 import argparse
 import os
 from pathlib import Path
@@ -40,8 +43,8 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--start_dir', '--start-dir', help='initial browser folder; defaults to the Nextflow launch directory')
     p.add_argument('--backend', choices=('host', 'conda', 'poetry', 'docker', 'singularity'))
     p.add_argument('--threads', type=int, help='total CPU budget shared across concurrent samples')
-    p.add_argument('--parallel_samples', '--parallel-samples', type=int,
-                   help='maximum concurrent Illumina sample workflows (default: config, otherwise 1)')
+    p.add_argument('--parallel_samples', '--parallel-samples', type=parallel_argument,
+                   help='maximum concurrent samples: auto or a positive integer; total CPU/RAM budgets are shared')
     p.add_argument('--dry_run', '--dry-run', action='store_true', help='validate and show the configured analysis without executing it')
     return p
 
@@ -61,8 +64,11 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         raise ValueError(f'Nextflow launch directory does not exist: {launch}')
     if args.threads is not None and args.threads < 1:
         raise ValueError('--threads must be positive')
-    if args.parallel_samples is not None and args.parallel_samples < 1:
-        raise ValueError('--parallel_samples must be a positive integer')
+    if args.parallel_samples is not None:
+        try:
+            parallel_value(args.parallel_samples)
+        except OncoTracerError as error:
+            raise ValueError(str(error)) from error
     if args.port is not None and not 1 <= args.port <= 65535:
         raise ValueError('--port must be between 1 and 65535')
     config = resolve_path(args.config, launch) if args.config else None

@@ -1,13 +1,16 @@
 Silent browser walkthrough. Synthetic inventory and checks; no analysis or downloads.
 
-00:00:00.928  Continue an existing analysis
+00:00:00.926  Continue an existing analysis
 Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo.
 
-00:00:06.010  Continue an existing analysis · open the saved project
+00:00:06.006  Continue an existing analysis · open the saved project
 Stop the project's current run. Choose Continue an existing analysis, then select its output project containing config/run.yml and results.
 
-00:00:14.935  Continue an existing analysis · validate completed work
+00:00:14.892  Continue an existing analysis · validate completed work
 Load saved settings and check. Saved samples and settings stay together. Incomplete alignments are not accepted as completed work.
 
-00:00:22.746  Continue an existing analysis · resume when ready
+00:00:17.686  Continue an existing analysis · choose concurrent samples
+Review the detected CPU and RAM budget. Choose how many samples run together, then Apply resources and check. Completed work is still verified before reuse.
+
+00:00:29.485  Continue an existing analysis · resume when ready
 Review the checks, then choose Run analysis to continue. This recording stops here; its checks are simulated and no analysis runs.

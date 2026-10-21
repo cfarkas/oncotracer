@@ -874,6 +874,8 @@ class CommandRunner:
         environment: Mapping[str, str | None] | None = None,
         protected_environment: Mapping[str, str | None] | None = None,
     ):
+        import threading
+        self._trace_lock = threading.RLock()
         self.trace_path = trace_path
         self.dry_run = dry_run
         self.validators = tuple(validators)
@@ -920,6 +922,10 @@ class CommandRunner:
         cwd: Path | None,
         command: Sequence[str],
     ) -> None:
+        with self._trace_lock:
+            self._record_unlocked(stage, started, finished, returncode, cwd, command)
+
+    def _record_unlocked(self, stage, started, finished, returncode, cwd, command):
         with self.trace_path.open("a", encoding="utf-8", newline="") as handle:
             writer = csv.writer(handle, delimiter="\t")
             writer.writerow(
@@ -1074,6 +1080,8 @@ class StageLedger:
     """Small content-aware resume ledger for native stages."""
 
     def __init__(self, path: Path):
+        import threading
+        self._write_lock = threading.RLock()
         self.path = path
         if path.is_file():
             try:
@@ -1155,7 +1163,7 @@ class StageLedger:
         return True
 
     def complete(self, name: str, signature: str, outputs: Iterable[Path]) -> None:
-        self.data["stages"][name] = {
+        record = {
             "signature": signature,
             "completed_at": utc_now(),
             "outputs": [
@@ -1172,4 +1180,6 @@ class StageLedger:
                 for path in outputs
             ],
         }
-        atomic_write_json(self.path, self.data)
+        with self._write_lock:
+            self.data["stages"][name] = record
+            atomic_write_json(self.path, self.data)

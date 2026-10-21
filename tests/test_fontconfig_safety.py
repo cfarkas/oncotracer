@@ -117,8 +117,11 @@ class FontconfigSafetyTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(guard.stat().st_mode), 0o500)
             self.assertEqual(stat.S_IMODE((guard / "local.conf").stat().st_mode), 0o400)
             if os.getuid() != 0:
-                with self.assertRaisesRegex(PermissionError, "local.conf"):
+                with self.assertRaises(PermissionError) as denied:
                     shutil.rmtree(guard)
+                # Python versions may report the guarded directory or its child.
+                self.assertIn(Path(denied.exception.filename).name, {"core", "local.conf"})
+                self.assertTrue((guard / "local.conf").is_file())
             prepare_project_runtime_removal(project)
             self.assertEqual(stat.S_IMODE(guard.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE((guard / "local.conf").stat().st_mode), 0o400)

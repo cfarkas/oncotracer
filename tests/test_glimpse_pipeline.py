@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from tests.resource_fixture import ResourceFixtureCase
 from unittest.mock import patch
 
 from oncotracer_cli import glimpse_pipeline as pipeline
@@ -23,7 +24,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-class GlimpsePipelineTests(unittest.TestCase):
+class GlimpsePipelineTests(ResourceFixtureCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -390,7 +391,7 @@ class GlimpsePipelineTests(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec('pysam') and shutil.which('samtools') and shutil.which('bcftools'),
                      'Real import tests need pysam, samtools and bcftools')
-class RealBamImportTests(unittest.TestCase):
+class RealBamImportTests(ResourceFixtureCase):
     def setUp(self):
         import pysam
         self.pysam = pysam

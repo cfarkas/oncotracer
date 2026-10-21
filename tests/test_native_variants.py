@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from tests.resource_fixture import ResourceFixtureCase
 from pathlib import Path
 from unittest.mock import patch
 
@@ -93,7 +94,7 @@ def request_config(**updates: object) -> dict[str, object]:
     return config
 
 
-class VariantRequestTests(unittest.TestCase):
+class VariantRequestTests(ResourceFixtureCase):
     def test_disabled_request_does_not_require_tools_or_resources(self):
         with patch.object(shutil, "which", return_value=None):
             self.assertIsNone(variants.resolve_variant_request({}, mode="illumina"))
@@ -162,7 +163,7 @@ class VariantRequestTests(unittest.TestCase):
                 variants.preflight_variant_tools(request)
 
 
-class NativeCallerCommandTests(unittest.TestCase):
+class NativeCallerCommandTests(ResourceFixtureCase):
     def exercise(self, caller: str, *, specimen="fresh"):
         root_context = tempfile.TemporaryDirectory(prefix="oncotracer-caller-contract-")
         self.addCleanup(root_context.cleanup)
@@ -238,7 +239,7 @@ class NativeCallerCommandTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("samtools") and shutil.which("bcftools"),
                      "samtools and bcftools are required for synthetic integration")
-class NativeVariantIntegrationTests(unittest.TestCase):
+class NativeVariantIntegrationTests(ResourceFixtureCase):
     def run_fixture(self, fixture: SyntheticInput, *, specimen_type="fresh", runner=None, annotation="off", force=False):
         request = variants.resolve_variant_request(
             request_config(variant_specimen_type=specimen_type, variant_annovar=annotation, variant_ffperase="off",

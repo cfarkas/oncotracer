@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from .sample_resources import parallel_value, parallel_argument
+
 import argparse
 import contextlib
 import csv
@@ -61,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:analysis-choice-20261019"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:multisample-20261020"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -790,8 +792,8 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
 
 def command_run(args: argparse.Namespace) -> int:
     parallel = getattr(args, "parallel_samples", None)
-    if parallel is not None and (type(parallel) is not int or parallel < 1):
-        raise OncoTracerError("parallel_samples must be a positive integer")
+    if parallel is not None:
+        parallel_value(parallel)
     outdir = execute_run(Path(args.config), args)
     if args.dry_run:
         target = (
@@ -1610,7 +1612,7 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
         "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
     )
     parser.add_argument("--threads", type=int, help="total CPU budget; shared across concurrent GLIMPSE2 samples")
-    parser.add_argument("--parallel-samples", type=int, help="maximum concurrent Illumina sample workflows (default: config, otherwise 1)")
+    parser.add_argument("--parallel-samples", type=parallel_argument, help="maximum concurrent samples: auto or a positive integer; total CPU/RAM budgets are shared")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--root", help="Repository or extracted payload root")

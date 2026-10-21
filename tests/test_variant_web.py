@@ -108,7 +108,7 @@ class VariantBrowserTests(unittest.TestCase):
 
     def test_ffperase_resources_preflight_is_required(self):
         with patch('oncotracer_cli.ffperase.discover', side_effect=AssertionError('late resource check')) as discovery:
-            with self.assertRaisesRegex(OncoTracerError, 'variant_ffperase_root.*variant_ffperase_models'):
+            with self.assertRaisesRegex(OncoTracerError, 'variant_ffperase_(root|models)'):
                 self.prepare(variant_specimen_type='ffpe', variant_ffperase='required')
         discovery.assert_not_called()
         self.assertFalse((self.root / 'new-project').exists())

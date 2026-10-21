@@ -45,6 +45,26 @@ class ResumeTests(unittest.TestCase):
         self.project.rename(target)
         return target
 
+    def test_selected_resource_budget_keeps_samples_and_stage_records(self):
+        stage = self.output / 'existing.bam'
+        stage.write_bytes(b'completed fixture')
+        ledger = StageLedger(self.output / '.oncotracer-native/state.json')
+        ledger.complete('fixture', 'original-signature', [stage])
+        before = ledger.path.read_bytes()
+        sheet_before = (self.project / 'config/samplesheet.csv').read_bytes()
+        with patch('oncotracer_cli.sample_resources.inspect_hardware', return_value={
+                'cpu_workers_available': 32, 'ram_available_bytes': 128 * 1024**3}):
+            result = resume_project(self.project, resources={
+                'threads': 16, 'parallel_samples': 2, 'memory': '64GB'})
+        config = load_flat_yaml(Path(result['config_path']))
+        self.assertEqual(config['parallel_samples'], 2)
+        self.assertEqual(config['variant_parallel_samples'], 2)
+        self.assertEqual(config['analysis_memory'], '64GB')
+        self.assertEqual(config['threads'], 16)
+        self.assertEqual(ledger.path.read_bytes(), before)
+        self.assertEqual((self.project / 'config/samplesheet.csv').read_bytes(), sheet_before)
+        self.assertTrue(Path(result['backup']).is_dir())
+
     def test_move_keeps_signature_and_checks_output_content(self):
         product = self.output / "counts.txt"
         product.write_text("original counts\n")

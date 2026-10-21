@@ -15,6 +15,9 @@ the names below to match. For checksum-validated public-data examples, choose
 
 ## 1. Check the installation
 
+The automatic sample queue checks available CPU and RAM. For explicit concurrency
+and total budgets, see [multiple samples and continuation](MULTISAMPLE_QUICKSTART.md).
+
 Follow [installation](installation.md). If you have not installed the Conda tools:
 
 ```bash

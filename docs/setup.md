@@ -11,11 +11,9 @@ oncotracer --interactive --backend conda
 nextflow run main.nf --interactive --backend conda
 ```
 
-Keep the terminal open; use its printed URL with `#` session code. Each session
-chooses an available port. See [concurrent projects](nextflow_entry.md#concurrent-projects).
+Keep the terminal open. Use its URL with the `#` session code; ports are selected automatically. See [concurrent projects](nextflow_entry.md#concurrent-projects).
 **Browse computer** selects inputs.
-Folders without FASTQ, POD5 or BAM files (including subfolders) display
-**No sequencing files found. Check your paths.**
+Empty input folders display **No sequencing files found. Check your paths.**
 
 1. **Choose Illumina or ONT, then Fresh or FFPE** from your specimen records.
    Illumina accepts sample folders with paired lanes. ONT accepts [named libraries](configuration/ont.md),
@@ -23,9 +21,9 @@ Folders without FASTQ, POD5 or BAM files (including subfolders) display
 2. **Assign samples** to Normal or Cancer using cards or dropdowns. Rename them
    if needed. Unassigned samples are excluded. CNA controls are analyzed independently,
    without pooling or subtraction; custom tags require a study/control role.
-3. **Review settings.** Choose threads and a caller. QDNAseq defaults to **100 kb**;
-   ONT ichorCNA uses **500 kb**. ONT controls require QDNAseq and a study sample.
-   GISTIC needs at least two assigned samples. CNA uses CPU.
+3. **Review settings.** Choose resources and a caller. QDNAseq defaults to **100 kb**;
+   ONT ichorCNA uses **500 kb**. Both support ONT normal/control labels.
+   GISTIC needs at least two assigned samples.
 4. **Select tools and a new or existing project folder.** Choose your installed Conda or Docker
    backend. Keep automatic reference download.
 5. Click **Save configuration and check**, resolve any check errors, then
@@ -122,8 +120,9 @@ To resume:
 oncotracer --interactive --project /absolute/path/to/my-study
 ```
 
-Select the output project and **Load saved settings and check**.
-See [Docker recovery and resuming](running.md#resume-behavior).
+Select the output project and **Load saved settings and check**. Choose the CPU/RAM
+budget and concurrent samples, then **Apply resources and check** before Run.
+[Multi-sample processing](MULTISAMPLE_QUICKSTART.md) · [Docker recovery](running.md#resume-behavior).
 
 ## Optional: reuse prepared genome indexes
 

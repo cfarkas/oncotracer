@@ -23,6 +23,10 @@ All three are tumor libraries. DMSO is a treatment control, not a normal genome.
 
 ## 1. Interactive launch
 
+Under **Choose how many samples run together**, review the detected CPU and RAM,
+then choose a total budget and concurrent sample count before saving.
+See [multiple samples and continuation](MULTISAMPLE_QUICKSTART.md).
+
 Watch the video, then [download and verify the example reads](#1-download-and-verify-the-reads).
 After [installation](installation.md), open setup:
 

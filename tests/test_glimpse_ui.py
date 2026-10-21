@@ -110,31 +110,34 @@ syncVariantChoices('illumina',null);assert.equal(nodes['variant-glimpse-settings
         self.assertEqual(values['variant_callers'], 'bcftools,mutect2')
         self.assertEqual(values['variant_confidence_gwas'], 'medium')
         self.assertEqual(values['variant_annovar'], 'auto')
-        self.assertEqual(values['variant_parallel_samples'], 1)
-        self.assertEqual(values['variant_memory'], '32GB')
+        self.assertEqual(values['variant_parallel_samples'], 'auto')
+        self.assertEqual(values['variant_memory'], 'auto')
         self.assertEqual(len(prompts), 3)
         self.assertFalse(any('callers' in p or 'Varlociraptor' in p for p in prompts))
         self.assertNotIn('variant_patients', values)
         validate.assert_called_once_with(values, mode='illumina')
 
     def test_terminal_parallel_settings_validate_and_preserve_integer(self):
-        for value in (0, -1, True, 1.5, "4"):
+        for value in (0, -1, True, 1.5, "4.2", "zero"):
             args = Namespace(variants=True, analysis='cna', backend='host', variant_specimen_type='fresh',
                              variant_parallel_samples=value)
             with contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(OncoTracerError, "positive integer"):
                 _variant_values(args, 'illumina', interactive=False)
         args = Namespace(variants=True, analysis='cna', backend='host', variant_specimen_type='fresh',
-                         variant_parallel_samples=4, variant_memory='128GB')
+                         variant_parallel_samples='4', variant_memory='128GB')
         with patch('oncotracer_cli.variants.resolve_variant_request'), contextlib.redirect_stdout(io.StringIO()):
             result = _variant_values(args, 'illumina', interactive=False)
         self.assertEqual(result['variant_parallel_samples'], 4)
         self.assertEqual(result['variant_memory'], '128GB')
 
-    def test_ont_setup_rejects_parallel_sample_override(self):
+    def test_ont_setup_accepts_parallel_sample_override(self):
         args = Namespace(variants=True, analysis='cna', backend='host', variant_specimen_type='fresh',
-                         variant_parallel_samples=2)
-        with self.assertRaisesRegex(OncoTracerError, 'requires the Illumina GLIMPSE2'):
-            _variant_values(args, 'ont', interactive=False)
+                         variant_parallel_samples=2, variant_callers='clair3',
+                         variant_clair3_model='/synthetic/model')
+        with patch('oncotracer_cli.variants.resolve_variant_request'):
+            values = _variant_values(args, 'ont', interactive=False)
+        self.assertEqual(values['variant_parallel_samples'], 2)
+        self.assertEqual(values['variant_memory'], 'auto')
 
     def test_terminal_ffpe_keeps_requirement_and_explicit_existing_license(self):
         args = Namespace(variants=True, analysis='cna', backend='host', variant_specimen_type='ffpe',

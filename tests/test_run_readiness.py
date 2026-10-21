@@ -19,7 +19,8 @@ class RunReadinessTests(unittest.TestCase):
         self.config = self.root / 'run.yml'
         self.config.write_text('mode: illumina\n')
         self.install = {name + '_prefix': str(self.root / 'envs' / name)
-                        for name in ('core', 'qdnaseq', 'ichorcna', 'classifier', 'gistic')}
+                        for name in ('core', 'qdnaseq', 'ichorcna', 'classifier', 'gistic', 'variants')}
+        self.install['variants_prefix'] = str(cli.managed_sibling_base(self.root/'envs', 'variants')/'variants')
         self.install['backend'] = 'conda'
         self.args = cli.build_parser().parse_args(['run', '--backend', 'conda', '--config', str(self.config)])
 

@@ -34,7 +34,7 @@ Use the path printed by setup. The command above uses Conda. For Docker, use:
 
 ```bash
 oncotracer run --backend docker --config "$PWD/my-study/config/run.yml" \
-  --image carlosfarkas/oncotracer:analysis-choice-20261019
+  --image carlosfarkas/oncotracer:multisample-20261020
 ```
 
 ## Check progress and results
@@ -68,7 +68,9 @@ The opening screen has two choices: **New analysis** opens sample setup;
 workflow is shown. Stop the current analysis before continuing its project, then
 choose its folder and **Load saved settings and check**.
 This retains the saved sample names, groups, backend, reference and analysis
-settings. Review them and click **Run analysis** to continue.
+settings. Choose a suggested concurrent sample count, click **Apply resources and check**,
+then **Run analysis** to continue. [Resource choices and multi-sample execution](MULTISAMPLE_QUICKSTART.md)
+apply to alignment and variant calling.
 
 <div class="quickstart-videos">
 <section class="quickstart-video-card" aria-label="Continue an existing analysis video">

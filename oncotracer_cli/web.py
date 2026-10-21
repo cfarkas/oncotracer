@@ -400,9 +400,10 @@ class WebState:
                         from .strelka2 import parse_matched_normals
                         setattr(args, key, parse_matched_normals(data[key]))
                     elif key == "variant_parallel_samples":
-                        if type(data[key]) is not int or data[key] < 1:
-                            raise OncoTracerError("Parallel samples must be a positive integer.")
-                        setattr(args, key, data[key])
+                        if data[key] != 'auto' and type(data[key]) is not int:
+                            raise OncoTracerError('Parallel samples must be auto or a positive integer.')
+                        from .sample_resources import parallel_value
+                        setattr(args, key, parallel_value(data[key]))
                     elif key in VARIANT_BOOLEAN_FIELDS:
                         if type(data[key]) is not bool:
                             raise OncoTracerError(f"{key} must be true or false.")
@@ -480,6 +481,15 @@ class WebState:
                         setattr(args, key, _text(resources, key))
                 args.gpu = _choice(data, "device", ("cpu", "gpu"), "cpu") == "gpu"
                 args.accept_sturgeon_license = data.get("accept_sturgeon_license") is True
+            if data.get('resources_selection') is not None and analysis != 'methylation':
+                from .sample_resources import selected_config
+                selection = selected_config({'mode': discovered.mode, 'run_variants': args.variants,
+                    'threads': threads}, len(entries), data['resources_selection'])
+                args.threads = selection['threads']
+                values.update({key: selection[key] for key in ('parallel_samples', 'analysis_memory')})
+                if args.variants:
+                    args.variant_parallel_samples = selection['variant_parallel_samples']
+                    args.variant_memory = selection['variant_memory']
             args._wizard_values = values
             args._wizard_metadata = [
                 {key: row[key] for key in ("sample", "sample_type", "analysis_role")}
@@ -576,10 +586,16 @@ class WebState:
                 raise OncoTracerError("Choose a supported backend for continuing this project.")
             if backend and backend != "docker":
                 image = None
-            result = resume_project(_text(data, "project"), backend=backend, image=image)
+            result = resume_project(_text(data, "project"), backend=backend, image=image,
+                                    resources=data.get('resources'))
             project, config_path = Path(result["project"]), Path(result["config_path"])
             config = load_flat_yaml(config_path)
             snapshot, samples = sample_snapshot(config)
+            from .sample_resources import offers
+            try:
+                resource_choices = offers(config, len(samples)) if not config.get('methylation_only') else None
+            except OncoTracerError as error:
+                resource_choices = {'error': str(error)}
             checked = subprocess.run(_launcher() + ["check", "--config", str(config_path), "--json"],
                                      capture_output=True, text=True, timeout=120,
                                      env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
@@ -596,6 +612,7 @@ class WebState:
             project_id = secrets.token_urlsafe(18)
             analysis = "methylation" if config.get("methylation_only") else "both" if config.get("methylation") else "cna"
             prepared = {**result, "id": project_id, "kind": "existing_project", "config": config_path.read_text(),
+                        "resource_choices": resource_choices, "resources_confirmed": data.get('resources') is not None,
                         "valid": checked.returncode == 0 and not report.get("errors"), "check": report,
                         "fingerprint": _fingerprint(paths), "input_snapshot": snapshot,
                         "project_created": False, "project_removable": False, "protected_paths": [],
@@ -612,6 +629,21 @@ class WebState:
 
     def variant_resources(self, data):
         return discover_variant_resources(data, roots=tools_roots(self.start_dir, data))
+
+    def resource_options(self, data):
+        from .sample_resources import offers
+        if data.get('project'):
+            from .project_resume import project_path, sample_snapshot
+            config = load_flat_yaml(project_path(_text(data, 'project')) / 'config/run.yml')
+            _, samples = sample_snapshot(config)
+            count = len(samples)
+        else:
+            discovery = self.scans.get(_text(data, 'scan_id'))
+            if discovery is None:
+                raise OncoTracerError('Discover samples before choosing resources')
+            count = len(discovery.samples)
+            config = {'mode': discovery.mode, 'run_variants': data.get('variants') is True}
+        return offers(config, count, threads=data.get('threads'), memory=data.get('memory'))
 
     def variant_load(self, data):
         from .variant_web import load_for_browser
@@ -1031,6 +1063,7 @@ class WebHandler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise OncoTracerError("Expected a JSON object.")
             methods = {"/api/pick-path": self.server.state.pick_path,
+                       "/api/resource-options": self.server.state.resource_options,
                        "/api/resume": self.server.state.resume,
                        "/api/sturgeon-resources": self.server.state.sturgeon_resources,
                        "/api/ont-inputs": self.server.state.ont_inputs, "/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,

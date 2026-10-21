@@ -65,6 +65,8 @@ jobs:
             tests/test_native_cli.py \
             tests/test_nextflow_gateway.py \
             tests/test_native_engine.py \
+            tests/test_sample_parallelism.py \
+            tests/test_sample_resource_web.py \
             tests/test_native_variants.py \
             tests/test_variant_command.py \
             tests/test_variant_engine.py \
@@ -90,6 +92,7 @@ jobs:
             tests/test_native_methylation.py \
             tests/test_named_methylation.py \
             tests/test_beginner_runtime.py \
+            tests/test_run_readiness.py tests/test_runtime_bytecode_integrity.py \
             tests/test_setup.py \
             tests/test_cpg_setup.py \
             tests/test_project_resume.py \
@@ -535,6 +538,10 @@ jobs:
           docker run --rm oncotracer:v2-ci doctor --backend host --json \
             | tee "$RUNNER_TEMP/docker-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/docker-doctor.json"
+          docker run --rm --network none --workdir /opt/oncotracer \
+            --env XDG_CONFIG_HOME=/tmp/oncotracer-test-config \
+            --entrypoint /opt/conda/bin/python oncotracer:v2-ci -B -m unittest \
+            tests.test_sample_parallelism tests.test_glimpse_parallel
           docker run --rm --network none --user 1000:1000 --workdir /tmp --env HOME=/tmp \
             --entrypoint /usr/local/bin/nextflow oncotracer:v2-ci \
             run /opt/oncotracer/oncotracer_cli/lpwgs/main.nf --help -ansi-log false

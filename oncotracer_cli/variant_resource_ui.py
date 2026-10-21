@@ -95,7 +95,7 @@ function configureVariantModelControls(config={}){
 }
 function syncVariantChoices(platform,preservation){
   const ready=Boolean(preservation),glimpse=platform==='illumina';
-  show('variant-caller-settings',ready&&!glimpse);show('variant-glimpse-settings',ready&&glimpse);show('variant-glimpse-resources',ready&&glimpse);
+  show('variant-caller-settings',ready&&!glimpse);show('variant-glimpse-settings',ready&&glimpse);show('variant-glimpse-resources',ready&&glimpse);show('variant-parallel-controls',ready);
   show('variant-target-settings',!glimpse);show('variant-extra-filter-settings',!glimpse);
   for(const nav of document.querySelectorAll('.variant-nav'))nav.hidden=glimpse;
   for(const id of ['variant_ffperase','variant-ffperase-choice-label','variant_annovar','variant-annovar-choice-label'])show(id,!glimpse);
@@ -132,11 +132,11 @@ function guidedVariantPayload(data){
     data.variant_engine='glimpse2';data.variant_callers='bcftools,mutect2';data.variant_annovar='auto';data.variant_varlociraptor='off';
     data.variant_ffperase=data.variant_specimen_type==='ffpe'?'required':'off';
     data.variant_confidence_gwas=get('variant_confidence_gwas').value||'medium';
-    const parallel=Number(get('variant_parallel_samples').value);
-    if(!Number.isInteger(parallel)||parallel<1)throw Error('Samples running at once must be a positive integer.');
-    data.variant_parallel_samples=parallel;data.variant_memory=get('variant_memory').value.trim()||'32GB';
     for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])data[key]=get(key).value.trim();
   }else data.variant_engine='legacy';
+  const parallel=get('variant_parallel_samples').value.trim();
+  if(parallel!=='auto'&&(!/^\d+$/.test(parallel)||Number(parallel)<1))throw Error('Samples running at once must be auto or a positive integer.');
+  data.variant_parallel_samples=parallel==='auto'?'auto':Number(parallel);data.variant_memory=get('variant_memory').value.trim()||'auto';
   if(String(data.variant_callers||'').split(',').includes('clair3')&&get('variant-clair3-source').value==='auto'){
     data.variant_clair3_model='auto';data.variant_ont_profile=get('variant_ont_profile').value;
   }else data.variant_ont_profile='';

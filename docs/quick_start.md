@@ -47,6 +47,9 @@ also remain supported. [ONT layout and settings](configuration/ont.md).
 
 ## 1. Interactive launch
 
+Choose CPU/RAM budgets and concurrent sample counts before saving.
+[Multiple samples and continuation](MULTISAMPLE_QUICKSTART.md).
+
 [Download and verify the reads](#1-download-and-verify-the-reads) before choosing inputs. Open setup:
 
 ```bash
@@ -128,9 +131,8 @@ The ONT folder is `barcode01`.
 
 ## 2. Terminal questions for headless servers
 
-Use this option over SSH without a browser. Choose **one setup route per project**.
-The videos show real terminal questions using tiny synthetic FASTQs; no analysis
-runs. Use the verified public downloads above for your analysis.
+Over SSH, choose **one setup route per project**. These videos use synthetic
+FASTQs without running analysis; use the verified public downloads above.
 
 <div class="quickstart-videos quickstart-terminal-videos">
 <section class="quickstart-video-card" aria-label="Illumina terminal video">

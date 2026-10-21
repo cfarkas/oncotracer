@@ -12,7 +12,7 @@ Use Linux and Python 3.10–3.13. Install the application in your Python environ
 pip install oncotracer
 ```
 
-No Git checkout is required. Choose **one** backend:
+No Git checkout is required for PyPI. New resource choices require the [current GitHub source](docs/installation_details.md#install-from-github); PyPI 2.1.0 predates them. Choose **one** backend:
 
 ### Conda
 
@@ -29,7 +29,7 @@ oncotracer --interactive --backend conda
 With Docker running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:analysis-choice-20261019
+oncotracer install --docker --image carlosfarkas/oncotracer:multisample-20261020
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
@@ -38,13 +38,13 @@ The Docker image is saved for later commands. See [installation](docs/installati
 
 ### Open interactive setup with Nextflow
 
-You can also use Nextflow to open the same browser interface. After installing your backend, run this from the [OncoTracer source checkout](docs/installation_details.md#install-from-github):
+From the [source checkout](docs/installation_details.md#install-from-github), Nextflow opens the same interface:
 
 ```bash
 nextflow run main.nf --interactive --backend conda
 ```
 
-From another directory, replace `main.nf` with its full path, such as `/absolute/path/to/oncotracer-src/main.nf`. Use `--backend docker` for Docker. Choose your inputs, Fresh or FFPE, and analysis settings in the browser; analysis starts only when you click **Run analysis**. See [Nextflow setup and concurrent projects](docs/nextflow_entry.md).
+Use the full path to `main.nf` from another directory, or `--backend docker` for Docker. Analysis starts only after **Run analysis**. [Nextflow and concurrent projects](docs/nextflow_entry.md).
 
 ## Set up your analysis
 
@@ -54,7 +54,9 @@ From another directory, replace `main.nf` with its full path, such as `/absolute
 
 Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
 
-### Interactive demo
+Choose CPU/RAM budgets and concurrent sample counts before Run. [Resource selection and verified reuse](https://cfarkas.github.io/oncotracer/MULTISAMPLE_QUICKSTART/).
+
+## Interactive demo
 
 [![OncoTracer browser setup: assign samples, choose settings, review and run. Click to explore the interactive demo.](docs/assets/setup-demo-preview.png)](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)
 
@@ -62,15 +64,13 @@ Keep the terminal open and use its complete printed URL, including the session c
 
 ### Continue an existing analysis
 
-Use `oncotracer --interactive --project /path/to/existing-project`. Load, check, then run. Save/check also detects existing results under **Create a project**, retaining saved settings. See [intermediate checks and relocation](docs/running.md#resume-behavior).
+Use `oncotracer --interactive --project /path/to/existing-project`. Load saved settings, choose the CPU/RAM budget and concurrent sample count, then **Apply resources and check** before Run. See [intermediate checks and relocation](docs/running.md#resume-behavior).
 
 [Sturgeon setup](docs/configuration/methylation_reference.md#sturgeon-pretrained-model-setup) offers the pretrained general model and hg38 probes after explicit license acknowledgement.
 
 ### ONT input layout
 
-With the [current GitHub source](docs/installation_details.md#install-from-github),
-select `ONT/` with **one named folder per intended library**. Folder names become
-sample names; keep multiple libraries separate even when they share a patient.
+With the [current GitHub source](docs/installation_details.md#install-from-github), select `ONT/` with **one named folder per intended library**. Folder names become sample names; keep multiple libraries separate even when they share a patient.
 PyPI 2.1.0 retains the legacy layouts described below.
 
 ```text
@@ -122,7 +122,7 @@ oncotracer uninstall --conda --yes --purge
 **Docker image:** remove the selected image/tag:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:analysis-choice-20261019
+docker image rm carlosfarkas/oncotracer:multisample-20261020
 ```
 
 This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Shared image layers may remain.
@@ -145,4 +145,4 @@ If an extra OncoTracer-owned global launcher remains, [remove it before the Pyth
 | Add analysis options | [Methylation](docs/configuration/methylation.md) · [Variants](docs/variants.md) · [Paper report](docs/paper_report.md) |
 | Understand results | [Outputs](docs/outputs.md) · [Troubleshooting](docs/troubleshooting.md) |
 
-The [complete documentation](https://cfarkas.github.io/oncotracer/) covers settings and validation. Optional `run_cna_classifier: true` adds CNA interpretation. Runs record commands and checksums; released builds include `release-provenance.json`.
+[Complete documentation](https://cfarkas.github.io/oncotracer/). Optional `run_cna_classifier: true` adds CNA interpretation. Runs record commands and checksums; released builds include `release-provenance.json`.

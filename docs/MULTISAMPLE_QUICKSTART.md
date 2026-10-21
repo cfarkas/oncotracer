@@ -1,27 +1,91 @@
-# Parallel samples: quickstart and technical parity checks
+# Run multiple samples together
 
-The complete Illumina short-variant workflow runs GLIMPSE2 for every selected sample. `--parallel_samples` controls how many sample workflows can run together; `--threads` controls the **total CPU budget**, shared between them. The native CLI spelling is `--parallel-samples`.
+OncoTracer queues samples and starts the next one when a slot is free. This works
+for **Illumina and ONT alignment**, **ONT variant calling**, and complete
+**Illumina/FFPE variant analysis with GLIMPSE2**. Illumina variants retain their
+Nextflow workflows; native stages use cancellable sample workers.
 
-## Open the visual setup
-
-From a local checkout:
-
-```bash
-cd /path/to/oncotracer
-nextflow run main.nf --interactive --backend conda --threads 64 --parallel_samples 4
-```
-
-Or fetch the main branch from GitHub and execute locally:
+## Choose resources in the browser
 
 ```bash
-nextflow run cfarkas/oncotracer \
-  -r main -latest \
-  --interactive --backend conda --threads 64 --parallel_samples 4
+oncotracer --interactive --backend conda
 ```
 
-`--interactive` opens the same browser interface for Fresh and FFPE. Choose or confirm Illumina, select **Fresh** or **FFPE**, and enable **Small variants** for the complete short-variant analysis. For Docker, use `--backend docker` with your installed image. Then open **Resources and advanced settings**. Set **Total analysis memory** to `256GB` and **Samples running at once** to `4`, review the samples and start. With at least four samples, this allocates 16 CPU threads and 64GB to each active sample. Choose totals appropriate to the server, leaving room for the operating system and other work.
+From a source checkout, Nextflow opens the same interface:
 
-The complete workflow reserves at least **32GB per active sample**, including its local report model. The default total memory is `32GB`, so requesting four simultaneous samples without increasing memory still runs one at a time. Active slots are capped by the requested concurrency, sample count, CPU budget and memory budget. These are task scheduling budgets; controller and filesystem-cache overhead are additional. GLIMPSE2 remains enabled.
+```bash
+nextflow run main.nf --interactive --backend conda
+```
+
+For Docker, use `--backend docker` with the current installed image.
+
+1. Choose **New analysis** or **Continue an existing analysis**.
+2. For a new project, discover and assign samples. For continuation, choose the
+   **output project** containing `config/run.yml` and `results`, then **Load saved settings and check**.
+3. In **Choose how many samples run together**, inspect the detected CPUs and RAM.
+   Set a **total** CPU budget and a RAM budget (`auto` or, for example, `64GB`).
+4. Select a suggested concurrent sample count. Each option shows the CPU and RAM
+   available to each sample. **Detect available resources** refreshes the choices.
+5. For continuation, choose **Apply resources and check**. Review the checks, then
+   choose **Run analysis**. Loading or applying settings does not start analysis.
+
+For example, 20 CPU threads, 64GB and two concurrent samples give each active
+sample 10 CPU threads and 32GB. The mapper and sorter share their sample's CPU
+allocation. Native sample commands are retained in the main trace and in separate
+sample logs.
+
+## How limits are selected
+
+OncoTracer checks CPU affinity, Linux container/cgroup quotas and currently
+available RAM. It leaves 20% of available RAM for the system, caches and
+controllers. Automatic memory budgets are proportional to the requested share of
+CPUs, with enough for at least one sample when available. Automatic concurrency
+prefers at least eight CPU threads per sample; an explicit count can divide the
+budget more finely.
+
+Complete Illumina variants need at least **32 GiB per simultaneous sample** for
+the genomic workflow and local report model. Native alignment and ONT calling use
+an **8 GiB planning minimum**. These are scheduling estimates, not measured upper
+bounds on every tool. Other processes share the server: independent analyses do
+not reserve CPUs against each other. Set totals accordingly. Resources are checked
+again at execution; less available RAM can reduce concurrency or prevent launch.
+
+Existing explicit limits such as `variant_parallel_samples: 1` remain valid.
+Choosing and applying new resources in Continue updates those limits while keeping
+sample assignments and scientific settings. Valid completed stages are checked
+before reuse. A BAM without a verified completion record and index is not a
+completed alignment; it is recomputed. Changing only resource allocations does
+not invalidate a verified alignment or native variant result from the supported
+previous release.
+
+## Headless and scripted use
+
+Terminal setup accepts the same total limits:
+
+```bash
+oncotracer --interactive --terminal --backend conda \
+  --threads 20 --parallel-samples 2 --variant-memory 64GB
+```
+
+A saved configuration can also use:
+
+```yaml
+threads: 20
+parallel_samples: 2
+analysis_memory: 64GB
+variant_parallel_samples: 2
+variant_memory: 64GB
+```
+
+To override concurrency for an existing configuration:
+
+```bash
+oncotracer run --config /path/to/project/config/run.yml --backend conda --parallel-samples auto
+```
+
+For Nextflow, use `--parallel_samples auto`. CPU and RAM budgets are shared across
+samples, not assigned in full to each sample. GLIMPSE2 remains enabled for every
+Illumina variant sample. Only completed, compatible outputs are reused.
 
 `--python` is optional: the controller defaults to `python3` from the active environment. Add `--python /path/to/env/bin/python` to select a different controller. Before analysis, OncoTracer tests scientific Python imports and can select the installed managed core interpreter when the lightweight CLI environment lacks those packages. The selected interpreter is passed to sample tasks, resource preparation, FFPE review and cohort export. Required external tools, local report weights and optional licensed annotation databases are described in the [migration guide](GLIMPSE_MIGRATION.md).
 
@@ -121,6 +185,8 @@ Run from the checkout using a Python environment with the test dependencies inst
 
 | Contract checked | Exact test |
 |---|---|
+| Native sample overlap, bounded budgets, incomplete alignment rejection and checkpoint reuse | `tests.test_sample_parallelism` |
+| Browser resource choices save correctly without launching and retain sample assignments on Continue | `tests.test_sample_resource_web` |
 | Local Nextflow still routes `--interactive` to the visual setup and propagates child failures | `tests.test_nextflow_gateway.NextflowGatewayTests.test_real_nextflow_visual_routing_and_failed_analysis_propagation` |
 | Concurrency flags reach visual setup, variants and full-run commands | `tests.test_nextflow_gateway.NextflowGatewayTests.test_parallel_sample_override_reaches_visual_variants_and_full_cli` |
 | Every Illumina sample retains the complete set of enabled modules | `tests.test_glimpse_pipeline.GlimpsePipelineTests.test_sample_parameters_enable_every_module_and_keep_paths` |
@@ -138,7 +204,7 @@ Reproduce the focused checks:
 python3 -m unittest \
   tests.test_nextflow_gateway tests.test_run_readiness \
   tests.test_runtime_bytecode_integrity tests.test_glimpse_readiness \
-  tests.test_glimpse_parallel \
+  tests.test_sample_parallelism tests.test_sample_resource_web tests.test_glimpse_parallel \
   tests.test_glimpse_multisample_reuse tests.test_glimpse_pipeline \
   tests.test_glimpse_ui tests.test_glimpse_ffpe tests.test_glimpse_joint
 ```
@@ -160,3 +226,16 @@ python3 tests/run_glimpse_bam_smoke.py \
 That fixture directory must contain `tests/fixture`, completed `tests/comprehensive_integration` outputs and installed GLIMPSE2 binaries. The smoke checks real BAM/VCF import, imputation and downstream reports while checking that source input hashes stay unchanged. The focused reuse tests above separately check continuation; repeat the generated Nextflow command in the smoke output to exercise a real restart. It does not assess real ancestry projection, licensed gene annotation or local LLM inference.
 
 These checks establish technical behavior, not completed biological equivalence of a ten-person real cohort. A completed real-cohort comparison has not been claimed. Parallel scheduling does not itself improve clinical validity, and GLIMPSE2 support does not prove somatic origin or validate an FFPE artifact rescue.
+
+For a real two-sample alignment smoke test with an installed core prefix:
+
+```bash
+python3 scripts/smoke_parallel_alignment.py \
+  --tool-prefix /path/to/core/environment \
+  --work-dir /path/to/new/synthetic-check
+```
+
+This creates tiny synthetic Illumina and ONT reads, validates BAMs and sample
+identities, and verifies reuse after changing CPU allocations. It requires at
+least 20 GiB of available RAM for the production scheduler's two-slot minimum.
+It does not replace whole-genome QuickStart parity or validate biological accuracy.

@@ -3,32 +3,32 @@ Silent browser walkthrough. Synthetic inventory and checks; no analysis or downl
 00:00:00.000  QuickStart 1 · Oxford Nanopore
 Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo.
 
-00:00:05.020  QuickStart 1 · Oxford Nanopore · new analysis
+00:00:05.017  QuickStart 1 · Oxford Nanopore · new analysis
 Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project.
 
-00:00:06.923  QuickStart 1 · Oxford Nanopore · preservation
+00:00:06.912  QuickStart 1 · Oxford Nanopore · preservation
 Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.
 
-00:00:13.728  QuickStart 1 · Oxford Nanopore · discover inputs
+00:00:13.680  QuickStart 1 · Oxford Nanopore · discover inputs
 Choose fastq_pass. Each barcode stays one sample, even when it contains several FASTQ batches.
 
-00:00:28.312  QuickStart 1 · Oxford Nanopore · sample groups
+00:00:28.254  QuickStart 1 · Oxford Nanopore · sample groups
 Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups.
 
-00:00:33.822  QuickStart 1 · Oxford Nanopore · sample name
+00:00:33.760  QuickStart 1 · Oxford Nanopore · sample name
 Rename barcode01 to DRR165691. The barcode still identifies the same FASTQ input.
 
-00:00:38.093  QuickStart 1 · Oxford Nanopore · CNA settings
+00:00:38.032  QuickStart 1 · Oxford Nanopore · CNA settings
 Keep Copy-number analysis, ichorCNA and 500 kb bins. FASTQs alone do not provide methylation calls.
 
-00:00:46.615  QuickStart 1 · Oxford Nanopore · tools and reference
+00:00:46.554  QuickStart 1 · Oxford Nanopore · tools and reference
 Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis.
 
-00:00:53.120  QuickStart 1 · Oxford Nanopore · separate project
+00:00:53.017  QuickStart 1 · Oxford Nanopore · separate project
 Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart.
 
-00:00:59.890  QuickStart 1 · Oxford Nanopore · save and review
+00:00:59.789  QuickStart 1 · Oxford Nanopore · save and review
 Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated.
 
-00:01:06.703  QuickStart 1 · Oxford Nanopore · ready for your run
+00:01:06.591  QuickStart 1 · Oxford Nanopore · ready for your run
 In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run.

@@ -66,6 +66,8 @@ class VariantRequest:
     glimpse_config: dict | None = None
     tool_prefix_source: str = "configured_or_host"
     tool_prefix_diagnostics: tuple[str, ...] = ()
+    parallel_samples: int | str = 'auto'
+    memory: str = 'auto'
 
     def as_dict(self, *, include_runtime_diagnostics: bool = True):
         result = {k: str(v) if isinstance(v, Path) else list(v) if isinstance(v, tuple) else v
@@ -74,6 +76,8 @@ class VariantRequest:
         if not include_runtime_diagnostics:
             result.pop("tool_prefix_source", None)
             result.pop("tool_prefix_diagnostics", None)
+            result.pop("parallel_samples", None)
+            result.pop("memory", None)
         return result
 
 
@@ -189,6 +193,11 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
                       tool_prefix_diagnostics=runtime_selection.diagnostics)
     from .variant_model_assets import resource_download_plan
     resource_download_plan(request)
+    from .sample_resources import parallel_value, memory_gb
+    parallel = parallel_value(config.get('variant_parallel_samples', config.get('parallel_samples', 'auto')))
+    memory = config.get('variant_memory', config.get('analysis_memory', 'auto'))
+    memory_gb(memory)
+    request = replace(request, parallel_samples=parallel, memory=memory)
     if mode == 'illumina':
         from .glimpse_pipeline import validate_options
         request=replace(request,engine='glimpse2',glimpse_config=validate_options(config))
@@ -542,6 +551,10 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
     for tumor, normal in request.matched_normals:
         if Path(bams[tumor]).samefile(Path(bams[normal])):
             raise OncoTracerError('Strelka2 tumor and matched normal must be different physical BAM files')
+    from .sample_resources import allocate, announce
+    from .sample_execution import run_jobs, SampleCancelled
+    allocation = allocate(threads, len(bams), parallel=request.parallel_samples, memory=request.memory)
+    announce('variants', allocation)
     tools = preflight_variant_tools(request, toolchain)
     fasta = require_file(Path(reference['fasta'] if isinstance(reference, Mapping) else reference), 'Variant reference FASTA')
     fai = Path(str(fasta)+'.fai')
@@ -556,7 +569,8 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
         raise OncoTracerError('Variant output ownership mismatch')
     atomic_write_json(marker, {'schema':SCHEMA})
     status = {'schema': SCHEMA, 'requested': variant_plan(request), 'started_at': utc_now(), 'samples':[], 'tools': tools,
-              'overall_status':'running', 'completed_samples':[], 'failed_samples':[], 'annotation':'off'}
+              'overall_status':'running', 'completed_samples':[], 'failed_samples':[], 'annotation':'off',
+              'resource_allocation':allocation}
     atomic_write_json(root/'variant_status.json', status)
     from .variant_model_assets import prepare_variant_resources
     request = prepare_variant_resources(request, root)
@@ -574,10 +588,11 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
     detection = ffperase.discover(request.ffperase_root, request.ffperase_models, request.ffperase_sif,
                                  request.ffperase_prefix) if request.ffperase != 'off' else None
     status['ffperase_detection'] = detection or {'status':'off'}
-    for sample, source_bam in bams.items():
+    def execute(job, runner):
+        sample, source_bam = job
+        threads = allocation['threads_per_sample']
         sample_request = replace(request, specimen_type='not_supplied', ffperase='off') if sample in dict(request.matched_normals).values() else request
         sample_result = {'sample':sample, 'specimen_type': sample_request.specimen_type, 'input_bam':str(source_bam), 'callers':[], 'status':'running'}
-        status['samples'].append(sample_result)
         try:
             source_bam = require_file(Path(source_bam), 'Variant input BAM')
             with tempfile.TemporaryDirectory(prefix=f'.{sample}-', dir=root) as temp:
@@ -643,14 +658,21 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                         signature_inputs.append(Path(bams[dict(request.matched_normals)[sample]]))
                     if request.clair3_model and caller == 'clair3':
                         signature_inputs += sorted(p for p in request.clair3_model.rglob('*') if p.is_file())
-                    signature = ledger.signature(f'variants-{sample}-{caller}', [json.dumps(request.as_dict(include_runtime_diagnostics=False),sort_keys=True),_module_digest(),json.dumps(status['annovar_detection'],sort_keys=True),_module_digest('annovar.py'),_module_digest('ffperase.py'),_module_digest('varlociraptor.py'),_module_digest('variant_filters.py'),_module_digest('strelka2.py'),json.dumps(detection,sort_keys=True)], signature_inputs + ([request.varlociraptor_scenario] if request.varlociraptor_scenario else []))
+                    signature_command = [json.dumps(request.as_dict(include_runtime_diagnostics=False),sort_keys=True),_module_digest(),json.dumps(status['annovar_detection'],sort_keys=True),_module_digest('annovar.py'),_module_digest('ffperase.py'),_module_digest('varlociraptor.py'),_module_digest('variant_filters.py'),_module_digest('strelka2.py'),json.dumps(detection,sort_keys=True)]
+                    signature_inputs += [request.varlociraptor_scenario] if request.varlociraptor_scenario else []
+                    signature = ledger.signature(f'variants-{sample}-{caller}', signature_command, signature_inputs)
+                    legacy_command = list(signature_command)
+                    # d13f8f3 used the same scientific caller/assessment contract.
+                    # This revision changes scheduling, not those computations.
+                    legacy_command[1] = 'c71529f4c2a04afc126fb0b00a39486b73aea022ab285eecde01beab2d3794c8'
+                    legacy_signature = ledger.signature(f'variants-{sample}-{caller}', legacy_command, signature_inputs)
                     completed = dest/'complete.json'
                     if completed.is_symlink():
                         raise OncoTracerError('Variant completion manifest must not be a symlink')
                     previous = json.loads(completed.read_text()) if completed.is_file() else None
                     _owned_outputs(dest, previous)
                     accepted_samples = {sample} if request.mode == 'ont' or caller == 'strelka2_somatic' else sm
-                    if not force and previous and previous.get('signature') == signature and previous.get('result', {}).get('status') == 'complete':
+                    if not force and previous and previous.get('signature') in {signature, legacy_signature} and previous.get('result', {}).get('status') == 'complete':
                         if all((dest/f).is_file() and sha256_file(dest/f)==digest for f,digest in previous['outputs'].items()):
                             validate_vcf(dest/previous['vcf'], expected_samples=accepted_samples)
                             result.update(previous['result'], resumed=True)
@@ -745,11 +767,44 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                                           else 'partial_failure' if any(s in {'complete','partial_failure'} for s in states) else 'failed')
         except (OSError,OncoTracerError,ValueError) as error:
             sample_result.update(status='failed',error=str(error))
-        key = 'completed_samples' if sample_result['status'] in {'complete','not_applicable'} else 'failed_samples'
-        status[key].append(sample)
-        atomic_write_json(root/'variant_status.json',status)
-    any_success = any(r.get('status') in {'complete','partial_failure'} for s in status['samples'] for r in s['callers'])
-    status['overall_status'] = 'complete' if not status['failed_samples'] else 'partial_failure' if any_success else 'failed'
+        return sample_result
+
+    rows = {sample: {'sample': sample, 'input_bam': str(bam), 'status': 'queued', 'callers': []}
+            for sample, bam in bams.items()}
+    status['samples'] = list(rows.values())
+    def update(sample, state, result):
+        if state == 'running':
+            rows[sample]['status'] = 'running'
+        elif state in {'failed', 'interrupted'}:
+            rows[sample]['status'] = state
+            rows[sample]['error'] = str(result)
+            if state == 'failed':
+                status['failed_samples'].append(sample)
+        else:
+            rows[sample].update(result)
+            key = 'completed_samples' if result['status'] in {'complete', 'not_applicable'} else 'failed_samples'
+            status[key].append(sample)
+        atomic_write_json(root/'variant_status.json', status)
+    atomic_write_json(root/'variant_status.json', status)
+    try:
+        run_jobs([(sample, (sample, bam)) for sample, bam in bams.items()], execute,
+                 allocation, runner, root/'sample_logs', update=update)
+        any_success = any(r.get('status') in {'complete','partial_failure'} for s in status['samples'] for r in s['callers'])
+        status['overall_status'] = 'complete' if not status['failed_samples'] else 'partial_failure' if any_success else 'failed'
+    except (SampleCancelled, KeyboardInterrupt):
+        status['overall_status'] = 'interrupted'
+        for row in status['samples']:
+            if row['status'] == 'running': row['status'] = 'interrupted'
+            elif row['status'] == 'queued': row['status'] = 'not_started'
+    except Exception as error:
+        status['overall_status'] = 'failed'
+        status['error'] = str(error)
+        for row in status['samples']:
+            if row['status'] == 'running': row['status'] = 'interrupted'
+            elif row['status'] == 'queued': row['status'] = 'not_started'
+        status['finished_at'] = utc_now()
+        atomic_write_json(root/'variant_status.json', status)
+        raise
     status['finished_at'] = utc_now()
     atomic_write_json(root/'variant_status.json',status)
     atomic_write_json(root/'variant_provenance.json',{'schema':SCHEMA,'module_sha256':_module_digest(),

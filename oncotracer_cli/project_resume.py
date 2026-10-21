@@ -171,7 +171,7 @@ def audit_summary(audit):
             f"{audit['needs_recompute']} need recomputation. Run rechecks inputs and settings before reuse.")
 
 
-def resume_project(value, *, backend=None, image=None):
+def resume_project(value, *, backend=None, image=None, resources=None):
     """Back up configuration, rebase owned paths, and authorize the selected runtime.
 
     Never start tools, delete results, bless a stage, or accept a classifier license.
@@ -224,6 +224,10 @@ def resume_project(value, *, backend=None, image=None):
             raise OncoTracerError("Resume across different major versions requires an explicit data migration.")
         updated = _rebase(config, old, project) if moved else dict(config)
         updated["execution_backend"] = backend
+        if resources is not None:
+            from .sample_resources import selected_config
+            _, samples = sample_snapshot(updated)
+            updated.update(selected_config(updated, len(samples), resources))
         changes = {"run.yml": _render_config(updated)}
         for name in ("samplesheet.csv", "sample_metadata.csv"):
             file = project / "config" / name

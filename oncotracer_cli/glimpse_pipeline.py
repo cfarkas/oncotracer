@@ -67,8 +67,8 @@ def validate_options(config):
         result[key]=str(Path(result[key]).expanduser().resolve())
     if str(config.get('variant_reference_build','hg38'))!='hg38':raise OncoTracerError('The complete GLIMPSE2 workflow requires hg38/GRCh38')
     if config.get('variant_glimpse2') is False:raise OncoTracerError('GLIMPSE2 is compulsory for Illumina short variants')
-    result['parallel_samples']=_positive_slots(result.get('parallel_samples',1))
-    result.setdefault('memory','32GB')
+    result['parallel_samples']=_positive_slots(result.get('parallel_samples', config.get('parallel_samples', 'auto')))
+    result.setdefault('memory',config.get('analysis_memory', 'auto'))
     _memory_gb(result['memory'])
     result.setdefault('nextflow','nextflow')
     validate_patient_table(result.get('patients'))
@@ -82,7 +82,7 @@ def plan(request):
                   'ancestry-mitochondria-neanderthal','homozygosity-roh','cancer-and-cardiomyopathy',
                   'literature-and-integrated-reports','annotated-vcf',*(['ffperase-and-evidence-adjudication'] if request.specimen_type=='ffpe' else []),'cohort-vcf-merge'],
         'execution':'Samples run in bounded parallel slots with isolated Nextflow caches. threads and variant_memory are total budgets divided across active slots.',
-        'resource_policy':{'requested_parallel_samples':_positive_slots((request.glimpse_config or {}).get('parallel_samples',1)), 'total_memory_gb':_memory_gb((request.glimpse_config or {}).get('memory','32GB')), 'minimum_memory_gb_per_sample':MIN_SAMPLE_MEMORY_GB, 'minimum_reason':'The complete workflow includes local float32 LLM reporting as well as genomic analysis.', 'allocation':'At execution: slots=min(requested, sample count, CPUs, floor(memory GB / 32)); each slot receives floor(CPUs / slots) and an equal memory share.'},
+        'resource_policy':{'requested_parallel_samples':_positive_slots((request.glimpse_config or {}).get('parallel_samples','auto')), 'total_memory_gb':_memory_gb((request.glimpse_config or {}).get('memory','auto')), 'minimum_memory_gb_per_sample':MIN_SAMPLE_MEMORY_GB, 'minimum_reason':'The complete workflow includes local float32 LLM reporting as well as genomic analysis.', 'allocation':'At execution CPU/cgroup and available RAM limits are checked; auto prefers eight CPUs per sample, then slots are capped by sample count, CPUs and floor(memory GB / 32). Each slot receives an equal share of the total budget.'},
         'interpretation':'Imputation supports germline hypotheses; it does not prove somatic origin or FFPE artifact status. Votes reuse sequencing evidence and are not independent tests.',
         'ffpe_handling':'FFPErase flagged variants excluded from accepted set unless stringent germline rescue criteria pass; all remain in the audit VCF.'}
 
@@ -278,38 +278,23 @@ def _claim_output_root(outdir, samples):
 
 
 def _positive_slots(value):
-    if isinstance(value,bool) or not re.fullmatch(r'[1-9][0-9]*',str(value)):
-        raise OncoTracerError('variant_parallel_samples must be a positive integer')
-    return int(value)
+    from .sample_resources import parallel_value
+    return parallel_value(value)
 
 
 def _memory_gb(value):
-    match=re.fullmatch(r'\s*(\d+(?:\.\d+)?)\s*(GB|G|GIB|MB|M|MIB|TB|T|TIB)?\s*',str(value),re.I)
-    if not match:raise OncoTracerError('variant_memory must be a total budget such as 64GB, 64 or 65536MB')
-    unit=(match.group(2) or 'GB').upper()
-    gb=float(match.group(1))*(1024 if unit.startswith('T') else 1/1024 if unit.startswith('M') else 1)
-    if not math.isfinite(gb) or gb<MIN_SAMPLE_MEMORY_GB:
+    from .sample_resources import memory_gb
+    amount = memory_gb(value)
+    if amount != 'auto' and amount < MIN_SAMPLE_MEMORY_GB:
         raise OncoTracerError('Complete GLIMPSE2 analysis with local LLM reports requires at least 32GB total memory and 32GB per concurrent sample')
-    return gb
+    return amount
 
 
-def resource_allocation(request,threads,sample_count):
-    if isinstance(threads,bool) or not isinstance(threads,int) or threads<1 or sample_count<1:
-        raise OncoTracerError('Supply BAMs and positive integer threads')
-    options=request.glimpse_config or {}
-    requested=_positive_slots(options.get('parallel_samples',1))
-    memory=_memory_gb(options.get('memory','32GB'))
-    slots=min(requested,sample_count,threads,int(memory//MIN_SAMPLE_MEMORY_GB))
-    per_cpu=threads//slots
-    # Round down to MiB so displayed allocations never exceed the requested total.
-    per_mb=int(memory*1024)//slots
-    return {'requested_parallel_samples':requested,'parallel_samples':slots,
-            'sample_count':sample_count,'total_threads':threads,'total_memory_gb':memory,
-            'threads_per_sample':per_cpu,'memory_per_sample':str(per_mb)+'MB',
-            'memory_gb_per_sample':per_mb/1024,'allocated_threads':slots*per_cpu,
-            'allocated_memory_gb':slots*per_mb/1024,
-            'unallocated_threads':threads-slots*per_cpu,
-            'scope':'CPU/memory task budgets; Nextflow/controller and filesystem cache overhead are additional.'}
+def resource_allocation(request, threads, sample_count):
+    from .sample_resources import allocate
+    options = request.glimpse_config or {}
+    return allocate(threads, sample_count, parallel=options.get('parallel_samples', 'auto'),
+                    memory=options.get('memory', 'auto'), minimum_gb=MIN_SAMPLE_MEMORY_GB)
 
 
 def _analysis_source(base,sample):
@@ -329,53 +314,8 @@ def _analysis_source(base,sample):
     return None
 
 
-class _SampleCancelled(Exception):
-    pass
-
-
-class _SampleRunner(CommandRunner):
-    """Independent trace and child process group, cancellable without a shell."""
-    def __init__(self,parent,trace,stop):
-        super().__init__(trace,validators=parent.validators,dry_run=parent.dry_run,echo=parent.echo,
-                         environment=parent.environment,protected_environment=parent.protected_environment)
-        self.stop=stop
-
-    @staticmethod
-    def _stop_group(process):
-        # Nextflow handles SIGINT by terminating its local tasks and preserving work.
-        for sig,timeout in ((signal.SIGINT,10),(signal.SIGTERM,5),(signal.SIGKILL,5)):
-            try:os.killpg(process.pid,sig)
-            except ProcessLookupError:return
-            try:process.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:pass
-
-    def run(self,stage,command,*,cwd=None,env=None,containment=None,stdout=None,stderr=None,stdin=None,check=True):
-        if self.stop.is_set():raise _SampleCancelled('Stopped before launching '+stage)
-        if self.dry_run:return super().run(stage,command,cwd=cwd,env=env,containment=containment,stdout=stdout,stderr=stderr,stdin=stdin,check=check)
-        argv=tuple(map(str,command));started=utc_now();process=None
-        if self.echo:print(f'[{stage}] {shlex.join(argv)}',file=sys.stderr,flush=True)
-        self.validate_environment()
-        try:
-            process=subprocess.Popen(argv,cwd=cwd,env=self.child_environment(env,containment=containment),
-                                     stdin=stdin,stdout=stdout,stderr=stderr,start_new_session=True)
-            while process.poll() is None:
-                if self.stop.wait(.2):
-                    self._stop_group(process)
-                    raise _SampleCancelled('Analysis interrupted; completed work and partial downloads retained')
-            if self.stop.is_set():raise _SampleCancelled('Analysis interrupted')
-            if check and process.returncode:
-                raise OncoTracerError(f'stage {stage!r} failed with exit code {process.returncode}: {shlex.join(argv)}')
-            return CommandResult(process.returncode,argv,started,utc_now())
-        finally:
-            if process is not None:
-                if process.poll() is None:self._stop_group(process)
-                self._record(stage,started,utc_now(),process.returncode,cwd,argv)
-            self.validate_environment()
-
-
-def _sample_runner(parent,trace,stop):
-    # Normal execution always uses CommandRunner. Preserve simple injected test runners.
-    return _SampleRunner(parent,trace,stop) if isinstance(parent,CommandRunner) else parent
+from .sample_execution import (SampleCancelled as _SampleCancelled,
+                               SampleRunner as _SampleRunner, sample_runner as _sample_runner)
 
 
 def _prepare_ffpe_resources(request,root,runner,stop):
@@ -465,11 +405,8 @@ def preflight_jobs(jobs,runner,bundle,*,force=False):
 
 def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,sample_statuses=None,toolchain=None):
     allocation=resource_allocation(request,threads,len(bams))
-    if allocation['parallel_samples'] < min(allocation['requested_parallel_samples'],len(bams)):
-        print(f"Requested {allocation['requested_parallel_samples']} parallel samples; "
-              f"the {allocation['total_memory_gb']:g}GB / {threads}-CPU total budget allows "
-              f"{allocation['parallel_samples']}. Each concurrent sample requires at least "
-              f"{MIN_SAMPLE_MEMORY_GB}GB.",file=sys.stderr,flush=True)
+    from .sample_resources import announce
+    announce('Illumina variants', allocation)
     if len(set(Path(p).resolve() for p in bams.values()))!=len(bams):raise OncoTracerError('One physical BAM cannot represent multiple individuals')
     for tumor,normal in request.matched_normals:
         if tumor not in bams or normal not in bams or (sample_statuses or {}).get(tumor)!='tumor' or (sample_statuses or {}).get(normal)!='normal':
@@ -601,7 +538,7 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
         if not stop.is_set() and len(exports)==len(bams):
             status['cohort_status']='running';publish()
             try:
-                status['cohort']=_cohort(request,exports,root,tools,reference,threads,imputed,sample_statuses,runner,stop)
+                status['cohort']=_cohort(request,exports,root,tools,reference,allocation['total_threads'],imputed,sample_statuses,runner,stop)
                 status['cohort']['sample_roles']=sample_statuses or {};status['cohort_status']='complete'
             except (OSError,ValueError,subprocess.SubprocessError,OncoTracerError,RuntimeError) as error:status['cohort_error']=str(error)
         status['overall_status']='interrupted' if stop.is_set() else 'partial_failure' if status.get('cohort_error') or status['failed_samples'] and exports else 'failed' if status['failed_samples'] else 'complete'

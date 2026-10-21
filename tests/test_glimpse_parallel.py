@@ -11,13 +11,14 @@ import tempfile
 import threading
 import time
 import unittest
+from tests.resource_fixture import ResourceFixtureCase
 from unittest.mock import patch
 from oncotracer_cli import glimpse_pipeline as pipeline
 from oncotracer_cli.runtime import CommandRunner, OncoTracerError
 from oncotracer_cli.variants import resolve_variant_request
 
 
-class ParallelSamplesTests(unittest.TestCase):
+class ParallelSamplesTests(ResourceFixtureCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name)
@@ -46,7 +47,7 @@ class ParallelSamplesTests(unittest.TestCase):
         return params
 
     def test_default_validation_and_total_budget(self):
-        self.assertEqual(pipeline.validate_options({})['parallel_samples'],1)
+        self.assertEqual(pipeline.validate_options({})['parallel_samples'],'auto')
         for value in (False,True,0,-1,1.5,'2.0','zero',None):
             with self.subTest(value=value),self.assertRaises(OncoTracerError):
                 pipeline.resource_allocation(replace(self.request,glimpse_config={'parallel_samples':value}),8,3)

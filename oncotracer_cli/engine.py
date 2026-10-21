@@ -2201,18 +2201,76 @@ def align_illumina(
     *,
     threads: int,
     force: bool,
+    parallel_samples='auto',
+    memory='auto',
 ) -> dict[str, Path]:
     with _validated_bwa_reader(reference, runner, toolchain):
-        return _align_illumina_locked(
-            samples,
-            reference,
-            outdir,
-            runner,
-            ledger,
-            toolchain,
-            threads=threads,
-            force=force,
+        return _align_samples(
+            samples, outdir, runner, threads, parallel_samples, memory,
+            lambda sample, worker, cpu: _align_illumina_locked(
+                [sample], reference, outdir, worker, ledger, toolchain,
+                threads=cpu, force=force,
+            )[sample.sample],
         )
+
+
+def _align_samples(samples, outdir, runner, threads, parallel, memory, execute):
+    from .sample_resources import allocate, announce
+    from .sample_execution import run_jobs, SampleCancelled
+    allocation = allocate(threads, len(samples), parallel=parallel, memory=memory)
+    announce('alignment', allocation)
+    atomic_write_json(outdir / 'alignment_resources.json', allocation)
+    status = {sample.sample: 'queued' for sample in samples}
+    def update(name, state, result):
+        status[name] = 'complete' if state == 'finished' else state
+        atomic_write_json(outdir / 'alignment_status.json', status)
+    try:
+        return run_jobs([(sample.sample, sample) for sample in samples],
+                        lambda sample, worker: execute(sample, worker, allocation['threads_per_sample']),
+                        allocation, runner, outdir / 'alignment_logs', update=update)
+    except SampleCancelled as error:
+        raise KeyboardInterrupt(str(error)) from error
+    finally:
+        for name, state in status.items():
+            if state == 'running':
+                status[name] = 'interrupted'
+            elif state == 'queued':
+                status[name] = 'not_started'
+        atomic_write_json(outdir / 'alignment_status.json', status)
+
+
+def _alignment_checkpoint(ledger, stage, command, inputs, outputs, force, legacy):
+    """Resource changes never justify repeating an otherwise verified alignment.
+
+    Older releases hashed CPU counts. Match their exact commands and input
+    identities, then migrate only records whose complete BAM + index still
+    pass the ledger's integrity checks. Partial/unrecorded BAMs are never adopted.
+    """
+    canonical = []
+    tokens = iter(map(str, command))
+    for token in tokens:
+        if token in {'-t', '-@', '-m'}:
+            next(tokens, None)
+        else:
+            canonical.append(token)
+    signature = ledger.signature(stage, ['resource-independent-alignment-v1', *canonical], inputs)
+    if not force:
+        if ledger.reusable(stage, signature, outputs):
+            return signature, True
+        if stage in ledger.data['stages']:
+            for cpu in range(1, 257):
+                previous = ledger.signature(stage, list(map(str, legacy(cpu))), inputs)
+                if ledger.reusable(stage, previous, outputs):
+                    ledger.complete(stage, signature, outputs)
+                    return signature, True
+    return signature, False
+
+
+def _sort_memory(command, runner):
+    memory = getattr(runner, 'environment', {}).get('ONCOTRACER_SAMPLE_MEMORY_MB')
+    if memory:
+        workers = int(command[command.index('-@') + 1]) + 1
+        command.extend(['-m', f'{max(16, int(int(memory) * .2 / workers))}M'])
 
 
 def _align_illumina_locked(
@@ -2258,8 +2316,20 @@ def _align_illumina_locked(
             sort = [toolchain.executable("core", "samtools"), "sort", "-@",
                     str(max(1, threads // 2)), "-o", str(lane_bam), "-"]
             stage = f"illumina-align-{lane}"
-            signature = ledger.signature(stage, bwa + ["|"] + sort, reads)
-            if force or not ledger.reusable(stage, signature, [lane_bam, lane_bai]):
+            legacy_bwa, legacy_sort = list(bwa), list(sort)
+            def legacy(cpu):
+                left, right = list(legacy_bwa), list(legacy_sort)
+                left[left.index('-t') + 1] = str(cpu)
+                right[right.index('-@') + 1] = str(max(1, cpu // 2))
+                return left + ['|'] + right
+            # Mapper and sorter execute simultaneously and share the slot.
+            mapper_cpu = max(1, threads * 3 // 4)
+            bwa[bwa.index('-t') + 1] = str(mapper_cpu)
+            sort[sort.index('-@') + 1] = str(max(0, threads - mapper_cpu - 1))
+            _sort_memory(sort, runner)
+            signature, reused = _alignment_checkpoint(ledger, stage, bwa + ['|'] + sort,
+                reads, [lane_bam, lane_bai], force, legacy)
+            if not reused:
                 runner.pipeline(stage, bwa, sort)
                 runner.run(f"illumina-index-{lane}",
                            [toolchain.executable("core", "samtools"), "index", "-@",
@@ -2269,8 +2339,13 @@ def _align_illumina_locked(
             merge = [toolchain.executable("core", "samtools"), "merge", "-f", "-@",
                      str(max(1, threads // 2)), "-o", str(bam), *[str(path) for path in lane_bams]]
             stage = f"illumina-align-{sample.sample}"
-            signature = ledger.signature(stage, merge, lane_bams)
-            if force or not ledger.reusable(stage, signature, [bam, bai]):
+            def legacy_merge(cpu):
+                command = list(merge)
+                command[command.index('-@') + 1] = str(max(1, cpu // 2))
+                return command
+            signature, reused = _alignment_checkpoint(ledger, stage, merge,
+                lane_bams, [bam, bai], force, legacy_merge)
+            if not reused:
                 runner.run(f"illumina-merge-{sample.sample}", merge)
                 runner.run(f"illumina-index-{sample.sample}",
                            [toolchain.executable("core", "samtools"), "index", "-@",
@@ -2443,18 +2518,16 @@ def align_ont(
     threads: int,
     min_age_minutes: int,
     force: bool,
+    parallel_samples='auto',
+    memory='auto',
 ) -> dict[str, Path]:
     with _validated_minimap_reader(reference, runner, toolchain):
-        return _align_ont_locked(
-            samples,
-            reference,
-            samurai_outdir,
-            runner,
-            ledger,
-            toolchain,
-            threads=threads,
-            min_age_minutes=min_age_minutes,
-            force=force,
+        return _align_samples(
+            samples, samurai_outdir, runner, threads, parallel_samples, memory,
+            lambda sample, worker, cpu: _align_ont_locked(
+                [sample], reference, samurai_outdir, worker, ledger, toolchain,
+                threads=cpu, min_age_minutes=min_age_minutes, force=force,
+            )[sample.sample],
         )
 
 
@@ -2509,14 +2582,19 @@ def _align_ont_locked(
             bam,
             "-",
         ]
-        signature = ledger.signature(
-            f"ont-align-{sample.sample}",
-            [*map(str, left), "|", *map(str, right)],
-            [merged],
-        )
-        if force or not ledger.reusable(
-            f"ont-align-{sample.sample}", signature, [bam, bai]
-        ):
+        legacy_left, legacy_right = list(left), list(right)
+        def legacy(cpu):
+            before, after = list(legacy_left), list(legacy_right)
+            before[before.index('-t') + 1] = str(cpu)
+            after[after.index('-@') + 1] = str(max(1, cpu // 2))
+            return [*before, '|', *after]
+        mapper_cpu = max(1, threads * 3 // 4)
+        left[left.index('-t') + 1] = str(mapper_cpu)
+        right[right.index('-@') + 1] = str(max(0, threads - mapper_cpu - 1))
+        _sort_memory(right, runner)
+        signature, reused = _alignment_checkpoint(ledger, f'ont-align-{sample.sample}',
+            [*left, '|', *right], [merged], [bam, bai], force, legacy)
+        if not reused:
             runner.pipeline(f"ont-align-{sample.sample}", left, right)
             runner.run(
                 f"ont-index-{sample.sample}",
@@ -3569,6 +3647,21 @@ def _validate_native_dry_run(
             validate_samples(variants, [s.sample for s in samples], {s.sample: s.status for s in samples}, paired={s.sample: s.fastq_2 is not None for s in samples})
         plan["stages"].extend(variant_plan(variants)["stages"])
     plan["methylation_only"] = _as_bool(config.get("methylation_only"), False)
+    if not plan["methylation_only"]:
+        from .sample_resources import allocate
+        try:
+            plan["alignment_resources"] = allocate(threads, len(samples),
+                parallel=config.get("parallel_samples", "auto"), memory=config.get("analysis_memory", "auto"))
+            if variants:
+                from .glimpse_pipeline import resource_allocation
+                plan["variant_resources"] = (resource_allocation(variants, threads, len(samples))
+                    if variants.engine == 'glimpse2' else allocate(threads, len(samples),
+                        parallel=variants.parallel_samples, memory=variants.memory))
+        except OncoTracerError as error:
+            plan["resource_status"] = "insufficient_current_resources"
+            plan["resource_warning"] = str(error)
+            # A read-only plan can be inspected on a smaller machine. Actual
+            # execution rechecks and refuses to schedule an unaffordable slot.
     if pathology:
         require_file(Path(str(pathology)), "Pathology CSV")
         plan["pathology_csv"] = str(Path(str(pathology)).expanduser().resolve())
@@ -3603,6 +3696,8 @@ def _run_ont_cna_branch(
         threads=threads,
         min_age_minutes=_as_int(config.get("ont_min_age_minutes"), 0),
         force=force,
+        parallel_samples=config.get("parallel_samples", "auto"),
+        memory=config.get("analysis_memory", "auto"),
     )
     binsize = _as_int(config.get("ont_binsize_kb"), 500)
     if caller == "ichorcna":
@@ -3744,9 +3839,9 @@ def _run_native_impl(
             )
         config = dict(_verified_config)
     if parallel_samples is not None:
-        if type(parallel_samples) is not int or parallel_samples < 1:
-            raise OncoTracerError("parallel_samples must be a positive integer")
-        config["variant_parallel_samples"] = parallel_samples
+        from .sample_resources import parallel_value
+        config["parallel_samples"] = parallel_value(parallel_samples)
+        config["variant_parallel_samples"] = parallel_value(parallel_samples)
     _reject_local_sample_panel(config)
     if methylation_only is not None:
         config["methylation_only"] = methylation_only
@@ -3762,8 +3857,6 @@ def _run_native_impl(
         raise OncoTracerError("config mode must be illumina or ont")
     ont_caller = _ont_caller(config) if mode == "ont" else None
     variant_request = resolve_variant_request(config, mode=mode)
-    if parallel_samples is not None and parallel_samples > 1 and (variant_request is None or variant_request.engine != "glimpse2"):
-        raise OncoTracerError("--parallel-samples > 1 requires the Illumina GLIMPSE2 short-variant workflow")
     if variant_request and only_methylation:
         raise OncoTracerError("Variants require alignment; select CNA with optional methylation, not methylation_only")
     if variant_request and variant_request.reference_build != "hg38":
@@ -3792,6 +3885,8 @@ def _run_native_impl(
     )
     if cpu < 1:
         raise OncoTracerError("threads must be a positive integer")
+    from .system_check import inspect_hardware
+    cpu = min(cpu, inspect_hardware()["cpu_workers_available"])
     force_run = _as_bool(config.get("force"), False) if force is None else force
     execution_root = _execution_root or runtime_root(explicit_root)
     if _output_lease is None and not dry_run:
@@ -3900,6 +3995,8 @@ def _run_native_impl(
             toolchain,
             threads=cpu,
             force=force_run,
+            parallel_samples=config.get("parallel_samples", "auto"),
+            memory=config.get("analysis_memory", "auto"),
         )
         if variant_request:
             variant_bams = {sample.sample: samurai_out / "markduplicates" / f"{sample.sample}_markdup.bam" for sample in samples}
@@ -3972,7 +4069,8 @@ def _run_native_impl(
             existing_bams = None
             if variant_request:
                 existing_bams = align_ont(samples, reference, samurai_out, runner, ledger, toolchain,
-                                          threads=cpu, min_age_minutes=_as_int(config.get("ont_min_age_minutes"), 0), force=force_run)
+                                          threads=cpu, min_age_minutes=_as_int(config.get("ont_min_age_minutes"), 0), force=force_run,
+                                          parallel_samples=config.get("parallel_samples", "auto"), memory=config.get("analysis_memory", "auto"))
                 variant_status = _run_variant_branch(variant_request, existing_bams, reference, outdir,
                                                      runner, ledger, toolchain, samples, cpu, force_run)
             if not only_methylation:
