@@ -34,8 +34,10 @@ class CompletionCountsTests(unittest.TestCase):
         self.assertEqual(completion['branches']['variants']['completed_count'], 6)
         lines = '\n'.join(completion_lines(completion))
         self.assertIn('Samples: completed 6/8; incomplete 2/8.', lines)
-        self.assertIn('S7: Small variants (partial_failure)', lines)
-        self.assertIn('S8: Small variants (not_started)', lines)
+        self.assertRegex(lines, r'S7\s+INCOMPLETE\s+Small variants \(partial_failure\)')
+        self.assertRegex(lines, r'S8\s+INCOMPLETE\s+Small variants \(not_started\)')
+        for name in completion['completed_samples']:
+            self.assertRegex(lines, name + r'\s+COMPLETE')
 
     def test_missing_branch_records_and_alignments_never_imply_completion(self):
         summary = partial_summary()

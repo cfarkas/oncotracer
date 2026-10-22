@@ -91,7 +91,7 @@ class VariantEngineTests(ResourceFixtureCase):
                 patch.object(variants, "preflight_variant_tools", side_effect=OncoTracerError("Synthetic variant tool unavailable")) as preflight,
                 patch.object(engine, "run_qdnaseq", return_value=(base / "qdnaseq", base / "bams")) as qdnaseq,
                 patch.object(engine, "run_refinement_and_outputs", side_effect=publish_cna) as refinement,
-                self.assertRaisesRegex(OncoTracerPartialFailure, "variants=failed"),
+                self.assertRaisesRegex(OncoTracerPartialFailure, "Some requested analyses remain incomplete"),
             ):
                 engine.run_native(config, root=runtime)
             preflight.assert_called_once()
@@ -133,7 +133,7 @@ class VariantEngineTests(ResourceFixtureCase):
                 patch.object(engine, "run_variants", side_effect=publish_variant) as call_variants,
                 patch.object(engine, "run_qdnaseq", side_effect=OncoTracerError("Synthetic CNA failure")),
                 patch.object(engine, "run_refinement_and_outputs") as refinement,
-                self.assertRaisesRegex(OncoTracerPartialFailure, "CNA=failed"),
+                self.assertRaisesRegex(OncoTracerPartialFailure, "Some requested analyses remain incomplete"),
             ):
                 engine.run_native(config, root=runtime)
             call_variants.assert_called_once()

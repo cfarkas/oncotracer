@@ -145,7 +145,8 @@ def command_variants(args) -> int:
     config_path = require_file(Path(args.config).expanduser(), "Variant configuration").resolve()
     config = load_flat_yaml(config_path)
     from .variant_runtime import managed_variant_runtime
-    with managed_variant_runtime(config, mode=str(config.get("mode") or "").strip().lower(), semantic=True):
+    from .terminal_progress import terminal_session
+    with terminal_session(config_path), managed_variant_runtime(config, mode=str(config.get("mode") or "").strip().lower(), semantic=True):
         return _command_variants(args)
 
 
@@ -228,6 +229,9 @@ def _command_variants(args) -> int:
             toolchain = Toolchain.from_environment(runtime_cache=Path(temporary))
             runner = CommandRunner(trace, protected_environment=toolchain.environment("core"),
                                    validators=(validate_inputs, toolchain.validate_environment))
+            from .terminal_progress import ProgressJournal
+            runner.progress = ProgressJournal(outdir)
+            runner.progress.samples(bams)
             ledger = StageLedger(native / "state.json")
             try:
                 status = run_variants(request, bams, reference, outdir, runner, ledger,
@@ -264,7 +268,7 @@ def _command_variants(args) -> int:
     from .completion import summarize_completion, completion_lines
     print("\n".join(completion_lines(summarize_completion(summary))), flush=True)
     if status['overall_status'] == 'partial_failure':
-        print(f"PARTIAL FAILURE: {_partial_failure_cause(status)}\nCompleted outputs are preserved: {outdir}\nResults: {outdir / 'index.html'}")
+        print(f"Analysis incomplete: {_partial_failure_cause(status)}\nCompleted outputs are preserved: {outdir}\nResults: {outdir / 'index.html'}")
         return 2
     print(f"Native variant analysis {status['overall_status']}: {outdir}\nResults: {outdir / 'index.html'}")
     if status["overall_status"] != "complete":

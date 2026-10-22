@@ -99,11 +99,30 @@ def completion_lines(completion, *, details=True):
     for branch in completion["branches"].values():
         lines.append(branch["label"] + ": " + _count_text(branch) + ".")
     if details:
-        lines.extend(row["sample"] + ": " + "; ".join(row["remaining"])
-                     for row in completion["remaining_samples"])
+        lines.extend(sample_table(completion_rows(completion)))
     if completion["outstanding_cohort_work"]:
         lines.append("Still incomplete: " + "; ".join(completion["outstanding_cohort_work"]) + ".")
     return lines
+
+
+def completion_rows(completion):
+    """Every selected sample, including those that never started a caller."""
+    names = list(dict.fromkeys(name for branch in completion["branches"].values()
+                              for name in branch["sample_statuses"]))
+    remaining = {row["sample"]: "; ".join(row["remaining"]) for row in completion["remaining_samples"]}
+    return [(name, "COMPLETE" if name in completion["completed_samples"] else
+             "NOT APPLICABLE" if name in completion["not_applicable_samples"] else "INCOMPLETE",
+             remaining.get(name, "")) for name in names]
+
+
+def sample_table(rows):
+    from .terminal_progress import clean
+    rows = [(clean(name), state, clean(reason)) for name, state, reason in rows]
+    if not rows:
+        return []
+    width = max(len("SAMPLE"), *(len(name) for name, _, _ in rows))
+    return ["", f"{'SAMPLE':<{width}}  STATUS          REMAINING ANALYSIS",
+            *[f"{name:<{width}}  {state:<14}  {reason}".rstrip() for name, state, reason in rows]]
 
 
 def completion_html(completion):

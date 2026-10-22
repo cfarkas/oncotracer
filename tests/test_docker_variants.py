@@ -315,7 +315,7 @@ class DockerVariantTests(unittest.TestCase):
         self.assertEqual(run.call_count,1)
 
     def test_cli_partial_has_exit_two_without_error_prefix_and_real_failure_keeps_error(self):
-        for outcome, expected in [(OncoTracerPartialFailure('Variants incomplete',self.outdir),'PARTIAL FAILURE:'),
+        for outcome, expected in [(OncoTracerPartialFailure('Variants incomplete',self.outdir),'Analysis incomplete.'),
                                   (OncoTracerError('Runtime failure'),'ERROR:')]:
             with self.subTest(expected=expected), patch.object(cli,'execute_run',side_effect=outcome):
                 output=io.StringIO()
@@ -323,7 +323,7 @@ class DockerVariantTests(unittest.TestCase):
                     code=cli.main(['run','--config',str(self.config_path),'--backend','host'])
             self.assertEqual(code,2)
             self.assertIn(expected,output.getvalue())
-            if expected=='PARTIAL FAILURE:':
+            if expected=='Analysis incomplete.':
                 self.assertNotIn('ERROR:',output.getvalue())
                 self.assertIn('Completed outputs are preserved:',output.getvalue())
 

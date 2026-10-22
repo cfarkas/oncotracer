@@ -5,7 +5,7 @@
   "real_reads_downloaded": false,
   "api": "synthetic browser demo",
   "ui_page_sha256": "016602d2ba02aa88743b9ed430cd3ae22dac7a4b177881bab23dda6f1012209b",
-  "mock_api_sha256": "76af6c2412b6c8991be0eb1cdf7409e053b3fc18ab1db61025861b914edeba97",
+  "mock_api_sha256": "24dbd09a26fdd8fd7fc30b7ada1ead82bc14dc258c992aa6ad89f44f8f4bb65c",
   "source_files": {
     "scripts/record_quickstart_videos.py": "825a51455b482eb50b851c6cac1e922822807cf895bd97a961c62168e31c5a27",
     "oncotracer_cli/resume_ui.py": "1e17c6b457e3a5f657f1fec1c10a1b707ea47821184c8428ac53982b1f545b97"
@@ -14,7 +14,7 @@
   "videos": [
     {
       "name": "quick-start-illumina-ont",
-      "duration_seconds": 147.625,
+      "duration_seconds": 148.083333,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -24,128 +24,128 @@
       ],
       "cues": [
         {
-          "start": 1.4680970038753003,
-          "end": 6.532530311029404,
+          "start": 1.3150883850175887,
+          "end": 6.3774339880328625,
           "title": "QuickStart 1 \u00b7 Illumina",
           "text": "Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo."
         },
         {
-          "start": 6.532530311029404,
-          "end": 8.43247005296871,
+          "start": 6.3774339880328625,
+          "end": 8.287516898941249,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 new analysis",
           "text": "Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project."
         },
         {
-          "start": 8.43247005296871,
-          "end": 15.188041121000424,
+          "start": 8.287516898941249,
+          "end": 15.044308149022982,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 preservation",
           "text": "Choose preservation from specimen records. Fresh is selected only as demonstration metadata here."
         },
         {
-          "start": 15.188041121000424,
-          "end": 29.68923223600723,
+          "start": 15.044308149022982,
+          "end": 29.56429583695717,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 discover inputs",
           "text": "Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together."
         },
         {
-          "start": 29.68923223600723,
-          "end": 37.17463843594305,
+          "start": 29.56429583695717,
+          "end": 37.07451165188104,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 sample groups",
           "text": "Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups."
         },
         {
-          "start": 37.17463843594305,
-          "end": 45.63745123404078,
+          "start": 37.07451165188104,
+          "end": 45.6083245058544,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 CNA settings",
           "text": "Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins."
         },
         {
-          "start": 45.63745123404078,
-          "end": 52.094703118084,
+          "start": 45.6083245058544,
+          "end": 52.109480360057205,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 tools and reference",
           "text": "Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis."
         },
         {
-          "start": 52.094703118084,
-          "end": 58.83445123187266,
+          "start": 52.109480360057205,
+          "end": 58.87659697397612,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 separate project",
           "text": "Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart."
         },
         {
-          "start": 58.83445123187266,
-          "end": 65.59475589590147,
+          "start": 58.87659697397612,
+          "end": 65.66782904788852,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 save and review",
           "text": "Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated."
         },
         {
-          "start": 65.59475589590147,
-          "end": 73.41868715686724,
+          "start": 65.66782904788852,
+          "end": 73.51272473507561,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 ready for your run",
           "text": "In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run."
         },
         {
-          "start": 73.41868715686724,
-          "end": 78.42996791889891,
+          "start": 73.51272473507561,
+          "end": 78.53045757394284,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore",
           "text": "Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo."
         },
         {
-          "start": 78.42996791889891,
-          "end": 80.30526319192722,
+          "start": 78.53045757394284,
+          "end": 80.43466617190279,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 new analysis",
           "text": "Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project."
         },
         {
-          "start": 80.30526319192722,
-          "end": 87.05365359107964,
+          "start": 80.43466617190279,
+          "end": 87.21757317497395,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 preservation",
           "text": "Choose preservation from specimen records. Fresh is selected only as demonstration metadata here."
         },
         {
-          "start": 87.05365359107964,
-          "end": 101.53270451608114,
+          "start": 87.21757317497395,
+          "end": 101.74743887293153,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 discover inputs",
           "text": "Choose fastq_pass. Each barcode stays one sample, even when it contains several FASTQ batches."
         },
         {
-          "start": 101.53270451608114,
-          "end": 106.98729879106395,
+          "start": 101.74743887293153,
+          "end": 107.25504807406105,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 sample groups",
           "text": "Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups."
         },
         {
-          "start": 106.98729879106395,
-          "end": 111.20234664692543,
+          "start": 107.25504807406105,
+          "end": 111.52211946691386,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 sample name",
           "text": "Rename barcode01 to DRR165691. The barcode still identifies the same FASTQ input."
         },
         {
-          "start": 111.20234664692543,
-          "end": 119.66596199106425,
+          "start": 111.52211946691386,
+          "end": 120.0312957400456,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 CNA settings",
           "text": "Keep Copy-number analysis, ichorCNA and 500 kb bins. FASTQs alone do not provide methylation calls."
         },
         {
-          "start": 119.66596199106425,
-          "end": 126.13317249389365,
+          "start": 120.0312957400456,
+          "end": 126.52894805488177,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 tools and reference",
           "text": "Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis."
         },
         {
-          "start": 126.13317249389365,
-          "end": 132.8747056729626,
+          "start": 126.52894805488177,
+          "end": 133.27998814103194,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 separate project",
           "text": "Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart."
         },
         {
-          "start": 132.8747056729626,
-          "end": 139.63442802405916,
+          "start": 133.27998814103194,
+          "end": 140.04619306791574,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 save and review",
           "text": "Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated."
         },
         {
-          "start": 139.63442802405916,
-          "end": 146.5198188999202,
+          "start": 140.04619306791574,
+          "end": 146.93985386006534,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 ready for your run",
           "text": "In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run."
         }
@@ -266,8 +266,8 @@
       "files": {
         ".mp4": {
           "name": "quick-start-illumina-ont.mp4",
-          "sha256": "619e8e7d2229f3680bcfb63c6f031e929cc0110cde276989f0ae4b2836fd1a0a",
-          "bytes": 6194495
+          "sha256": "4492ddd71df7849c4ade74eb34ccfd6f345661acd062e749d1d020212e9adcbd",
+          "bytes": 6234158
         },
         ".jpg": {
           "name": "quick-start-illumina-ont.jpg",
@@ -276,19 +276,19 @@
         },
         ".vtt": {
           "name": "quick-start-illumina-ont.vtt",
-          "sha256": "98ae8e86a46e8351789473853a56c6abd40e9d061a0a16a299d9fe4345c65f88",
+          "sha256": "f98a31f7139a0ffe115012639bd35a970bb10f7383a64d0b595713ceced83cef",
           "bytes": 3904
         },
         ".txt": {
           "name": "quick-start-illumina-ont.txt",
-          "sha256": "7d8368e006924162094761fa55962cc44accbc2307769e8bf209e9b638f734ff",
+          "sha256": "5febe278992cb38725495fe7ff6ff19a39eadde3fdb25f233ac160acf2daba45",
           "bytes": 3593
         }
       }
     },
     {
       "name": "quick-start-hcc1143",
-      "duration_seconds": 81.041667,
+      "duration_seconds": 81.5,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -298,62 +298,62 @@
       ],
       "cues": [
         {
-          "start": 0.9318298599682748,
-          "end": 5.996431123930961,
+          "start": 0.9339781070593745,
+          "end": 6.018564827973023,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort",
           "text": "Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo."
         },
         {
-          "start": 5.996431123930961,
-          "end": 7.876048814039677,
+          "start": 6.018564827973023,
+          "end": 7.946964269969612,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 new analysis",
           "text": "Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project."
         },
         {
-          "start": 7.876048814039677,
-          "end": 14.62059727194719,
+          "start": 7.946964269969612,
+          "end": 14.737397368997335,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 preservation",
           "text": "Choose preservation from specimen records. Fresh is selected only as demonstration metadata here."
         },
         {
-          "start": 14.62059727194719,
-          "end": 29.101286744931713,
+          "start": 14.737397368997335,
+          "end": 29.32015169598162,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 discover inputs",
           "text": "Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together."
         },
         {
-          "start": 29.101286744931713,
-          "end": 44.61430456396192,
+          "start": 29.32015169598162,
+          "end": 44.94475067802705,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 sample groups",
           "text": "Assign all three libraries to Cancer. DMSO is a treatment control, not a normal genome."
         },
         {
-          "start": 44.61430456396192,
-          "end": 53.06278978707269,
+          "start": 44.94475067802705,
+          "end": 53.45967064402066,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 CNA settings",
           "text": "Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins."
         },
         {
-          "start": 53.06278978707269,
-          "end": 59.518719783984125,
+          "start": 53.45967064402066,
+          "end": 59.956311310175806,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 tools and reference",
           "text": "Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis."
         },
         {
-          "start": 59.518719783984125,
-          "end": 66.2587569039315,
+          "start": 59.956311310175806,
+          "end": 66.72801460395567,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 separate project",
           "text": "Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart."
         },
         {
-          "start": 66.2587569039315,
-          "end": 73.01709591201507,
+          "start": 66.72801460395567,
+          "end": 73.55541956308298,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 save and review",
           "text": "Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated."
         },
         {
-          "start": 73.01709591201507,
-          "end": 79.9054984159302,
+          "start": 73.55541956308298,
+          "end": 80.46589146414772,
           "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 ready for your run",
           "text": "In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run."
         }
@@ -432,8 +432,8 @@
       "files": {
         ".mp4": {
           "name": "quick-start-hcc1143.mp4",
-          "sha256": "50d4a0d8a2d3416d79aa85798355a32d63ee88b23e9ea2f8e02985315bc8f9e2",
-          "bytes": 3127170
+          "sha256": "9ff29405e9aa45fb11e2aa4fd162b5453169cfe2425b41bec8c75fcb41623ab2",
+          "bytes": 3155325
         },
         ".jpg": {
           "name": "quick-start-hcc1143.jpg",
@@ -442,19 +442,19 @@
         },
         ".vtt": {
           "name": "quick-start-hcc1143.vtt",
-          "sha256": "05bce136c51f7d35f2e46228623611416e5956968978f495650202c541bbc005",
+          "sha256": "c2410a0b9f8c27c74232f95c07d8bee8baf6745597530705f515934465bc1905",
           "bytes": 1888
         },
         ".txt": {
           "name": "quick-start-hcc1143.txt",
-          "sha256": "96980007f9ae0eb3c4524beb2cf7cf0c6278482b98a7cafc5c7679511bbb1ff7",
+          "sha256": "49cf9a8bd644bd4803904da95ccdd39942874f99d7f730f9794e1be463837795",
           "bytes": 1786
         }
       }
     },
     {
       "name": "continue-analysis",
-      "duration_seconds": 41.958333,
+      "duration_seconds": 42.166667,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -464,38 +464,38 @@
       ],
       "cues": [
         {
-          "start": 0.9357365700416267,
-          "end": 6.000897563062608,
+          "start": 0.9285618029534817,
+          "end": 6.015552788972855,
           "title": "Continue an existing analysis",
           "text": "Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo."
         },
         {
-          "start": 6.000897563062608,
-          "end": 14.766282859956846,
+          "start": 6.015552788972855,
+          "end": 14.903308063047007,
           "title": "Continue an existing analysis \u00b7 open the saved project",
           "text": "Stop the project's current run. Choose Continue an existing analysis, then select its output project containing config/run.yml and results."
         },
         {
-          "start": 14.766282859956846,
-          "end": 17.524973549880087,
+          "start": 14.903308063047007,
+          "end": 17.698493130970746,
           "title": "Continue an existing analysis \u00b7 validate completed work",
           "text": "Load saved settings and check. Saved samples and settings stay together. Incomplete alignments are not accepted as completed work."
         },
         {
-          "start": 17.524973549880087,
-          "end": 22.40429946500808,
+          "start": 17.698493130970746,
+          "end": 22.611829687142745,
           "title": "Continue an existing analysis \u00b7 choose concurrent samples",
           "text": "In Review and run, choose parallel sample jobs \u00d7 cores per sample. Run applies and checks the choice; Apply resources and check previews it without starting. Completed work is verified before reuse."
         },
         {
-          "start": 22.40429946500808,
-          "end": 34.97308325092308,
+          "start": 22.611829687142745,
+          "end": 35.21321691595949,
           "title": "Continue an existing analysis \u00b7 optional manual count",
           "text": "Choose Manual to enter your own number of parallel samples. Suggestions remain available; too many jobs can exhaust memory. Automatic adapts to the machine."
         },
         {
-          "start": 34.97308325092308,
-          "end": 40.8554842970334,
+          "start": 35.21321691595949,
+          "end": 41.11562431813218,
           "title": "Continue an existing analysis \u00b7 resume when ready",
           "text": "Review the checks, then choose Run analysis to continue. This recording stops here; its checks are simulated and no analysis runs."
         }
@@ -517,8 +517,8 @@
       "files": {
         ".mp4": {
           "name": "continue-analysis.mp4",
-          "sha256": "a817238d8c78b08123e3ae517fd899989bb7688993a2d8d2ab6f0fc755484f7b",
-          "bytes": 2206533
+          "sha256": "d3e4ee58a170a0aaa66b5d07c70c6fb7f4c56ac7e33a5561d5e8d032962c7b8e",
+          "bytes": 2140586
         },
         ".jpg": {
           "name": "continue-analysis.jpg",
@@ -527,19 +527,19 @@
         },
         ".vtt": {
           "name": "continue-analysis.vtt",
-          "sha256": "644d00c7df0e1ddee131795e3c969f126cc4aca58c72203a02f27c3735079f82",
+          "sha256": "93f8299eb81235f5e4622ae205cbc82223fd6ee6ff524bf2fa05f85676c0ecad",
           "bytes": 1398
         },
         ".txt": {
           "name": "continue-analysis.txt",
-          "sha256": "c2ff28b8f3cbb62f96f69c96258e6aa15678c9c0b5c0eadcf7abd890e5fcf675",
+          "sha256": "e20a94d66df018b8f00b9d4e374bb49bc349030794b904d10a48d39c9a55cb37",
           "bytes": 1369
         }
       }
     },
     {
       "name": "quick-start-illumina",
-      "duration_seconds": 71.041667,
+      "duration_seconds": 71.291667,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -550,61 +550,61 @@
       "cues": [
         {
           "start": 0.0,
-          "end": 5.064433307154104,
+          "end": 5.062345603015274,
           "title": "QuickStart 1 \u00b7 Illumina",
           "text": "Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo."
         },
         {
-          "start": 5.064433307154104,
-          "end": 6.96437304909341,
+          "start": 5.062345603015274,
+          "end": 6.97242851392366,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 new analysis",
           "text": "Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project."
         },
         {
-          "start": 6.96437304909341,
-          "end": 13.719944117125124,
+          "start": 6.97242851392366,
+          "end": 13.729219764005393,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 preservation",
           "text": "Choose preservation from specimen records. Fresh is selected only as demonstration metadata here."
         },
         {
-          "start": 13.719944117125124,
-          "end": 28.221135232131928,
+          "start": 13.729219764005393,
+          "end": 28.249207451939583,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 discover inputs",
           "text": "Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together."
         },
         {
-          "start": 28.221135232131928,
-          "end": 35.70654143206775,
+          "start": 28.249207451939583,
+          "end": 35.75942326686345,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 sample groups",
           "text": "Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups."
         },
         {
-          "start": 35.70654143206775,
-          "end": 44.16935423016548,
+          "start": 35.75942326686345,
+          "end": 44.29323612083681,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 CNA settings",
           "text": "Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins."
         },
         {
-          "start": 44.16935423016548,
-          "end": 50.6266061142087,
+          "start": 44.29323612083681,
+          "end": 50.794391975039616,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 tools and reference",
           "text": "Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis."
         },
         {
-          "start": 50.6266061142087,
-          "end": 57.36635422799736,
+          "start": 50.794391975039616,
+          "end": 57.56150858895853,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 separate project",
           "text": "Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart."
         },
         {
-          "start": 57.36635422799736,
-          "end": 64.12665889202617,
+          "start": 57.56150858895853,
+          "end": 64.35274066287093,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 save and review",
           "text": "Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated."
         },
         {
-          "start": 64.12665889202617,
-          "end": 71.01462459820323,
+          "start": 64.35274066287093,
+          "end": 71.25020623300225,
           "title": "QuickStart 1 \u00b7 Illumina \u00b7 ready for your run",
           "text": "In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run."
         }
@@ -669,46 +669,46 @@
       "files": {
         ".mp4": {
           "name": "quick-start-illumina.mp4",
-          "sha256": "478f9e5b7d7b94536f84b6768785d814ff2384cf8f39b6d116b122e641e97116",
-          "bytes": 2676090
+          "sha256": "b8431c4a04fe2a776b61697f93573c708643463ed96f64736994feda85ca659a",
+          "bytes": 2914625
         },
         ".jpg": {
           "name": "quick-start-illumina.jpg",
-          "sha256": "2ced66e4609425b8c8a61ead57b0cb85c2fd9341544adef7fccebcf7b9aeb5b7",
-          "bytes": 107558
+          "sha256": "b39bcf2006b766f0709dff6eb136662c8779fdb2ae997ad9069e172eb89ec730",
+          "bytes": 108851
         },
         ".vtt": {
           "name": "quick-start-illumina.vtt",
-          "sha256": "447f903d2f701399f3328af21514354ae422ac135be0c36cf4f01c4503632bb6",
+          "sha256": "875396843e4117cc08c06dd1aeba860210c866d63b347dafb07119330e6289b5",
           "bytes": 1840
         },
         ".txt": {
           "name": "quick-start-illumina.txt",
-          "sha256": "c88ae6e3996173e4b1ba71779a787174e16f6af848ab39178d193227e58ec4a2",
+          "sha256": "dc7b00b7604cdcab12d61c5e7f6cacf7ca72518e7089cda08426944d83bea33d",
           "bytes": 1738
         }
       },
       "derivation": {
         "method": "transcoded_from_original_browser_capture",
-        "source_capture_name": "page@38cc43002c0f6943ac0b12ee961966b9.webm",
-        "source_capture_sha256": "a59c16399c001cd6209bc8bab50c5a40fa656ad5f9cee1a0e7ad4911e4d245a7",
+        "source_capture_name": "page@c1f7bbe97d5916075a610eff3c65e4a4.webm",
+        "source_capture_sha256": "e4232cb950a7cf825c4a092804759f245104769887fa940ed322e77b45c1850c",
         "approved_combined_video": {
           "name": "quick-start-illumina-ont.mp4",
-          "sha256": "619e8e7d2229f3680bcfb63c6f031e929cc0110cde276989f0ae4b2836fd1a0a",
-          "bytes": 6194495
+          "sha256": "4492ddd71df7849c4ade74eb34ccfd6f345661acd062e749d1d020212e9adcbd",
+          "bytes": 6234158
         },
         "source_window_seconds": [
-          1.4680970038753003,
-          72.48272160207853
+          1.3150883850175887,
+          72.56529461801983
         ],
         "captions_rebased": true,
         "inter_scene_navigation_excluded": true,
-        "poster_source_seconds": 3.4680970038753003
+        "poster_source_seconds": 3.3150883850175887
       }
     },
     {
       "name": "quick-start-ont",
-      "duration_seconds": 73.083333,
+      "duration_seconds": 73.458333,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -719,67 +719,67 @@
       "cues": [
         {
           "start": 0.0,
-          "end": 5.011280762031674,
+          "end": 5.017732838867232,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore",
           "text": "Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo."
         },
         {
-          "start": 5.011280762031674,
-          "end": 6.8865760350599885,
+          "start": 5.017732838867232,
+          "end": 6.921941436827183,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 new analysis",
           "text": "Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project."
         },
         {
-          "start": 6.8865760350599885,
-          "end": 13.634966434212402,
+          "start": 6.921941436827183,
+          "end": 13.704848439898342,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 preservation",
           "text": "Choose preservation from specimen records. Fresh is selected only as demonstration metadata here."
         },
         {
-          "start": 13.634966434212402,
-          "end": 28.114017359213904,
+          "start": 13.704848439898342,
+          "end": 28.234714137855917,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 discover inputs",
           "text": "Choose fastq_pass. Each barcode stays one sample, even when it contains several FASTQ batches."
         },
         {
-          "start": 28.114017359213904,
-          "end": 33.568611634196714,
+          "start": 28.234714137855917,
+          "end": 33.74232333898544,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 sample groups",
           "text": "Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups."
         },
         {
-          "start": 33.568611634196714,
-          "end": 37.7836594900582,
+          "start": 33.74232333898544,
+          "end": 38.009394731838256,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 sample name",
           "text": "Rename barcode01 to DRR165691. The barcode still identifies the same FASTQ input."
         },
         {
-          "start": 37.7836594900582,
-          "end": 46.247274834197015,
+          "start": 38.009394731838256,
+          "end": 46.51857100497,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 CNA settings",
           "text": "Keep Copy-number analysis, ichorCNA and 500 kb bins. FASTQs alone do not provide methylation calls."
         },
         {
-          "start": 46.247274834197015,
-          "end": 52.71448533702642,
+          "start": 46.51857100497,
+          "end": 53.01622331980616,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 tools and reference",
           "text": "Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis."
         },
         {
-          "start": 52.71448533702642,
-          "end": 59.456018516095355,
+          "start": 53.01622331980616,
+          "end": 59.76726340595633,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 separate project",
           "text": "Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart."
         },
         {
-          "start": 59.456018516095355,
-          "end": 66.21574086719193,
+          "start": 59.76726340595633,
+          "end": 66.53346833284013,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 save and review",
           "text": "Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated."
         },
         {
-          "start": 66.21574086719193,
-          "end": 73.083333,
+          "start": 66.53346833284013,
+          "end": 73.4262321589049,
           "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 ready for your run",
           "text": "In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run."
         }
@@ -845,41 +845,41 @@
       "files": {
         ".mp4": {
           "name": "quick-start-ont.mp4",
-          "sha256": "5381533c683d7b71ad841bfcd4fde75fff76df2df0618db2c935cc94e9637403",
-          "bytes": 3172328
+          "sha256": "b9707f17fe5e0b820c236947c80c6d35566f6859797c500079ac6a4d86726244",
+          "bytes": 3148205
         },
         ".jpg": {
           "name": "quick-start-ont.jpg",
-          "sha256": "3db09111f7bc3fd68e9db68b67d1c9bab6aca3b9d1b4672ce7fa5c65bae65bff",
-          "bytes": 108000
+          "sha256": "414e36fbaa68a0d7a94ceb736209627bb11ad97d5d1311b50d40c8dd49bea86a",
+          "bytes": 106913
         },
         ".vtt": {
           "name": "quick-start-ont.vtt",
-          "sha256": "6114c2849019b90e533fe6c8b0729546e865e0357f2fabf2601fb2d638b64926",
+          "sha256": "d23422abc96a4c97ba345b356d42a18f6f62389ba0ab41ca31c2e670ca86eecd",
           "bytes": 2062
         },
         ".txt": {
           "name": "quick-start-ont.txt",
-          "sha256": "c870b41962c2a2544fa50823483062cde3c70375f345d63724ef5ef154a34e4c",
+          "sha256": "8345319166b802270ffd816ccd4d1c48a5735cf2b93f1a7921e2ccfc18d14dfa",
           "bytes": 1941
         }
       },
       "derivation": {
         "method": "transcoded_from_original_browser_capture",
-        "source_capture_name": "page@38cc43002c0f6943ac0b12ee961966b9.webm",
-        "source_capture_sha256": "a59c16399c001cd6209bc8bab50c5a40fa656ad5f9cee1a0e7ad4911e4d245a7",
+        "source_capture_name": "page@c1f7bbe97d5916075a610eff3c65e4a4.webm",
+        "source_capture_sha256": "e4232cb950a7cf825c4a092804759f245104769887fa940ed322e77b45c1850c",
         "approved_combined_video": {
           "name": "quick-start-illumina-ont.mp4",
-          "sha256": "619e8e7d2229f3680bcfb63c6f031e929cc0110cde276989f0ae4b2836fd1a0a",
-          "bytes": 6194495
+          "sha256": "4492ddd71df7849c4ade74eb34ccfd6f345661acd062e749d1d020212e9adcbd",
+          "bytes": 6234158
         },
         "source_window_seconds": [
-          73.41868715686724,
-          146.51887756306678
+          73.51272473507561,
+          146.9389568939805
         ],
         "captions_rebased": true,
         "inter_scene_navigation_excluded": true,
-        "poster_source_seconds": 75.41868715686724
+        "poster_source_seconds": 75.51272473507561
       }
     }
   ],

@@ -1,51 +1,51 @@
 WEBVTT
 
 1
-00:00:00.000 --> 00:00:05.064
+00:00:00.000 --> 00:00:05.062
 QuickStart 1 · Illumina
 Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo.
 
 2
-00:00:05.064 --> 00:00:06.964
+00:00:05.062 --> 00:00:06.972
 QuickStart 1 · Illumina · new analysis
 Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project.
 
 3
-00:00:06.964 --> 00:00:13.720
+00:00:06.972 --> 00:00:13.729
 QuickStart 1 · Illumina · preservation
 Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.
 
 4
-00:00:13.720 --> 00:00:28.221
+00:00:13.729 --> 00:00:28.249
 QuickStart 1 · Illumina · discover inputs
 Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together.
 
 5
-00:00:28.221 --> 00:00:35.707
+00:00:28.249 --> 00:00:35.759
 QuickStart 1 · Illumina · sample groups
 Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups.
 
 6
-00:00:35.707 --> 00:00:44.169
+00:00:35.759 --> 00:00:44.293
 QuickStart 1 · Illumina · CNA settings
 Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins.
 
 7
-00:00:44.169 --> 00:00:50.627
+00:00:44.293 --> 00:00:50.794
 QuickStart 1 · Illumina · tools and reference
 Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis.
 
 8
-00:00:50.627 --> 00:00:57.366
+00:00:50.794 --> 00:00:57.562
 QuickStart 1 · Illumina · separate project
 Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart.
 
 9
-00:00:57.366 --> 00:01:04.127
+00:00:57.562 --> 00:01:04.353
 QuickStart 1 · Illumina · save and review
 Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated.
 
 10
-00:01:04.127 --> 00:01:11.015
+00:01:04.353 --> 00:01:11.250
 QuickStart 1 · Illumina · ready for your run
 In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run.

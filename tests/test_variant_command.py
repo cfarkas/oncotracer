@@ -190,7 +190,7 @@ class VariantCommandTests(unittest.TestCase):
               patch.object(variant_command, 'run_variants', return_value=status)):
             code, output = self.cli()
         self.assertEqual(code, 2, output)
-        self.assertIn('PARTIAL FAILURE: FFPERASE not assessed:', output)
+        self.assertIn('Analysis incomplete: FFPERASE not assessed:', output)
         self.assertIn('Samples: completed 0/1; incomplete 1/1.', output)
         self.assertIn('Coverage is insufficient for the log-depth feature.', output)
         self.assertNotIn('ERROR:', output)

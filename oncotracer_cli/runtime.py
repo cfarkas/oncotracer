@@ -888,6 +888,8 @@ class CommandRunner:
         self.dry_run = dry_run
         self.validators = tuple(validators)
         self.echo = echo
+        self.progress = None
+        self.sample_name = None
         self.environment = dict(environment or {})
         self.protected_environment = dict(protected_environment or {})
         trace_path.parent.mkdir(parents=True, exist_ok=True)
@@ -932,6 +934,12 @@ class CommandRunner:
     ) -> None:
         with self._trace_lock:
             self._record_unlocked(stage, started, finished, returncode, cwd, command)
+        if self.progress is not None:
+            self.progress.command_done(self.sample_name, returncode)
+
+    def progress_task(self, stage):
+        if self.progress is not None:
+            self.progress.task(stage, self.sample_name)
 
     def _record_unlocked(self, stage, started, finished, returncode, cwd, command):
         with self.trace_path.open("a", encoding="utf-8", newline="") as handle:
@@ -962,6 +970,7 @@ class CommandRunner:
     ) -> CommandResult:
         argv = tuple(str(item) for item in command)
         started = utc_now()
+        self.progress_task(stage)
         if self.echo:
             print(f"[{stage}] {shlex.join(argv)}", file=sys.stderr, flush=True)
         if self.dry_run:
@@ -1013,6 +1022,7 @@ class CommandRunner:
         right_argv = tuple(str(item) for item in right)
         rendered = (*left_argv, "|", *right_argv)
         started = utc_now()
+        self.progress_task(stage)
         if self.echo:
             print(
                 f"[{stage}] {shlex.join(left_argv)} | {shlex.join(right_argv)}",

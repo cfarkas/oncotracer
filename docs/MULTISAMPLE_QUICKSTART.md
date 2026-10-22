@@ -68,6 +68,50 @@ is the maximum number of active sample workflows, not a claim that every slot is
 currently computing. Native sample commands are retained in the main trace and in separate
 sample logs.
 
+## Follow parallel jobs in the terminal
+
+The current GitHub version shows a live progress display automatically in a
+terminal, including when you click **Run analysis** in the browser. It works with
+Conda and Docker. No extra option or `tqdm` installation is required.
+
+```text
+OncoTracer | Alignment | elapsed 00:12:30
+[======              ] 3/10 done | 2 running | 5 queued | 0 incomplete
+Sample slots: 2 | CPU threads/sample: 10 | memory/sample: 32GB
+SAMPLE                        TASK / STATE                              ELAPSED
+SAMPLE_D                     [  =   ] illumina-align-SAMPLE_D             00:02:14
+SAMPLE_E                     [   =  ] illumina-index-SAMPLE_E             00:00:46
+```
+
+This is an illustrative display. The bar counts finished **sample workflows in
+the current stage**. Each running row shows its actual current command and elapsed
+time. Moving bars indicate activity; individual commands do not report a reliable
+percentage or finish time. Illumina variants show one active Nextflow workflow
+per sample, followed by FFPE review when selected. The full nested task output
+remains in that sample's Nextflow log. Cohort preparation, CNA and reporting can
+run between sample queues.
+
+Tool messages go to the **Full log** path printed by the display. Browser launches
+keep `logs/web-analysis*.log`; direct launches create `logs/terminal-analysis-*.log`
+when the project already has a logs folder, otherwise a temporary log at the
+printed path. Redirecting output to a file keeps ordinary text without animation.
+
+At the end, **every selected sample** appears in a table:
+
+```text
+Samples: completed 2/3; incomplete 1/3.
+SAMPLE    STATUS          REMAINING ANALYSIS
+SAMPLE_A  COMPLETE
+SAMPLE_B  COMPLETE
+SAMPLE_C  INCOMPLETE      Small variants (not_started)
+```
+
+Complete means all requested analyses for that sample are complete; alignment
+alone is not enough. Failed, interrupted and queued work is incomplete. Any
+unfinished cohort outputs are listed separately. If stopped before final results
+are published, samples are marked incomplete for that attempt and retained stages
+are checked on continuation. The progress display never authorizes output reuse.
+
 ## How limits are selected
 
 OncoTracer checks CPU affinity, Linux container/cgroup quotas and currently

@@ -24,6 +24,7 @@ class SampleRunner(CommandRunner):
                          environment=parent.environment,protected_environment=parent.protected_environment)
         self.stop=stop
         self.parent_runner = None
+        self.progress = parent.progress
 
     def _record(self, stage, started, finished, returncode, cwd, command):
         super()._record(stage, started, finished, returncode, cwd, command)
@@ -62,6 +63,7 @@ class SampleRunner(CommandRunner):
         if self.stop.is_set():raise SampleCancelled('Stopped before launching '+stage)
         if self.dry_run:return super().run(stage,command,cwd=cwd,env=env,containment=containment,stdout=stdout,stderr=stderr,stdin=stdin,check=check)
         argv=tuple(map(str,command));started=utc_now();process=None
+        self.progress_task(stage)
         if self.echo:print(f'[{stage}] {shlex.join(argv)}',file=sys.stderr,flush=True)
         self.validate_environment()
         try:
@@ -89,6 +91,7 @@ class SampleRunner(CommandRunner):
         left, right = tuple(map(str, left)), tuple(map(str, right))
         argv = (*left, '|', *right)
         started = utc_now()
+        self.progress_task(stage)
         if self.echo:
             print(f'[{stage}] {shlex.join(argv)}', file=sys.stderr, flush=True)
         self.validate_environment()
@@ -150,8 +153,13 @@ def run_jobs(jobs, execute, allocation, parent, trace_dir, *, update=None):
     result. Ordinary per-sample failures may be returned by execute; raised
     exceptions stop siblings and leave queued work untouched.
     """
+    jobs = list(jobs)
     pending = iter(jobs)
     results = {}
+    progress = getattr(parent, 'progress', None)
+    if progress is not None:
+        phase = 'Alignment' if Path(trace_dir).name == 'alignment_logs' else 'Small variants'
+        progress.queue(phase, (name for name, _ in jobs), allocation)
     with cancellation() as stop:
         with ThreadPoolExecutor(max_workers=allocation['parallel_samples'], thread_name_prefix='oncotracer-sample') as pool:
             active = {}
@@ -159,6 +167,7 @@ def run_jobs(jobs, execute, allocation, parent, trace_dir, *, update=None):
                 worker = sample_runner(parent, Path(trace_dir) / (name + '.tsv'), stop)
                 if isinstance(worker, SampleRunner):
                     worker.parent_runner = parent
+                    worker.sample_name = name
                 if isinstance(worker, CommandRunner):
                     worker.environment.update(worker_environment(allocation))
                 if stop.is_set():
@@ -175,6 +184,8 @@ def run_jobs(jobs, execute, allocation, parent, trace_dir, *, update=None):
                     name, payload = job
                     if update:
                         update(name, 'running', None)
+                    if progress is not None:
+                        progress.state(name, 'running')
                     active[pool.submit(work, name, payload)] = name
             try:
                 fill()
@@ -186,13 +197,17 @@ def run_jobs(jobs, execute, allocation, parent, trace_dir, *, update=None):
                             result = future.result()
                         except BaseException as error:
                             stop.set()
+                            state = 'interrupted' if isinstance(error, (SampleCancelled, KeyboardInterrupt)) else 'failed'
+                            if progress is not None:
+                                progress.state(name, state)
                             if update:
-                                state = 'interrupted' if isinstance(error, (SampleCancelled, KeyboardInterrupt)) else 'failed'
                                 update(name, state, error)
                             raise
                         results[name] = result
                         if update:
                             update(name, 'finished', result)
+                        if progress is not None:
+                            progress.state(name, result.get('status', 'complete') if isinstance(result, dict) else 'complete')
                     if stop.is_set():
                         raise SampleCancelled('Analysis interrupted; completed outputs retained')
                     if done:
@@ -201,6 +216,8 @@ def run_jobs(jobs, execute, allocation, parent, trace_dir, *, update=None):
                 # Set before executor shutdown: workers poll this while waiting
                 # for children, including grandchildren created by shell tools.
                 stop.set()
+                if progress is not None:
+                    progress.interrupted()
                 raise
     return results
 

@@ -711,6 +711,7 @@ class WebState:
             prior_status = status_path.stat().st_mtime_ns if status_path.exists() else None
             manifest_path = Path(prepared['outdir']) / '06_workflow_summary/native_run_manifest.json'
             prior_manifest = manifest_path.stat().st_mtime_ns if manifest_path.exists() else None
+            terminal_started = time.time_ns()
             with log_path.open("xb") as handle:
                 try:
                     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=handle,
@@ -723,12 +724,19 @@ class WebState:
                         "log_path": str(log_path), "pid": process.pid, "process": process,
                         "_reviewed_summary": copy.deepcopy(prepared.get("reviewed_summary")),
                         "_started_at": time.monotonic(), '_prior_variant_status_mtime': prior_status,
+                        '_terminal_started_ns': terminal_started,
                         '_prior_manifest_mtime': prior_manifest}
             threading.Thread(target=self._wait, args=(self.job,), daemon=True).start()
             return self.status()
 
     def _wait(self, job):
-        # Keep the foreground terminal and browser on the same persistent log.
+        # The child owns the full log. TTY users see one compact sample dashboard.
+        from .terminal_progress import TerminalDisplay, is_terminal
+        display = None
+        if is_terminal(sys.stderr) and job.get('log_path'):
+            display = TerminalDisplay(self.projects[job['project_id']]['outdir'], job['log_path'],
+                                      started_ns=job.get('_terminal_started_ns'))
+            display.start()
         def mirror():
             try:
                 with Path(job['log_path']).open(errors='replace') as reader:
@@ -741,14 +749,22 @@ class WebState:
                         time.sleep(.2)
             except (OSError,KeyError):
                 return
-        thread=threading.Thread(target=mirror,daemon=True)
+        thread=threading.Thread(target=mirror if display is None else lambda: None,daemon=True)
         thread.start()
-        try:result = job["process"].wait()
-        finally:thread.join(timeout=2)
+        try:
+            result = job["process"].wait()
+        except BaseException as error:
+            if display:
+                display.finish(error=error)
+            raise
+        finally:
+            thread.join(timeout=2)
         with self.lock:
             job["exit_code"] = result
             if job.get("stop_requested"):
                 # The cancellation worker waits for the whole process group.
+                if display:
+                    display.finish(error='Cancellation requested; remaining workers are being stopped.')
                 return
             job["_finished_at"] = time.monotonic()
             job["status"] = "complete" if result == 0 else "failed"
@@ -767,6 +783,8 @@ class WebState:
             job["completion"] = published_completion(
                 outdir, prepared.get('fingerprint', {}).get(prepared.get('config_path'), ''),
                 job.get('_prior_manifest_mtime'))
+            if display:
+                display.finish(job['completion'], status=job['status'])
             if (outdir / "index.html").is_file():
                 key = secrets.token_urlsafe(32)
                 self.result_roots[key] = outdir

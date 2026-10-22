@@ -178,8 +178,8 @@ or digest. A bare `install --docker` selects the current default image.
 
 ```bash
 docker info
-oncotracer install --docker --image carlosfarkas/oncotracer:manual-samples-20261022
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:manual-samples-20261022
+oncotracer install --docker --image carlosfarkas/oncotracer:terminal-progress-20261022
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:terminal-progress-20261022
 ```
 
 If an older launcher accepts intermediate outputs but then reports a different

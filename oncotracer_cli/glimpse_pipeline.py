@@ -439,9 +439,16 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
             if key in tools:params[key]=tools[key]
         jobs.append((sample,bam,sample_root,launch,params,row))
 
+    progress = getattr(runner, 'progress', None)
+    if progress is not None:
+        progress.queue('Illumina variants', sorted(bams), allocation)
+
     def publish():
         # Only the controller thread calls this: no competing atomic temp paths.
         atomic_write_json(Path(status['status_file']),status);_page(root,status)
+        if progress is not None:
+            for row in status['samples']:
+                progress.state(row['sample'], row['status'])
 
     previous_handlers={}
     def interrupted(signum,frame):
@@ -471,6 +478,7 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
             sample,bam,sample_root,launch,params,row=job
             sample_runner=_sample_runner(runner,launch/'commands.tsv',stop)
             if isinstance(sample_runner,CommandRunner):
+                sample_runner.sample_name = sample
                 # Nextflow schedules many one-CPU tasks: numerical libraries must
                 # not each discover the entire host. Explicit tool threads remain.
                 sample_runner.environment.update({key:'1' for key in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS','VECLIB_MAXIMUM_THREADS','BLIS_NUM_THREADS')})

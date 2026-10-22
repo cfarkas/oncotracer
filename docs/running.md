@@ -34,10 +34,15 @@ Use the path printed by setup. The command above uses Conda. For Docker, use:
 
 ```bash
 oncotracer run --backend docker --config "$PWD/my-study/config/run.yml" \
-  --image carlosfarkas/oncotracer:manual-samples-20261022
+  --image carlosfarkas/oncotracer:terminal-progress-20261022
 ```
 
 ## Check progress and results
+
+The terminal shows a live bar for the current sample queue and a row for each
+active sample. Raw tool output stays in the printed **Full log** file. At the end,
+a table lists every sample as **COMPLETE**, **INCOMPLETE**, or **NOT APPLICABLE**, with
+remaining analyses and separate cohort work. See the [parallel progress display](MULTISAMPLE_QUICKSTART.md#follow-parallel-jobs-in-the-terminal).
 
 1. Follow progress in the setup browser.
 2. When the run finishes, click **Open results**.

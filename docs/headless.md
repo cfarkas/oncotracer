@@ -3,6 +3,10 @@
 OncoTracer can configure and run entirely in a terminal. On a server without a
 desktop, you can also connect your laptop browser through SSH.
 
+While analysis runs, the terminal shows [parallel sample progress](MULTISAMPLE_QUICKSTART.md#follow-parallel-jobs-in-the-terminal).
+Tool output stays in the printed log file; the final table lists every sample and
+its completion status. Redirected output remains plain text without animated bars.
+
 ## Check parallel sample-job options
 
 ```bash
@@ -113,11 +117,11 @@ oncotracer setup --non-interactive \
   --sample-name sampleA --status tumor \
   --fastq-1 /data/illumina/sampleA_R1.fastq.gz \
   --fastq-2 /data/illumina/sampleA_R2.fastq.gz \
-  --backend docker --image carlosfarkas/oncotracer:manual-samples-20261022 \
+  --backend docker --image carlosfarkas/oncotracer:terminal-progress-20261022 \
   --threads 8
 oncotracer check --config /work/docker-study/config/run.yml
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:manual-samples-20261022 \
+  --image carlosfarkas/oncotracer:terminal-progress-20261022 \
   --config /work/docker-study/config/run.yml
 ```
 

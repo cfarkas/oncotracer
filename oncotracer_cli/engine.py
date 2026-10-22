@@ -3961,6 +3961,8 @@ def _run_native_impl(
         validators=(toolchain.validate_environment,),
     )
     ledger = StageLedger(native_dir / "state.json")
+    from .terminal_progress import ProgressJournal
+    runner.progress = ProgressJournal(outdir)
     # Caller preflight runs within the optional branch, so a missing caller does
     # not suppress independently requested CNA/methylation outputs.
 
@@ -3978,6 +3980,7 @@ def _run_native_impl(
         if not samplesheet_value:
             raise OncoTracerError("Illumina config requires illumina_samplesheet")
         samples = parse_illumina_samplesheet(Path(str(samplesheet_value)))
+        runner.progress.samples(sample.sample for sample in samples)
         samurai_out = outdir / "01_samurai_illumina"
         samurai_out.mkdir(parents=True, exist_ok=True)
         reference = prepare_reference(
@@ -4038,6 +4041,7 @@ def _run_native_impl(
             cna_error = error
     else:
         samples = parse_ont_samples(config)
+        runner.progress.samples(sample.sample for sample in samples)
         samurai_out = outdir / "01_samurai_ont"
         samurai_out.mkdir(parents=True, exist_ok=True)
         reference = prepare_reference(
@@ -4181,15 +4185,7 @@ def _run_native_impl(
     from .completion import completion_lines
     print("\n".join(completion_lines(summary.get("completion"))), flush=True)
     if summary.get("workflow_status") != "complete":
-        incomplete = ", ".join(summary.get("completion", {}).get("incomplete_samples", []))
-        message = (
-            "One or more requested branches are incomplete "
-            f"(CNA={summary.get('cna_status', summary.get('workflow_status'))}, "
-            f"methylation={summary.get('methylation_status', 'not_requested')}, "
-            f"classifier={summary.get('cna_classifier_status', 'not_requested')}, "
-            f"variants={summary.get('variant_status', 'not_requested')}, "
-            f"incomplete_samples={incomplete or 'none'})."
-        )
+        message = "Some requested analyses remain incomplete. See the sample table and full log for details."
         # Only the finalized, lease-validated partial outcome gets this status.
         # Exceptions during calling or publication keep their original failure.
         if summary.get("workflow_status") == "partial_failure":

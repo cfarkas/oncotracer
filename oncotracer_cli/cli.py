@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:manual-samples-20261022"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:terminal-progress-20261022"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -583,9 +583,11 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         from .run_completion import published_native_partial
         if (error.returncode == 2 and outdir is not None
                 and published_native_partial(outdir, config_sha256, prior_manifest_mtime)):
-            raise OncoTracerPartialFailure(
+            outcome = OncoTracerPartialFailure(
                 "Docker analysis retained completed results; requested branches remain incomplete.", outdir
-            ) from error
+            )
+            outcome.terminal_reported = True  # The container already printed its verified final table.
+            raise outcome from error
         raise
 
 
@@ -728,6 +730,12 @@ def _prepare_configured_hg38(config_path: Path, args: argparse.Namespace) -> Non
 
 
 def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
+    from .terminal_progress import terminal_session
+    with terminal_session(config_path, enabled=not args.dry_run):
+        return _execute_run(config_path, args)
+
+
+def _execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
     config_path = require_file(config_path, "OncoTracer YAML config")
     if not args.dry_run and getattr(args, "command", None) != "internal-run":
         from .project_resume import has_recorded_outputs, resume_project, audit_intermediates, audit_summary
@@ -1898,19 +1906,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         ):
             return int(args.func(args))
     except OncoTracerPartialFailure as outcome:
-        print(f"PARTIAL FAILURE: {outcome}", file=sys.stderr)
-        print(f"Completed outputs are preserved: {outcome.outdir}", file=sys.stderr)
-        print(f"Results: {outcome.outdir / 'index.html'}", file=sys.stderr)
+        if not getattr(outcome, "terminal_reported", False):
+            print(f"Analysis incomplete. {outcome}", file=sys.stderr)
+            print(f"Completed outputs are preserved: {outcome.outdir}", file=sys.stderr)
+            print(f"Results: {outcome.outdir / 'index.html'}", file=sys.stderr)
         return 2
     except OncoTracerError as error:
-        print(f"ERROR: {error}", file=sys.stderr)
+        if not getattr(error, "terminal_reported", False):
+            print(f"ERROR: {error}", file=sys.stderr)
         return 2
     except OSError as error:
-        print(f"ERROR: could not access a required file, directory or command: {error}", file=sys.stderr)
+        if not getattr(error, "terminal_reported", False):
+            print(f"ERROR: could not access a required file, directory or command: {error}", file=sys.stderr)
         return 2
-    except KeyboardInterrupt:
-        print("ERROR: interrupted", file=sys.stderr)
-        if getattr(locals().get("args"), "command", None) in {"run", "internal-run", "variants"}:
+    except KeyboardInterrupt as error:
+        if not getattr(error, "terminal_reported", False):
+            print("Analysis interrupted; completed outputs are retained.", file=sys.stderr)
+        if not getattr(error, "terminal_reported", False) and getattr(locals().get("args"), "command", None) in {"run", "internal-run", "variants"}:
             print("Sample completion counts were not finalized. Retained stages will be checked on resume.", file=sys.stderr)
         return 130
 
