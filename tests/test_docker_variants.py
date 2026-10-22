@@ -19,6 +19,9 @@ def isolate_host_launcher(test):
     environment = patch.dict(os.environ, {'ONCOTRACER_CONTAINER_RUNTIME': ''})
     environment.start()
     test.addCleanup(environment.stop)
+    workspace = patch.object(Path, 'cwd', return_value=test.root)
+    workspace.start()
+    test.addCleanup(workspace.stop)
     original_which = cli.shutil.which
     executable = patch.object(cli.shutil, 'which', side_effect=lambda name, *a, **kw:
                               '/test/bin/docker' if name == 'docker' else original_which(name, *a, **kw))
@@ -28,10 +31,10 @@ def isolate_host_launcher(test):
 
 class DockerVariantTests(unittest.TestCase):
     def setUp(self):
-        isolate_host_launcher(self)
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
+        isolate_host_launcher(self)
         self.project = self.root / 'project'
         self.project.mkdir()
         self.external = self.root / 'outside project'
@@ -329,13 +332,13 @@ class DockerResumeLaunchTests(unittest.TestCase):
     """Exercise the host launcher after an image-owned project passes Check."""
 
     def setUp(self):
-        isolate_host_launcher(self)
         from oncotracer_cli.output_safety import _create_owner, current_runtime_identity
         from oncotracer_cli.runtime import StageLedger
 
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
+        isolate_host_launcher(self)
         self.project = self.root / 'study'
         (self.project / 'config').mkdir(parents=True)
         self.outdir = self.project / 'results'
