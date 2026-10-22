@@ -34,7 +34,7 @@ Use the path printed by setup. The command above uses Conda. For Docker, use:
 
 ```bash
 oncotracer run --backend docker --config "$PWD/my-study/config/run.yml" \
-  --image carlosfarkas/oncotracer:completion-counts-20261021
+  --image carlosfarkas/oncotracer:docker-resume-20261021
 ```
 
 ## Check progress and results
@@ -151,6 +151,10 @@ Use the current GitHub code and, for Docker, an image built from that code.
 An older image does not understand the new relocation record. Changes in tools,
 source code or Nextflow working paths can require some stages to run again.
 No output is deleted and no incomplete stage is marked complete by resume.
+Docker continuation checks ownership against the selected image at validation,
+reference preparation and launch. The host Python installation can have a different
+runtime identity. Recorded outputs still require matching stage signatures and
+integrity checks; interrupted alignments remain incomplete.
 To select an updated image explicitly, add `--backend docker --image IMAGE` to
 the interactive command. The chosen image is verified and saved for subsequent runs.
 

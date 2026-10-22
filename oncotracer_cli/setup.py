@@ -1107,14 +1107,10 @@ def command_check(args: argparse.Namespace) -> int:
             output = io.StringIO()
             preview = contextlib.nullcontext()
             if config.get("execution_backend") == "docker":
-                from .docker_runtime import docker_host_preview, validate_docker_variants
+                from .docker_runtime import docker_host_preview, validate_docker_variants, output_runtime_identity
 
                 validate_docker_variants(config)
-                from .output_safety import OUTPUT_OWNER_RELATIVE
-                from .project_resume import _runtime
-                owned_output = Path(str(config["outdir"])) / OUTPUT_OWNER_RELATIVE
-                identity = _runtime("docker", config) if owned_output.exists() else None
-                preview = docker_host_preview(runtime_identity=identity)
+                preview = docker_host_preview(runtime_identity=output_runtime_identity(config))
             with contextlib.redirect_stdout(output), preview:
                 run_native(
                     path, dry_run=True, root=Path(args.root) if args.root else None

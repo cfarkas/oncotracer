@@ -174,13 +174,19 @@ source-identity failures occur before managed targets are changed.
 
 Use the exact image selected for your analysis. These commands match the current
 installation guide; replace both image values if your project uses another tag
-or digest. A bare `install --docker` selects the older default CNA image.
+or digest. A bare `install --docker` selects the current default image.
 
 ```bash
 docker info
-oncotracer install --docker --image carlosfarkas/oncotracer:completion-counts-20261021
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:completion-counts-20261021
+oncotracer install --docker --image carlosfarkas/oncotracer:docker-resume-20261021
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:docker-resume-20261021
 ```
+
+If an older launcher accepts intermediate outputs but then reports a different
+OncoTracer runtime, update the launcher and image together. Open **Continue an
+existing analysis**, choose the output project and **Use current image**, then
+**Load saved settings and check**. Do not remove the owner marker or move results
+to an empty output directory to bypass this check.
 
 Common causes:
 

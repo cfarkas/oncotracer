@@ -14,8 +14,21 @@ from oncotracer_cli.runtime import OncoTracerError, OncoTracerPartialFailure, On
 from oncotracer_cli.variants import resolve_variant_request
 
 
+def isolate_host_launcher(test):
+    """Unit dispatch is mocked; neither host Docker nor image tool paths are used."""
+    environment = patch.dict(os.environ, {'ONCOTRACER_CONTAINER_RUNTIME': ''})
+    environment.start()
+    test.addCleanup(environment.stop)
+    original_which = cli.shutil.which
+    executable = patch.object(cli.shutil, 'which', side_effect=lambda name, *a, **kw:
+                              '/test/bin/docker' if name == 'docker' else original_which(name, *a, **kw))
+    executable.start()
+    test.addCleanup(executable.stop)
+
+
 class DockerVariantTests(unittest.TestCase):
     def setUp(self):
+        isolate_host_launcher(self)
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
@@ -102,6 +115,7 @@ class DockerVariantTests(unittest.TestCase):
         for path in (self.fastq,self.link,self.sheet,self.bed,self.config_path,resources):
             self.assertEqual(mounts[path],'ro',path)
         self.assertEqual(mounts[self.outdir],'rw')
+        self.assertEqual(mounts[self.outdir.parent],'ro')
         self.assertEqual(mounts[self.project/'.oncotracer'],'rw')
         self.assertFalse((self.project/'.oncotracer').exists())
 
@@ -256,7 +270,10 @@ class DockerVariantTests(unittest.TestCase):
         self.assertEqual(mounts[cache],'rw');self.assertTrue(cache.is_dir())
 
     def publish_partial(self):
-        from oncotracer_cli.output_safety import claim_output_run
+        from oncotracer_cli.output_safety import claim_output_run, current_runtime_identity
+        runtime = patch('oncotracer_cli.project_resume._runtime', return_value=current_runtime_identity())
+        runtime.start()
+        self.addCleanup(runtime.stop)
         with claim_output_run(self.outdir, config_path=self.config_path):
             pass
         summary_path=self.outdir/'06_workflow_summary/workflow_summary.json'
@@ -306,6 +323,112 @@ class DockerVariantTests(unittest.TestCase):
             if expected=='PARTIAL FAILURE:':
                 self.assertNotIn('ERROR:',output.getvalue())
                 self.assertIn('Completed outputs are preserved:',output.getvalue())
+
+
+class DockerResumeLaunchTests(unittest.TestCase):
+    """Exercise the host launcher after an image-owned project passes Check."""
+
+    def setUp(self):
+        isolate_host_launcher(self)
+        from oncotracer_cli.output_safety import _create_owner, current_runtime_identity
+        from oncotracer_cli.runtime import StageLedger
+
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.project = self.root / 'study'
+        (self.project / 'config').mkdir(parents=True)
+        self.outdir = self.project / 'results'
+        self.outdir.mkdir()
+        self.identity = dict(current_runtime_identity(), binary_sha256='a' * 64,
+                             runtime_payload_sha256='b' * 64)
+        _create_owner(self.outdir, self.identity)
+        reads = self.root / 'reads' / 'ONCO-001' / 'fastq_pass'
+        reads.mkdir(parents=True)
+        self.fastq = reads / 'reads.fastq'
+        self.fastq.write_text('@read\nACGT\n+\nIIII\n')
+        self.config_path = self.project / 'config/run.yml'
+        self.config = dict(mode='ont', execution_backend='docker', docker_image='test:saved',
+                           lpwgs_root=str(self.project / 'reference'), outdir=str(self.outdir),
+                           ont_folder=str(reads.parents[1]), ont_barcodes='ONCO-001',
+                           ont_sample_names='ONCO-001', ont_named_samples=True, ont_caller='ichorcna', threads=2,
+                           run_variants=True, variant_specimen_type='fresh', variant_callers='clairs_to',
+                           variant_clairsto_platform='ont_r10_dorado_sup_5khz_ssrs', variant_annovar='off')
+        self.save()
+        product = self.outdir / 'counts.txt'
+        product.write_text('completed counts\n')
+        ledger = StageLedger(self.outdir / '.oncotracer-native/state.json')
+        ledger.complete('counts', ledger.signature('counts', ['count'], [self.fastq]), [product])
+        self.ledger = ledger.path
+        self.recorded = self.ledger.read_bytes()
+        runtime = patch('oncotracer_cli.project_resume._runtime', return_value=self.identity)
+        self.runtime = runtime.start()
+        self.addCleanup(runtime.stop)
+        install = patch.object(cli, '_load_install_config', return_value={})
+        install.start()
+        self.addCleanup(install.stop)
+
+    def save(self):
+        self.config_path.write_text(render_flat_yaml(self.config))
+
+    def test_saved_ont_setup_reaches_docker_preflight_and_run(self):
+        output = io.StringIO()
+        with patch.object(cli, '_run') as run, contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            code = cli.main(['setup', '--project', str(self.project), '--backend', 'docker',
+                             '--image', 'test:selected', '--run'])
+        self.assertEqual(code, 0, output.getvalue())
+        self.assertIn('1/1 recorded stages passed', output.getvalue())
+        self.assertEqual(run.call_count, 2)
+        self.assertIn('preflight(sys.argv[1])', str(run.call_args_list[0].args[0]))
+        self.assertIn('internal-run', run.call_args_list[1].args[0])
+        for call in run.call_args_list:
+            self.assertIn('test:selected', call.args[0])
+        self.assertEqual(self.ledger.read_bytes(), self.recorded)
+        self.assertIsNone(docker_runtime.host_preview_runtime_identity())
+
+    def test_dry_run_checks_image_identity_without_changing_owner_or_ledger(self):
+        from oncotracer_cli.output_safety import OUTPUT_OWNER_RELATIVE
+        marker = self.outdir / OUTPUT_OWNER_RELATIVE
+        before = marker.read_bytes()
+        for matching in (True, False):
+            self.runtime.return_value = self.identity if matching else dict(self.identity, binary_sha256='c' * 64)
+            with self.subTest(matching=matching), patch.object(cli, '_run') as run, \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                code = cli.main(['run', '--config', str(self.config_path), '--backend', 'docker',
+                                 '--image', 'test:override', '--dry-run'])
+            self.assertEqual(code, 0 if matching else 2)
+            self.assertEqual(run.call_count, 2 if matching else 0)
+            self.assertEqual(self.runtime.call_args.args[1]['docker_image'], 'test:override')
+            self.assertEqual(marker.read_bytes(), before)
+            self.assertEqual(self.ledger.read_bytes(), self.recorded)
+            self.assertIsNone(docker_runtime.host_preview_runtime_identity())
+
+    def test_reference_preparation_uses_image_identity_for_existing_outputs(self):
+        self.config.update(hg38_auto_download=True, run_variants=False)
+        self.save()
+        output = io.StringIO()
+        with patch.object(cli, 'reference_is_present', return_value=False), \
+                patch.object(cli, 'ensure_prebuilt_reference') as download, \
+                patch.object(cli, '_run') as run, contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            code = cli.main(['run', '--config', str(self.config_path), '--backend', 'docker'])
+        self.assertEqual(code, 0, output.getvalue())
+        download.assert_called_once()
+        run.assert_called_once()
+        self.assertIn('internal-run', run.call_args.args[0])
+        self.assertEqual(self.ledger.read_bytes(), self.recorded)
+
+    def test_image_changes_before_mount_creation_still_reject_mismatched_owner(self):
+        from oncotracer_cli.output_safety import OUTPUT_OWNER_RELATIVE
+        self.runtime.return_value = dict(self.identity, binary_sha256='c' * 64)
+        marker = self.outdir / OUTPUT_OWNER_RELATIVE
+        before = marker.read_bytes()
+        args = cli.build_parser().parse_args(['run', '--config', str(self.config_path), '--backend', 'docker'])
+        with patch.object(cli, '_run') as run, self.assertRaisesRegex(OncoTracerError, 'different OncoTracer runtime'):
+            cli._run_docker(self.config_path, args)
+        run.assert_not_called()
+        self.assertEqual(marker.read_bytes(), before)
+        self.assertEqual(self.ledger.read_bytes(), self.recorded)
+        self.assertFalse((self.project / 'reference').exists())
 
 
 if __name__ == '__main__':

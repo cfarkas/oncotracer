@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:completion-counts-20261021"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:docker-resume-20261021"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -366,7 +366,7 @@ def _project_mounts(config_path: Path) -> list[Path]:
         if not value:
             continue
         path = Path(str(value)).expanduser().resolve()
-        candidates.append(path if path.is_dir() else path.parent)
+        candidates.append(path.parent if key == "outdir" else (path if path.is_dir() else path.parent))
     roots: list[Path] = []
     for candidate in sorted(set(candidates), key=lambda item: len(item.parts)):
         if any(candidate == root or root in candidate.parents for root in roots):
@@ -539,7 +539,7 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         for key, value in environment.items():
             command.extend(["--env", f"{key}={value}"])
         command.extend(["--workdir", Path.cwd()])
-        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run):
+        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image):
             command.extend(["--volume", f"{mount}:{mount}:{access}"])
         # Fail early if the selected image lacks callers/resources, before an
         # expensive alignment. Execute image code, never the mounted host tree.
@@ -772,10 +772,11 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
         _prepare_configured_hg38(config_path, args)
         return _run_host(config_path, args)
     if backend == "docker":
-        from .docker_runtime import docker_host_preview, validate_docker_variants
+        from .docker_runtime import docker_host_preview, validate_docker_variants, output_runtime_identity
         selected=load_flat_yaml(config_path)
         validate_docker_variants(selected)
-        with docker_host_preview():
+        identity = output_runtime_identity(selected, image=getattr(args, "image", None))
+        with docker_host_preview(runtime_identity=identity):
             _prepare_configured_hg38(config_path, args)
             outdir = _run_host(config_path, args) if args.dry_run else None
         _run_docker(config_path, args)

@@ -44,6 +44,25 @@ def host_preview_runtime_identity():
     return _HOST_PREVIEW_IDENTITY.get() if _HOST_PREVIEW.get() else None
 
 
+def output_runtime_identity(config: Mapping[str, object], *, image=None):
+    """Authenticate an existing output against the selected image, never the host.
+
+    An empty/new output needs no image probe during configuration-only checks.
+    The owner is only inspected for presence; its claimed identity is not trusted.
+    The container independently verifies ownership when it acquires the run lock.
+    """
+    from .output_safety import OUTPUT_OWNER_RELATIVE
+    from .project_resume import _runtime
+
+    value = config.get("outdir")
+    if not value or not os.path.lexists(Path(str(value)).expanduser() / OUTPUT_OWNER_RELATIVE):
+        return None
+    selected = dict(config)
+    if image:
+        selected["docker_image"] = str(image)
+    return _runtime("docker", selected)
+
+
 def variants_enabled(config: Mapping[str, object]) -> bool:
     return str(config.get("run_variants", False)).strip().lower() in {"true", "1", "yes", "on"}
 
@@ -134,7 +153,8 @@ def docker_resource_environment(config: Mapping[str, object]) -> dict[str, str]:
     return result
 
 
-def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: bool = False) -> list[tuple[Path, str]]:
+def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: bool = False,
+                  image=None) -> list[tuple[Path, str]]:
     """Return read-only inputs plus writable output and reference cache.
 
     The output directory is precreated empty; ownership remains with the native
@@ -176,6 +196,9 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
         raise OncoTracerError("config requires outdir")
     outdir = absolute(out_value)
     add(project)
+    # Preserve the host parent filesystem for output validation and directory
+    # locking. Only the results child is writable; its siblings stay read-only.
+    add(outdir.parent)
     add(outdir, "rw")
     cache = project / ".oncotracer"
     add(cache, "rw")
@@ -252,7 +275,7 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
                 raise OncoTracerError(f'Docker writable cache overlaps a read-only input/resource: {source}')
     if create:
         from .output_safety import inspect_output_target
-        inspect_output_target(outdir)
+        inspect_output_target(outdir, identity=output_runtime_identity(config, image=image))
         for directory in (project, outdir, cache, *writable_caches):
             if directory.is_symlink():
                 raise OncoTracerError(f"Docker writable directory must not be a symlink: {directory}")

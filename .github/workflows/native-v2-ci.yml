@@ -547,7 +547,10 @@ jobs:
           docker run --rm --network none --workdir /opt/oncotracer \
             --env XDG_CONFIG_HOME=/tmp/oncotracer-test-config \
             --entrypoint /opt/conda/bin/python oncotracer:v2-ci -B -m unittest \
-            tests.test_sample_parallelism tests.test_glimpse_parallel tests.test_completion_counts
+            tests.test_sample_parallelism tests.test_glimpse_parallel tests.test_completion_counts \
+            tests.test_docker_variants tests.test_project_resume
+          python3 -B scripts/smoke_docker_resume.py --image oncotracer:v2-ci \
+            --work-dir "$RUNNER_TEMP/docker-resume-smoke"
           docker run --rm --network none --user 1000:1000 --workdir /tmp --env HOME=/tmp \
             --entrypoint /usr/local/bin/nextflow oncotracer:v2-ci \
             run /opt/oncotracer/oncotracer_cli/lpwgs/main.nf --help -ansi-log false

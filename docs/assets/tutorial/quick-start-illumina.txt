@@ -3,29 +3,29 @@ Silent browser walkthrough. Synthetic inventory and checks; no analysis or downl
 00:00:00.000  QuickStart 1 · Illumina
 Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo.
 
-00:00:05.091  QuickStart 1 · Illumina · new analysis
+00:00:05.096  QuickStart 1 · Illumina · new analysis
 Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project.
 
-00:00:07.021  QuickStart 1 · Illumina · preservation
+00:00:07.010  QuickStart 1 · Illumina · preservation
 Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.
 
-00:00:13.806  QuickStart 1 · Illumina · discover inputs
+00:00:13.808  QuickStart 1 · Illumina · discover inputs
 Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together.
 
-00:00:28.381  QuickStart 1 · Illumina · sample groups
+00:00:28.370  QuickStart 1 · Illumina · sample groups
 Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups.
 
-00:00:35.891  QuickStart 1 · Illumina · CNA settings
+00:00:35.852  QuickStart 1 · Illumina · CNA settings
 Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins.
 
-00:00:44.441  QuickStart 1 · Illumina · tools and reference
+00:00:44.304  QuickStart 1 · Illumina · tools and reference
 Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis.
 
-00:00:50.945  QuickStart 1 · Illumina · separate project
+00:00:50.780  QuickStart 1 · Illumina · separate project
 Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart.
 
-00:00:57.736  QuickStart 1 · Illumina · save and review
+00:00:57.542  QuickStart 1 · Illumina · save and review
 Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated.
 
-00:01:04.546  QuickStart 1 · Illumina · ready for your run
+00:01:04.304  QuickStart 1 · Illumina · ready for your run
 In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run.

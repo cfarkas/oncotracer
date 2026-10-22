@@ -31,7 +31,7 @@
   "source_files": {
     "oncotracer_cli/web.py": "75fb8885691aab10a4a950dab599aad7566d579ff1d6ff3aabb065c96cc555fb",
     "oncotracer_cli/web_ui.py": "f2ccabd0a787aef1107f61010917591a54945fd2d7f7458d9a838caa50cc5e12",
-    "oncotracer_cli/setup.py": "d014ba05c7316ce5c705817bb824571f1c846a3dd3e85b39c240bb82a20dfad9",
+    "oncotracer_cli/setup.py": "84d51f7894f5812de8d4feac439e44f26fe6eb82886a10aaa039851c25790641",
     "oncotracer_cli/cpg_setup.py": "5f1fcb96370c40d48b2770d49e50c713b51361d773ee393ed430a12648505f79",
     "oncotracer_cli/resume_ui.py": "1e17c6b457e3a5f657f1fec1c10a1b707ea47821184c8428ac53982b1f545b97",
     "scripts/record_post_ont_cpg_video.py": "3185a55b4069e994adb3ca3d4b5e4c60b34603511e68faf00de595f152a73da8",
@@ -74,7 +74,7 @@
       "signal_source": "pod5",
       "configuration_saved": true,
       "configuration_checked": true,
-      "config_sha256": "a9e4888bcd39808ce9078a79f4af40ab4546148359af3cdc19b3a4a63a45107d",
+      "config_sha256": "eb266847fc330b0a509fc022642e8fc53d417786ec470b5215f66bed14cc65bb",
       "analysis_started": false,
       "results_created": false,
       "reference_created": false,
@@ -93,7 +93,7 @@
       "signal_source": "pod5",
       "configuration_saved": true,
       "configuration_checked": true,
-      "config_sha256": "d320f9507c59311355968a3a5bcb811648b256658ab34ef43b11d2e5910103c6",
+      "config_sha256": "90d794f33a5e45f81b14062d483edf5b3903474dcc3817be8e555e6a14ecffc6",
       "analysis_started": false,
       "results_created": false,
       "reference_created": false,
@@ -119,7 +119,7 @@
           "classifier": ""
         }
       ],
-      "scan_id": "LdZsjKvPVG2Lawn3RxhGycxa",
+      "scan_id": "v0uEtibgg-lLRC2Zj_gqhcfL",
       "samples": [
         {
           "id": 0,
@@ -143,7 +143,7 @@
           "role": "tumor"
         }
       ],
-      "project": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/ONT-project_MARLIN",
+      "project": "/tmp/oncotracer-docker-resume-cpg-video/demo/ONT-project_MARLIN",
       "project_mode": "new",
       "analysis": "methylation",
       "threads": 4,
@@ -161,24 +161,24 @@
       "report_detail": "catalog",
       "gistic": false,
       "reference": "reuse",
-      "reference_path": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/prepared-hg38",
+      "reference_path": "/tmp/oncotracer-docker-resume-cpg-video/demo/prepared-hg38",
       "classifier": "marlin",
       "methylation_source": "pod5",
-      "methylation_path": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/ONT",
+      "methylation_path": "/tmp/oncotracer-docker-resume-cpg-video/demo/ONT",
       "resource_paths": {
-        "methylation_dorado_executable": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/bin/dorado",
-        "methylation_modkit_executable": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/bin/modkit",
-        "methylation_samtools_executable": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/bin/samtools",
-        "methylation_dorado_model": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/dorado-base-model",
-        "methylation_dorado_modbase_model": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/dorado-mod-model",
-        "marlin_rscript": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/marlin/bin/Rscript",
-        "marlin_python": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/marlin/bin/python",
-        "marlin_model": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/marlin/marlin-model.h5",
-        "marlin_features": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/marlin/features.RData",
-        "marlin_class_annotations": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/marlin/classes.xlsx",
-        "marlin_probe_bed": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/marlin/marlin-probes.bed"
+        "methylation_dorado_executable": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/bin/dorado",
+        "methylation_modkit_executable": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/bin/modkit",
+        "methylation_samtools_executable": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/bin/samtools",
+        "methylation_dorado_model": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/dorado-base-model",
+        "methylation_dorado_modbase_model": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/dorado-mod-model",
+        "marlin_rscript": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/marlin/bin/Rscript",
+        "marlin_python": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/marlin/bin/python",
+        "marlin_model": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/marlin/marlin-model.h5",
+        "marlin_features": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/marlin/features.RData",
+        "marlin_class_annotations": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/marlin/classes.xlsx",
+        "marlin_probe_bed": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/marlin/marlin-probes.bed"
       },
-      "resources": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/ONT-project/config/run.yml",
+      "resources": "/tmp/oncotracer-docker-resume-cpg-video/demo/ONT-project/config/run.yml",
       "device": "cpu",
       "accept_sturgeon_license": false
     },
@@ -199,7 +199,7 @@
           "classifier": ""
         }
       ],
-      "scan_id": "LdZsjKvPVG2Lawn3RxhGycxa",
+      "scan_id": "v0uEtibgg-lLRC2Zj_gqhcfL",
       "samples": [
         {
           "id": 0,
@@ -223,7 +223,7 @@
           "role": "tumor"
         }
       ],
-      "project": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/ONT-project_Sturgeon",
+      "project": "/tmp/oncotracer-docker-resume-cpg-video/demo/ONT-project_Sturgeon",
       "project_mode": "new",
       "analysis": "methylation",
       "threads": 4,
@@ -241,21 +241,21 @@
       "report_detail": "catalog",
       "gistic": false,
       "reference": "reuse",
-      "reference_path": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/prepared-hg38",
+      "reference_path": "/tmp/oncotracer-docker-resume-cpg-video/demo/prepared-hg38",
       "classifier": "sturgeon",
       "methylation_source": "pod5",
-      "methylation_path": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/ONT",
+      "methylation_path": "/tmp/oncotracer-docker-resume-cpg-video/demo/ONT",
       "resource_paths": {
-        "methylation_dorado_executable": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/bin/dorado",
-        "methylation_modkit_executable": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/bin/modkit",
-        "methylation_samtools_executable": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/bin/samtools",
-        "methylation_dorado_model": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/dorado-base-model",
-        "methylation_dorado_modbase_model": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/dorado-mod-model",
-        "sturgeon_executable": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/bin/sturgeon",
-        "sturgeon_model": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/sturgeon-model.zip",
-        "sturgeon_probes": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/resources/sturgeon/sturgeon-probes.bed"
+        "methylation_dorado_executable": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/bin/dorado",
+        "methylation_modkit_executable": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/bin/modkit",
+        "methylation_samtools_executable": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/bin/samtools",
+        "methylation_dorado_model": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/dorado-base-model",
+        "methylation_dorado_modbase_model": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/dorado-mod-model",
+        "sturgeon_executable": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/bin/sturgeon",
+        "sturgeon_model": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/sturgeon-model.zip",
+        "sturgeon_probes": "/tmp/oncotracer-docker-resume-cpg-video/demo/resources/sturgeon/sturgeon-probes.bed"
       },
-      "resources": "/tmp/oncotracer-completion-cpg-recording-20261021/demo/ONT-project/config/run.yml",
+      "resources": "/tmp/oncotracer-docker-resume-cpg-video/demo/ONT-project/config/run.yml",
       "device": "cpu",
       "accept_sturgeon_license": true
     }
@@ -266,7 +266,7 @@
   "videos": [
     {
       "name": "post-ont-cpg",
-      "duration_seconds": 53.833333,
+      "duration_seconds": 53.541667,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -276,50 +276,50 @@
       ],
       "cues": [
         {
-          "start": 0.5183246280066669,
-          "end": 3.5438924201298505,
+          "start": 0.5309006830211729,
+          "end": 3.5383529560640454,
           "title": "One named folder per ONT library",
           "text": "Each ONCO-style library has fastq_pass and pod5_pass. This demo restores three libraries from their saved ONT project."
         },
         {
-          "start": 3.5438924201298505,
-          "end": 11.226526350015774,
+          "start": 3.5383529560640454,
+          "end": 11.19362521218136,
           "title": "Matching POD5 is selected",
           "text": "Each library keeps its own passed signal reads. Compatible Dorado and classifier models are required; these are synthetic fixtures."
         },
         {
-          "start": 11.226526350015774,
-          "end": 19.069618643959984,
+          "start": 11.19362521218136,
+          "end": 19.022394726984203,
           "title": "1 \u00b7 Drag samples",
           "text": "Synthetic example: ONCO-001 \u2192 MARLIN; ONCO-002 \u2192 Sturgeon. For real data use clinical records; never infer diagnosis from names."
         },
         {
-          "start": 19.069618643959984,
-          "end": 27.019548919051886,
+          "start": 19.022394726984203,
+          "end": 26.873942748177797,
           "title": "Unknown is separate from Cancer or Normal",
           "text": "Cancer/Normal records the clinical role. These columns only choose a CpG classifier. Return unsuitable samples to Unknown / do not classify."
         },
         {
-          "start": 27.019548919051886,
-          "end": 35.453154317103326,
+          "start": 26.873942748177797,
+          "end": 35.233923057094216,
           "title": "2 \u00b7 Save the chosen group",
           "text": "Choose MARLIN and save. Its new project contains only ONCO-001."
         },
         {
-          "start": 35.453154317103326,
-          "end": 39.10649181716144,
+          "start": 35.233923057094216,
+          "end": 38.845761977136135,
           "title": "2 \u00b7 Save the chosen group",
           "text": "Choose Sturgeon and save ONCO-002 separately. The other group and Unknown sample are excluded."
         },
         {
-          "start": 39.10649181716144,
-          "end": 47.812226861016825,
+          "start": 38.845761977136135,
+          "end": 47.504485219018534,
           "title": "Confirm your Sturgeon license",
           "text": "Only acknowledge this after obtaining Sturgeon and accepting its terms. This demonstration uses synthetic resources."
         },
         {
-          "start": 47.812226861016825,
-          "end": 52.718410460976884,
+          "start": 47.504485219018534,
+          "end": 52.40880613704212,
           "title": "3 \u00b7 Run only when ready",
           "text": "Use valid POD5 and compatible models, resolve checks and license requirements, then click Run explicitly. This demo stops after saving."
         }
@@ -327,17 +327,17 @@
       "files": {
         ".mp4": {
           "name": "post-ont-cpg.mp4",
-          "sha256": "3dbe1030444333ae176cc3dd12b883d60a63b183e149639a4a36760bb79f6d0f",
-          "bytes": 3828267
+          "sha256": "eb38e9ac37defb7fd86f54d102aa0b0baa69b5baecfa5b1812b90dbdb9fb0e14",
+          "bytes": 3730509
         },
         ".jpg": {
           "name": "post-ont-cpg.jpg",
-          "sha256": "8eff4b336ba6228301f3e1204fc80fa60f7555730bcf0dc13b910e96b8022a69",
-          "bytes": 181294
+          "sha256": "fccec191a9173b69f345f27f0e3af757440cdbb913c0d003e8e90241bd35ecb0",
+          "bytes": 180652
         },
         ".vtt": {
           "name": "post-ont-cpg.vtt",
-          "sha256": "0969140bc0ec64d243116140f3a3df3abe2c8d8d3772169146742199bdf6e74c",
+          "sha256": "e70579baee8e69a41b6d1319b4fb20c1b7af0d4501e186f3c71e08970b65a194",
           "bytes": 1444
         },
         ".txt": {

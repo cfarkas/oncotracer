@@ -449,7 +449,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
             ]
         self.assertTrue(setup.non_interactive)
         self.assertEqual((setup.mode, setup.analysis, setup.backend, run.backend), ("illumina", "cna", "docker", "docker"))
-        self.assertEqual(setup.image, "carlosfarkas/oncotracer:completion-counts-20261021")
+        self.assertEqual(setup.image, "carlosfarkas/oncotracer:docker-resume-20261021")
         self.assertEqual(run.image, setup.image)
         self.assertEqual(Path(check.config), Path(setup.project) / "config/run.yml")
         self.assertEqual(run.config, check.config)
