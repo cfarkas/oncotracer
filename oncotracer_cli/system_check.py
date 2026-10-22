@@ -422,7 +422,7 @@ def print_resource_report(report: dict) -> None:
                 jobs = 'sample job' if choice['parallel_samples'] == 1 else 'sample jobs'
                 print(f"    {choice['parallel_samples']} {jobs} × {choice['threads_per_sample']} cores each; "
                       f"{choice['memory_gb_per_sample']:.1f} GiB RAM each{preferred}")
-        print("Choose a combination in browser setup. Actual concurrency is capped by sample count and checked again at Run. "
+        print("Choose a suggested combination or a manual sample count in browser setup. Automatic concurrency adapts at Run; manual counts override resource recommendations, up to the sample count. "
               "20% of available RAM is reserved; separate analyses share this machine.")
     else:
         print(f"Suggested starting setting: threads: {report['suggested_threads']}")

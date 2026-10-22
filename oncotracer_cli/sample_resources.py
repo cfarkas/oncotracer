@@ -56,16 +56,26 @@ def allocate(threads, sample_count, *, parallel='auto', memory='auto', minimum_g
     if available_gb is not None:
         budget = min(budget, available_gb)
     budget = math.floor(budget * 1024) / 1024
-    if budget < minimum_gb:
+    if budget < minimum_gb and requested == 'auto':
         raise OncoTracerError(
             f'This stage needs at least {minimum_gb}GiB per sample; only {budget:g}GiB '
             'is available within the requested budget after reserving RAM for the system. '
             'Wait for other workloads to finish or increase an explicitly smaller memory budget.'
         )
-    desired = max(1, cpu // preferred_threads) if requested == 'auto' else requested
-    slots = min(desired, sample_count, cpu, int(budget // minimum_gb))
-    per_cpu = cpu // slots
-    per_mb = int(budget * 1024) // slots
+    if requested == 'auto':
+        slots = min(max(1, cpu // preferred_threads), sample_count, cpu, int(budget // minimum_gb))
+    else:
+        # An explicit number is a user override, not a resource-dependent ceiling.
+        slots = min(requested, sample_count)
+    per_cpu = max(1, cpu // slots)
+    per_mb = max(1, int(budget * 1024) // slots)
+    warnings = []
+    if slots > cpu:
+        warnings.append(f'Manual selection oversubscribes the {cpu}-CPU budget: '
+                        f'{slots} sample jobs receive at least one CPU thread each.')
+    if per_mb / 1024 < minimum_gb:
+        warnings.append(f'Manual selection provides {per_mb / 1024:.1f}GiB per sample, '
+                        f'below the recommended {minimum_gb}GiB. Jobs may fail or run out of memory.')
     return {
         'requested_parallel_samples': requested, 'parallel_samples': slots,
         'requested_threads': threads, 'requested_memory': memory,
@@ -73,7 +83,8 @@ def allocate(threads, sample_count, *, parallel='auto', memory='auto', minimum_g
         'threads_per_sample': per_cpu, 'memory_per_sample': str(per_mb) + 'MB',
         'memory_gb_per_sample': per_mb / 1024, 'allocated_threads': slots * per_cpu,
         'allocated_memory_gb': slots * per_mb / 1024,
-        'unallocated_threads': cpu - slots * per_cpu,
+        'unallocated_threads': max(0, cpu - slots * per_cpu),
+        'manual_parallel_samples': requested != 'auto', 'warnings': warnings,
         'detected_cpu_workers': available_cpu, 'detected_available_memory_bytes': available_bytes,
         'minimum_memory_gb_per_sample': minimum_gb,
         'scope': 'Per-analysis task budgets. 20% of available RAM is reserved; helper processes may use additional CPU. Independent analyses do not reserve CPU against each other.',
@@ -86,6 +97,8 @@ def announce(stage, allocation):
           f"budget {a['total_threads']} CPUs / {a['total_memory_gb']:.1f} GiB; "
           f"{a['parallel_samples']} sample(s) at once, {a['threads_per_sample']} CPUs / "
           f"{a['memory_gb_per_sample']:.1f} GiB each.", file=sys.stderr, flush=True)
+    for warning in a.get('warnings', []):
+        print(f'WARNING [{stage}]: {warning}', file=sys.stderr, flush=True)
 
 
 def worker_environment(allocation):
@@ -106,15 +119,23 @@ def offers(config, sample_count, *, threads=None, memory=None, hardware=None):
         raise OncoTracerError('CPU threads must be a positive integer')
     memory = memory if memory is not None else config.get('analysis_memory', 'auto')
     minimum = 32 if config.get('run_variants') and config.get('mode') == 'illumina' else 8
-    recommended = allocate(threads, sample_count, memory=memory, minimum_gb=minimum, hardware=hardware)
-    maximum = allocate(threads, sample_count, parallel=sample_count, memory=memory,
-                       minimum_gb=minimum, hardware=hardware)['parallel_samples']
+    budget = allocate(threads, sample_count, parallel=1, memory=memory,
+                      minimum_gb=minimum, hardware=hardware)
+    recommendation_error = None
+    try:
+        recommended = allocate(threads, sample_count, memory=memory, minimum_gb=minimum, hardware=hardware)
+    except OncoTracerError as error:
+        recommended = None
+        recommendation_error = str(error)
+    maximum = min(sample_count, budget['total_threads'], int(budget['total_memory_gb'] // minimum))
     choices = [allocate(threads, sample_count, parallel=n, memory=memory,
                        minimum_gb=minimum, hardware=hardware) for n in range(1, maximum + 1)]
     return {'hardware': hardware, 'recommended': recommended, 'choices': choices,
-            'memory': memory, 'threads': recommended['total_threads'],
+            'memory': memory, 'threads': budget['total_threads'],
+            'total_memory_gb': budget['total_memory_gb'], 'sample_count': sample_count,
+            'minimum_memory_gb_per_sample': minimum, 'recommendation_error': recommendation_error,
             'selected_parallel_samples': config.get('parallel_samples', config.get('variant_parallel_samples', 'auto')),
-            'note': 'These are planning budgets. Resources are checked again at Run; available RAM can reduce concurrency. Existing valid outputs are checked before reuse.'}
+            'note': 'Automatic mode adapts to available CPU and RAM at Run. A manual sample count is honoured up to the number of samples, even beyond suggested fits; jobs may slow down or fail. Existing valid outputs are checked before reuse.'}
 
 
 def planning_suggestions(config, *, hardware, threads=None, memory=None, sample_count=None):
@@ -130,6 +151,8 @@ def planning_suggestions(config, *, hardware, threads=None, memory=None, sample_
     for name, settings in stages:
         try:
             choices = offers(settings, count, threads=threads, memory=memory or config.get('analysis_memory', 'auto'), hardware=hardware)
+            if choices['recommendation_error']:
+                raise OncoTracerError(choices['recommendation_error'])
             # A short list of useful alternatives rather than every possible job count.
             maximum = len(choices['choices'])
             suggested = {1, choices['recommended']['parallel_samples']}
@@ -149,9 +172,9 @@ def selected_config(config, sample_count, selection):
     choices = offers(config, sample_count, threads=selection.get('threads'), memory=selection.get('memory'))
     parallel = parallel_value(selection.get('parallel_samples', 'auto'))
     requested_memory = selection.get('memory', choices['memory'])
-    # Keep the user's ceiling, even if a later run has less available RAM.
+    # Keep the user's explicit count, even if it exceeds a later recommendation.
     allocate(choices['threads'], sample_count, parallel=parallel, memory=requested_memory,
-             minimum_gb=choices['recommended']['minimum_memory_gb_per_sample'], hardware=choices['hardware'])
+             minimum_gb=choices['minimum_memory_gb_per_sample'], hardware=choices['hardware'])
     return {'threads': choices['threads'], 'parallel_samples': parallel,
             'analysis_memory': requested_memory, 'variant_parallel_samples': parallel,
             'variant_memory': requested_memory}

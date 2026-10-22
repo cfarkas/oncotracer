@@ -274,6 +274,11 @@ class Recording:
             self.page.locator('#resume-parallel').select_option('2')
             self.focus('#resume-resources', 'start')
             self.pause(4)
+            self.caption(title + ' · optional manual count',
+                         'Choose Manual to enter your own number of parallel samples. Suggestions remain available; too many jobs can exhaust memory. Automatic adapts to the machine.')
+            self.page.locator('#resume-parallel').select_option('manual')
+            self.fill('#resume-manual-parallel', '2')
+            self.pause(4)
             self.click('#resume-apply-resources')
             assert self.page.locator('#run').is_enabled()
             self.pause(5)

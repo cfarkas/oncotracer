@@ -9,6 +9,8 @@ def _controls(prefix, *, resume=False):
 <p class="hint">Each job processes one sample. Choose the number of samples running at once and see the cores and RAM allocated to each. Completed outputs are validated before reuse.</p>
 {cpu}<div class="grid"><div><label for="{prefix}-memory">Total RAM budget for all sample jobs</label><input id="{prefix}-memory" value="auto" placeholder="auto or 64GB"></div>
 <div><label for="{prefix}-parallel">Parallel samples × cores per sample</label><select id="{prefix}-parallel"><option value="auto">Automatic · check available resources at Run</option></select></div></div>
+<div id="{prefix}-manual-field" hidden><label for="{prefix}-manual-parallel">Manual number of parallel samples</label><input id="{prefix}-manual-parallel" type="number" min="1" step="1" value="1"><p class="hint">This overrides the suggested fits. The count is limited only by the number of samples. Too many jobs may slow processing or exhaust memory.</p></div>
+<p id="{prefix}-manual-note" class="hint" role="status" hidden></p>
 <p id="{prefix}-resource-note" class="hint" role="status">Detect resources to compare sample-job combinations. Cores here mean CPU threads available to this process; other analyses share this server.</p>
 <button id="{prefix}-detect-resources" type="button">Detect sample-job options</button>
 {('<button id="resume-apply-resources" type="button">Apply resources and check</button><p class="hint">Run analysis also applies and checks these choices before starting.</p>') if resume else ''}
@@ -24,12 +26,31 @@ def add_sample_resource_ui(page):
     page = page.replace("function invalidate(){", "function invalidate(){resourceRequestVersion.sample++;resourceRequestVersion.resume++;show('resume-resources',false);")
     script = r'''
 const resourceRequestVersion={sample:0,resume:0};
+const resourcePlans={sample:null,resume:null};
 let resumeResourcesReady=false;
 function resourceSelection(prefix){
   const raw=$(prefix+'-parallel').value;
-  return {threads:Number($(prefix==='sample'?'threads':'resume-threads').value),parallel_samples:raw==='auto'?'auto':Number(raw),memory:$(prefix+'-memory').value.trim()||'auto'};
+  return {threads:Number($(prefix==='sample'?'threads':'resume-threads').value),parallel_samples:raw==='auto'?'auto':Number(raw==='manual'?$(prefix+'-manual-parallel').value:raw),memory:$(prefix+'-memory').value.trim()||'auto'};
+}
+function updateManualResources(prefix){
+  const manual=$(prefix+'-parallel').value==='manual',result=resourcePlans[prefix];
+  show(prefix+'-manual-field',manual);show(prefix+'-manual-note',manual);
+  const n=resourceSelection(prefix).parallel_samples,valid=n==='auto'||(Number.isSafeInteger(n)&&n>0);
+  let note='Enter a positive whole number of parallel samples.';
+  if(manual&&valid&&result&&!result.error){
+    const count=Math.min(n,result.sample_count),cores=Math.max(1,Math.floor(result.threads/count)),ram=result.total_memory_gb/count;
+    note=count+' sample job'+(count===1?'':'s')+' × '+cores+' cores each · '+ram.toFixed(1)+' GiB RAM each.';
+    if(n>count)note+=' Limited to the '+count+' samples in this analysis.';
+    if(count>result.threads||ram<result.minimum_memory_gb_per_sample)note+=' Exceeds the suggested fit; jobs may slow down or fail. Your manual count will be kept.';
+  }
+  $(prefix+'-manual-note').textContent=note;
+  if(prefix==='resume'){
+    resumeResourcesReady=Boolean(result&&!result.error&&valid&&(n!=='auto'||result.recommended));
+    $('run').disabled=!prepared?.valid||!resumeResourcesReady;
+  }
 }
 function showResourceChoices(prefix,result,initial=false){
+  resourcePlans[prefix]=result;
   if(!result){show(prefix+'-resources',false);return;}
   show(prefix+'-resources',true);
   if(prefix==='resume')resumeResourcesReady=!result.error;
@@ -37,11 +58,15 @@ function showResourceChoices(prefix,result,initial=false){
   const select=$(prefix+'-parallel'),prior=initial?String(result.selected_parallel_samples??'auto'):select.value;
   select.replaceChildren();
   const label=a=>a.parallel_samples+' sample job'+(a.parallel_samples===1?'':'s')+' × '+a.threads_per_sample+' cores each · '+a.memory_gb_per_sample.toFixed(1)+' GiB RAM each';
-  const recommended=node('option','Automatic · suggested now: '+label(result.recommended));recommended.value='auto';select.append(recommended);
+  const recommended=node('option',result.recommended?'Automatic · suggested now: '+label(result.recommended):'Automatic · no recommended fit with this RAM budget');recommended.value='auto';select.append(recommended);
   for(const choice of result.choices){const option=node('option',label(choice));option.value=String(choice.parallel_samples);select.append(option);}
-  select.value=[...select.options].some(o=>o.value===prior)?prior:'auto';
+  const manual=node('option','Manual · enter the number of parallel samples');manual.value='manual';select.append(manual);
+  if([...select.options].some(o=>o.value===prior))select.value=prior;
+  else if(/^[1-9][0-9]*$/.test(prior)){select.value='manual';$(prefix+'-manual-parallel').value=prior;}
+  else select.value='auto';
   if(prefix==='resume')$('resume-threads').value=result.threads;
-  $(prefix+'-resource-note').textContent='Total task budget: '+result.threads+' CPU threads / '+result.recommended.total_memory_gb.toFixed(1)+' GiB. '+result.note;
+  $(prefix+'-resource-note').textContent='Total task budget: '+result.threads+' CPU threads / '+result.total_memory_gb.toFixed(1)+' GiB. '+(result.recommendation_error?result.recommendation_error+' ':'')+result.note;
+  updateManualResources(prefix);
 }
 async function refreshResourceChoices(prefix){
   const version=++resourceRequestVersion[prefix];
@@ -62,11 +87,12 @@ async function refreshResourceChoices(prefix){
 }
 for(const prefix of ['sample','resume']){
   $(prefix+'-detect-resources').onclick=()=>busy($(prefix+'-detect-resources'),()=>refreshResourceChoices(prefix));
-  for(const id of [prefix+'-memory',prefix+'-parallel',prefix==='sample'?'threads':'resume-threads']){
+  for(const id of [prefix+'-memory',prefix+'-parallel',prefix+'-manual-parallel',prefix==='sample'?'threads':'resume-threads']){
     $(id).addEventListener('change',()=>{
       if(prefix==='sample'){invalidate();$('run').disabled=true;}
       else $('check-badge').textContent='Resources changed · checked again at Run';
-      if(id!==prefix+'-parallel'&&(prefix==='resume'||scan))refreshResourceChoices(prefix).catch(failure);
+      updateManualResources(prefix);
+      if(![prefix+'-parallel',prefix+'-manual-parallel'].includes(id)&&(prefix==='resume'||scan))refreshResourceChoices(prefix).catch(failure);
     });
   }
 }

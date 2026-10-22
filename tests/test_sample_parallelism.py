@@ -18,14 +18,33 @@ HARDWARE = {'cpu_workers_available': 32, 'ram_available_bytes': 256 * 1024**3}
 
 
 class SampleResourcesTests(unittest.TestCase):
-    def test_detected_limits_override_requested_totals(self):
+    def test_manual_count_overrides_recommendations_but_not_sample_count(self):
         limited = {'cpu_workers_available': 6, 'ram_available_bytes': 80 * 1024**3}
         plan = allocate(64, 20, parallel=10, memory='128GB', minimum_gb=32, hardware=limited)
-        self.assertEqual(plan['parallel_samples'], 2)
-        self.assertEqual(plan['threads_per_sample'], 3)
-        self.assertEqual(plan['allocated_memory_gb'], 64)
+        self.assertEqual(plan['parallel_samples'], 10)
+        self.assertEqual(plan['threads_per_sample'], 1)
+        self.assertEqual(plan['allocated_threads'], 10)
+        self.assertLessEqual(plan['allocated_memory_gb'], 64)
+        self.assertEqual(len(plan['warnings']), 2)
+        self.assertEqual(plan['unallocated_threads'], 0)
+        self.assertEqual(allocate(2, 3, parallel=10, memory='8GB', hardware=limited)['parallel_samples'], 3)
+        choices = offers({'mode': 'illumina', 'run_variants': True, 'threads': 64}, 20,
+                         memory='128GB', hardware=limited)
+        self.assertEqual([p['parallel_samples'] for p in choices['choices']], [1, 2])
         with self.assertRaisesRegex(OncoTracerError, 'at least 32'):
             allocate(4, 2, memory='16GB', minimum_gb=32, hardware=limited)
+
+    def test_manual_is_available_when_no_automatic_fit_exists(self):
+        config = {'mode': 'illumina', 'run_variants': True, 'threads': 4}
+        with patch('oncotracer_cli.sample_resources.inspect_hardware', return_value=HARDWARE):
+            choices = offers(config, 4, memory='16GB')
+            self.assertIsNone(choices['recommended'])
+            self.assertEqual(choices['choices'], [])
+            self.assertIn('at least 32', choices['recommendation_error'])
+            saved = selected_config(config, 4, {'parallel_samples': 4, 'memory': '16GB'})
+            self.assertEqual(saved['parallel_samples'], 4)
+            with self.assertRaises(OncoTracerError):
+                selected_config(config, 4, {'parallel_samples': 'auto', 'memory': '16GB'})
 
     def test_auto_shares_host_memory_and_offers_real_choices(self):
         plan = allocate(16, 10, hardware=HARDWARE)
@@ -69,6 +88,12 @@ class SampleResourcesTests(unittest.TestCase):
 
 class AlignmentParallelTests(unittest.TestCase):
     def test_two_samples_overlap_and_resume_survives_resource_changes(self):
+        self.check_overlap_and_reuse(2, 8, '32GB')
+
+    def test_manual_alignment_count_runs_above_recommended_cpu_and_ram_fit(self):
+        self.check_overlap_and_reuse(3, 2, '16GB')
+
+    def check_overlap_and_reuse(self, slots, initial_cpu, memory):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             samples = []
@@ -76,14 +101,14 @@ class AlignmentParallelTests(unittest.TestCase):
                 read = root / (name + '.fastq'); read.write_text('@r\nACGT\n+\nIIII\n')
                 samples.append(engine.IlluminaSample(name, read, None, 'tumor'))
             ledger = StageLedger(root / 'state.json')
-            lock, barrier = threading.Lock(), threading.Barrier(2)
+            lock, barrier = threading.Lock(), threading.Barrier(slots)
             active = peak = calls = 0
             class Runner:
                 def pipeline(self, stage, left, right):
                     nonlocal active, peak, calls
                     with lock:
                         active += 1; calls += 1; peak = max(peak, active); call = calls
-                    if call <= 2: barrier.wait(timeout=3)
+                    if call <= slots: barrier.wait(timeout=3)
                     self_cpu = int(left[left.index('-t') + 1]) + int(right[right.index('-@') + 1]) + 1
                     if self_cpu > 4: raise AssertionError('Mapper and sorter oversubscribed slot')
                     time.sleep(.03)
@@ -98,13 +123,13 @@ class AlignmentParallelTests(unittest.TestCase):
                         Path(next(x[2:] for x in argv if x.startswith('M='))).write_text('metrics')
             class Tools:
                 def executable(self, group, name): return name
-            def align(cpu=8):
+            def align(cpu=initial_cpu):
                 return engine.align_illumina(samples, {'bwa_prefix': root/'ref'}, root/'output',
-                    Runner(), ledger, Tools(), threads=cpu, force=False, parallel_samples=2, memory='32GB')
+                    Runner(), ledger, Tools(), threads=cpu, force=False, parallel_samples=slots, memory=memory)
             with patch.object(engine, '_validated_bwa_reader', return_value=contextlib.nullcontext()), \
                  patch('oncotracer_cli.sample_resources.inspect_hardware', return_value=HARDWARE):
                 result = align()
-                self.assertEqual(peak, 2)
+                self.assertEqual(peak, slots)
                 self.assertEqual(set(result), {'A', 'B', 'C'})
                 self.assertEqual(len(ledger.data['stages']), 6)
                 align(4)

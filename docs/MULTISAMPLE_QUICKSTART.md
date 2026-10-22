@@ -52,14 +52,20 @@ For Docker, use `--backend docker` with the current installed image.
    For continuation these controls appear inside **Review and run**, beside Run.
    Set a **total** CPU budget and a RAM budget (`auto` or, for example, `64GB`).
 4. Select the number of parallel samples. Each option shows **sample jobs × cores each**,
-   plus RAM per sample. **Detect sample-job options** refreshes the choices.
+   plus RAM per sample. Or select **Manual** and enter any positive whole number.
+   Manual counts are kept even beyond the recommended CPU/RAM fit; warnings explain
+   the risk of slower processing or memory failures. **Detect sample-job options**
+   refreshes suggestions without replacing your manual count.
 5. Choose **Run analysis**. For continuation, Run applies and checks your resource choices
    before starting. **Apply resources and check** is an optional preview; it does not
    launch analysis. Loading a project also does not start analysis.
 
 For example, 20 CPU threads, 64GB and two concurrent samples give each active
 sample 10 CPU threads and 32GB. The mapper and sorter share their sample's CPU
-allocation. Native sample commands are retained in the main trace and in separate
+allocation. Alignment and variant calling use this queue; cohort-wide CNA, merging
+and report stages may have fewer or no independent sample jobs. A configured count
+is the maximum number of active sample workflows, not a claim that every slot is
+currently computing. Native sample commands are retained in the main trace and in separate
 sample logs.
 
 ## How limits are selected
@@ -68,17 +74,21 @@ OncoTracer checks CPU affinity, Linux container/cgroup quotas and currently
 available RAM. It leaves 20% of available RAM for the system, caches and
 controllers. Automatic memory budgets are proportional to the requested share of
 CPUs, with enough for at least one sample when available. Automatic concurrency
-prefers at least eight CPU threads per sample; an explicit count can divide the
-budget more finely.
+prefers at least eight CPU threads per sample. An explicit count overrides the
+CPU/RAM recommendation, capped only by the number of selected samples. Each job
+receives at least one CPU thread, so selecting more jobs than CPU threads
+oversubscribes the CPU budget.
 
-Complete Illumina variants need at least **32 GiB per simultaneous sample** for
+Complete Illumina variants use a **32 GiB per sample recommendation** for
 the genomic workflow and local report model. Native alignment and ONT calling use
 an **8 GiB planning minimum**. These are scheduling estimates, not measured upper
 bounds on every tool. Other processes share the server: independent analyses do
 not reserve CPUs against each other. Set totals accordingly. Resources are checked
-again at execution; less available RAM can reduce concurrency or prevent launch.
+again at execution. Less available RAM can reduce automatic concurrency or prevent
+automatic launch. Manual concurrency stays as requested; each job receives a
+smaller RAM share and may fail. A manual override does not guarantee tool success.
 
-Existing explicit limits such as `variant_parallel_samples: 1` remain valid.
+Existing explicit counts such as `variant_parallel_samples: 1` remain valid.
 Choosing and applying new resources in Continue updates those limits while keeping
 sample assignments and scientific settings. Valid completed stages are checked
 before reuse. A BAM without a verified completion record and index is not a
@@ -108,10 +118,11 @@ variant_memory: 64GB
 To override concurrency for an existing configuration:
 
 ```bash
-oncotracer run --config /path/to/project/config/run.yml --backend conda --parallel-samples auto
+oncotracer run --config /path/to/project/config/run.yml --backend conda --parallel-samples 5
 ```
 
-For Nextflow, use `--parallel_samples auto`. CPU and RAM budgets are shared across
+For Nextflow, use `--parallel_samples 5`. Use `auto` instead of a number to restore
+automatic selection. CPU and RAM budgets are shared across
 samples, not assigned in full to each sample. GLIMPSE2 remains enabled for every
 Illumina variant sample. Only completed, compatible outputs are reused.
 

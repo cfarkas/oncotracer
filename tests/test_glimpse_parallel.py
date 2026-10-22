@@ -58,11 +58,29 @@ class ParallelSamplesTests(ResourceFixtureCase):
         allocation=pipeline.resource_allocation(request,64,10)
         self.assertEqual((allocation['parallel_samples'],allocation['threads_per_sample'],allocation['memory_gb_per_sample']),(4,16,64))
         limited=pipeline.resource_allocation(replace(request,glimpse_config={'parallel_samples':9,'memory':'80GB'}),7,10)
-        self.assertEqual(limited['parallel_samples'],2)
-        self.assertEqual(limited['allocated_threads'],6)
+        self.assertEqual(limited['parallel_samples'],9)
+        self.assertEqual(limited['allocated_threads'],9)
+        self.assertEqual(len(limited['warnings']),2)
         self.assertLessEqual(limited['allocated_memory_gb'],80)
-        self.assertEqual(pipeline.resource_allocation(request,2,10)['parallel_samples'],2)
+        self.assertEqual(pipeline.resource_allocation(request,2,10)['parallel_samples'],4)
         self.assertEqual(pipeline.resource_allocation(request,64,1)['parallel_samples'],1)
+
+    def test_manual_variant_jobs_overlap_beyond_recommended_memory_fit(self):
+        self.request=replace(self.request,glimpse_config={'parallel_samples':3,'memory':'32GB'})
+        owner=self;barrier=threading.Barrier(3);seen=[];lock=threading.Lock()
+        class Runner:
+            def run(self,stage,command,**kwargs):
+                with lock:seen.append(stage)
+                barrier.wait(timeout=3)
+                params=owner.complete(command)
+                owner.assertEqual(params['threads'],2)
+                owner.assertEqual(params['memory'],'10922MB')
+        result,_,cohort=self.run_pipeline(Runner())
+        self.assertEqual(len(seen),3)
+        self.assertEqual(result['overall_status'],'complete')
+        self.assertEqual(result['resource_allocation']['parallel_samples'],3)
+        self.assertTrue(result['resource_allocation']['warnings'])
+        cohort.assert_called_once()
 
     def test_overlap_respects_limit_all_statuses_visible_and_merge_after_all(self):
         owner=self;active=0;peak=0;lock=threading.Lock();barrier=threading.Barrier(2);calls=[]

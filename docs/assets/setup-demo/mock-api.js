@@ -164,14 +164,14 @@ function demoResourceOptions(payload={}){
  const memory=!payload.memory||payload.memory==='auto'?Math.max(payload.variants?32:8,available*cpu/16):parseFloat(payload.memory);
  const budget=Math.min(memory,available),minimum=payload.variants?32:8,count=demoState.scan?.samples.length||2;
  const maximum=Math.min(count,cpu,Math.floor(budget/minimum));
- if(maximum<1)throw Error('Synthetic budget cannot fit one sample. Increase the requested memory.');
+
  const plan=n=>({parallel_samples:n,threads_per_sample:Math.floor(cpu/n),memory_gb_per_sample:Math.floor(budget*1024/n)/1024,total_memory_gb:budget,total_threads:cpu});
- return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB},recommended:plan(Math.min(maximum,Math.max(1,Math.floor(cpu/8)))),choices:Array.from({length:maximum},(_,i)=>plan(i+1)),threads:cpu,memory:payload.memory||'auto',note:'Fictional demo resources. The installed app checks your computer before Run.'};
+ return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB},recommended:maximum?plan(Math.min(maximum,Math.max(1,Math.floor(cpu/8)))):null,total_memory_gb:budget,sample_count:count,minimum_memory_gb_per_sample:minimum,recommendation_error:maximum?null:'No suggested fit within this synthetic RAM budget. Manual selection remains available.',choices:Array.from({length:maximum},(_,i)=>plan(i+1)),threads:cpu,memory:payload.memory||'auto',note:'Fictional demo resources. The installed app checks your computer before Run.'};
 }
 function demoApi(path,payload){
   const url=new URL(path,location.href);
   switch(url.pathname){
-    case '/api/system':return {default_docker_image:'carlosfarkas/oncotracer:docker-resume-20261021',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:docker-resume-20261021'}};
+    case '/api/system':return {default_docker_image:'carlosfarkas/oncotracer:manual-samples-20261022',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:manual-samples-20261022'}};
     case '/api/resource-options':return demoResourceOptions(payload);
     case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');
     case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');

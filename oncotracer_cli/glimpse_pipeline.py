@@ -82,7 +82,7 @@ def plan(request):
                   'ancestry-mitochondria-neanderthal','homozygosity-roh','cancer-and-cardiomyopathy',
                   'literature-and-integrated-reports','annotated-vcf',*(['ffperase-and-evidence-adjudication'] if request.specimen_type=='ffpe' else []),'cohort-vcf-merge'],
         'execution':'Samples run in bounded parallel slots with isolated Nextflow caches. threads and variant_memory are total budgets divided across active slots.',
-        'resource_policy':{'requested_parallel_samples':_positive_slots((request.glimpse_config or {}).get('parallel_samples','auto')), 'total_memory_gb':_memory_gb((request.glimpse_config or {}).get('memory','auto')), 'minimum_memory_gb_per_sample':MIN_SAMPLE_MEMORY_GB, 'minimum_reason':'The complete workflow includes local float32 LLM reporting as well as genomic analysis.', 'allocation':'At execution CPU/cgroup and available RAM limits are checked; auto prefers eight CPUs per sample, then slots are capped by sample count, CPUs and floor(memory GB / 32). Each slot receives an equal share of the total budget.'},
+        'resource_policy':{'requested_parallel_samples':_positive_slots((request.glimpse_config or {}).get('parallel_samples','auto')), 'total_memory_gb':_memory_gb((request.glimpse_config or {}).get('memory','auto')), 'minimum_memory_gb_per_sample':MIN_SAMPLE_MEMORY_GB, 'minimum_reason':'The complete workflow includes local float32 LLM reporting as well as genomic analysis.', 'allocation':'Automatic mode checks CPU/cgroup and available RAM limits and prefers eight CPUs per sample with 32GiB each. Explicit numeric concurrency is honoured up to the sample count, even beyond recommended fits, with resource warnings. Each slot receives an equal share of the budget and at least one CPU thread.'},
         'interpretation':'Imputation supports germline hypotheses; it does not prove somatic origin or FFPE artifact status. Votes reuse sequencing evidence and are not independent tests.',
         'ffpe_handling':'FFPErase flagged variants excluded from accepted set unless stringent germline rescue criteria pass; all remain in the audit VCF.'}
 
@@ -286,7 +286,7 @@ def _memory_gb(value):
     from .sample_resources import memory_gb
     amount = memory_gb(value)
     if amount != 'auto' and amount < MIN_SAMPLE_MEMORY_GB:
-        raise OncoTracerError('Complete GLIMPSE2 analysis with local LLM reports requires at least 32GB total memory and 32GB per concurrent sample')
+        raise OncoTracerError('Complete GLIMPSE2 analysis with local LLM reports requires at least 32GB total memory; automatic scheduling recommends 32GB per sample, while a manual count may divide the budget further')
     return amount
 
 

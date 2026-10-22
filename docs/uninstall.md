@@ -27,7 +27,7 @@ Independently created `ffperase`, `strelka2`, ONT or other Conda environments ar
 After stopping containers that use the image:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:docker-resume-20261021
+docker image rm carlosfarkas/oncotracer:manual-samples-20261022
 ```
 
 Use the exact image/tag you installed. **This removes only that Docker image/tag.** It does not uninstall the pip application, remove an extra global launcher, clear saved installation settings, or delete projects, references, models or results. Docker itself remains installed.

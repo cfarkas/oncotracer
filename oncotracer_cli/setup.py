@@ -1299,7 +1299,7 @@ def add_setup_commands(subparsers) -> None:
         help="single Illumina library status (default: tumor)",
     )
     variant = parser.add_argument_group("Optional native small-variant calling")
-    variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=parallel_argument, help="maximum simultaneous alignment/variant samples: auto or a positive integer; CPU/RAM budgets are shared")
+    variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=parallel_argument, help="simultaneous alignment/variant samples: auto recommends a fit; a positive integer overrides resource recommendations (may exhaust memory)")
     variant.add_argument("--variant-memory", help="total memory budget across concurrent samples, or auto (detected at Run)")
     variant.add_argument("--variants", action="store_true", help="add native small-variant calling to the selected analysis")
     variant.add_argument('--variant-engine', choices=('glimpse2',), help='Complete Illumina short-variant workflow (required)')

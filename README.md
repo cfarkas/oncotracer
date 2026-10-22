@@ -29,7 +29,7 @@ oncotracer --interactive --backend conda
 With Docker running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:docker-resume-20261021
+oncotracer install --docker --image carlosfarkas/oncotracer:manual-samples-20261022
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
@@ -122,7 +122,7 @@ oncotracer uninstall --conda --yes --purge
 **Docker image:** remove the selected image/tag:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:docker-resume-20261021
+docker image rm carlosfarkas/oncotracer:manual-samples-20261022
 ```
 
 This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Shared image layers may remain.

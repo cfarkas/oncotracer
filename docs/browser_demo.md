@@ -56,7 +56,7 @@ For Docker, use the image that includes the variant tools:
 
 ```bash
 oncotracer --interactive --backend docker --project "$PWD/my-study" \
-  --image carlosfarkas/oncotracer:docker-resume-20261021 --variants
+  --image carlosfarkas/oncotracer:manual-samples-20261022 --variants
 ```
 
 ### Terminal equivalents
@@ -70,7 +70,7 @@ oncotracer setup --terminal --project "$PWD/my-study" --backend conda --run
 
 ```bash
 oncotracer setup --terminal --project "$PWD/my-study" --backend docker \
-  --image carlosfarkas/oncotracer:docker-resume-20261021 --variants --run
+  --image carlosfarkas/oncotracer:manual-samples-20261022 --variants --run
 ```
 
 To record the same preservation in terminal setup, add `--variant-specimen-type fresh`

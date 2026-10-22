@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:docker-resume-20261021"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:manual-samples-20261022"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -1613,7 +1613,7 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
         "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
     )
     parser.add_argument("--threads", type=int, help="total CPU budget; shared across concurrent GLIMPSE2 samples")
-    parser.add_argument("--parallel-samples", type=parallel_argument, help="maximum concurrent samples: auto or a positive integer; total CPU/RAM budgets are shared")
+    parser.add_argument("--parallel-samples", type=parallel_argument, help="concurrent samples: auto recommends a fit; a positive integer overrides resource recommendations (may exhaust memory)")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--root", help="Repository or extracted payload root")
