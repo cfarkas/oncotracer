@@ -23,10 +23,13 @@ qdnaseq_json_number <- function(value) {
   format(as.numeric(value), scientific = FALSE, trim = TRUE, digits = 17L)
 }
 
-qdnaseq_classify_normalized <- function(sample_names, normalized_values) {
+# Conservative resolution-specific research QC, not a clinical detection limit.
+QDNASEQ_QC_POLICY <- "coverage-v2"
+qdnaseq_classify_normalized <- function(sample_names, normalized_values, read_counts) {
   if (length(sample_names) != length(normalized_values)) {
     stop("Sample names and normalized-value vectors differ in length", call. = FALSE)
   }
+  if (length(sample_names) != length(read_counts)) stop("Read-count vectors differ in length", call. = FALSE)
   lapply(seq_along(sample_names), function(index) {
     values <- as.numeric(normalized_values[[index]])
     finite <- values[is.finite(values)]
@@ -34,6 +37,10 @@ qdnaseq_classify_normalized <- function(sample_names, normalized_values) {
     zero_count <- sum(finite == 0)
     normalized_median <- if (usable_count) stats::median(finite) else NA_real_
     valid <- usable_count > 0L && is.finite(normalized_median) && normalized_median > 0
+    counts <- as.numeric(read_counts[[index]])
+    counts <- counts[is.finite(counts) & counts >= 0]
+    median_reads <- if (length(counts)) stats::median(counts) else NA_real_
+    zero_fraction <- if (length(counts)) mean(counts == 0) else NA_real_
     error <- NULL
     if (!valid) {
       error <- if (!usable_count || !is.finite(normalized_median)) {
@@ -42,11 +49,20 @@ qdnaseq_classify_normalized <- function(sample_names, normalized_values) {
         "normalized_copy_number_median_non_positive"
       }
     }
+    if (length(counts) < 100L) error <- "insufficient_usable_bins"
+    else if (median_reads < 20) error <- "low_coverage_at_selected_bin_size"
+    else if (zero_fraction > 0.05) error <- "excess_empty_bins_at_selected_bin_size"
+    else if (usable_count < 0.99 * length(normalized_values[[index]])) error <- "non_finite_normalized_bins"
+    valid <- is.null(error)
     list(
       sample = as.character(sample_names[[index]]),
       status = if (valid) "pending" else "failed",
       stage = if (valid) "post_normalization_qc_passed" else "post_normalization_qc",
       error = error,
+      assessment = if (valid) "assessable" else "not_assessable",
+      qc_policy = QDNASEQ_QC_POLICY,
+      median_reads_per_bin = median_reads,
+      zero_read_bin_fraction = zero_fraction,
       usable_bin_count = as.integer(usable_count),
       zero_bin_count = as.integer(zero_count),
       normalized_median = normalized_median,
@@ -108,6 +124,10 @@ qdnaseq_record_json <- function(record) {
     '"status":', qdnaseq_json_string(record$status), ",",
     '"stage":', qdnaseq_json_string(record$stage), ",",
     '"error":', qdnaseq_json_string(record$error), ",",
+    '"assessment":', qdnaseq_json_string(record$assessment), ",",
+    '"qc_policy":', qdnaseq_json_string(record$qc_policy), ",",
+    '"median_reads_per_bin":', qdnaseq_json_number(record$median_reads_per_bin), ",",
+    '"zero_read_bin_fraction":', qdnaseq_json_number(record$zero_read_bin_fraction), ",",
     '"usable_bin_count":', as.integer(record$usable_bin_count), ",",
     '"zero_bin_count":', as.integer(record$zero_bin_count), ",",
     '"normalized_median":', qdnaseq_json_number(record$normalized_median), ",",

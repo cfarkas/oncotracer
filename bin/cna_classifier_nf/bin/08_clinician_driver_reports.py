@@ -568,6 +568,7 @@ def write_index(outdir: Path, rows: list[dict[str, Any]]) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Generate clinician-oriented CNA driver/probable-classification reports.")
+    ap.add_argument("--cna-assessment", default="")
     ap.add_argument("--classification", required=True)
     ap.add_argument("--sample-summary", required=True)
     ap.add_argument("--driver-hits", required=True)
@@ -616,6 +617,10 @@ def main() -> None:
             "agreement_call": pr.get("agreement_call", "") if not pr.empty else "",
             "n_drivers": len(drivers),
         })
+    from cna_assessment_reports import unassessable_reports
+    unavailable = unassessable_reports(args.cna_assessment, outdir, "_clinical_driver_summary")
+    rows.extend(unavailable)
+    pdfs.extend(outdir / row["pdf"] for row in unavailable)
     combine_pdfs(pdfs, outdir / "all_sample_clinician_driver_summaries.pdf")
     write_index(outdir, rows)
 

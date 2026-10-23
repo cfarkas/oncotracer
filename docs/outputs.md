@@ -24,6 +24,11 @@ requested. To add it later, see [reports for a completed run](llm_reports.md#add
 
 ## Completed and incomplete samples
 
+Low-coverage CNA samples are explicitly **not assessable**. The dashboard links
+their [coverage assessment and separate experimental broad screen](cna_evidence_assessment.md#experimental-fallback-for-very-sparse-samples).
+Experimental candidates do not change the primary completion status or enter
+the diagnostic classifier.
+
 The terminal, browser, results dashboard and final report show the same counts
 at the end of a finalized run. For example:
 
@@ -52,6 +57,14 @@ counts are unavailable for that attempt; it never presents an older run's totals
 as current. Continue the project to validate retained stages and finish the
 remaining work. Changing the parallel sample allocation does not mark work as
 complete or bypass those checks.
+
+## CNA samples that cannot be assessed
+
+The dashboard and combined report list **NOT ASSESSABLE** samples with their
+coverage metrics and reason. Open `06_workflow_summary/cna_assessment.html`
+(or its TSV/JSON) before interpreting CNA plots. These samples are omitted from
+CNA interpretation and cohort analyses; missing evidence is never a flat/normal
+profile or a deep-loss call. See [coverage checks and recovery](cna_evidence_assessment.md#coverage-comes-before-interpretation).
 
 ## Which result is authoritative?
 

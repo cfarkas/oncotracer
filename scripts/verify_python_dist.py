@@ -20,6 +20,9 @@ import oncotracer_build_backend as backend
 REQUIRED = {
     "oncotracer_cli/cli.py", "oncotracer_cli/provenance.py", backend.BUILD_METADATA,
     backend.PROVENANCE, "bin/scripts/native_qdnaseq.R", "main.nf", "nextflow.config",
+    "oncotracer_cli/cna_quality.py", "bin/scripts/qdnaseq_post_normalization_qc.R",
+    "oncotracer_cli/broad_cna.py",
+    "bin/cna_classifier_nf/bin/cna_assessment_reports.py",
     "oncotracer_cli/lpwgs/main.nf", "oncotracer_cli/lpwgs/nextflow.config",
     "oncotracer_cli/lpwgs/bin/bcftools_compat.py",
     *("environments/native-" + name + ".yml" for name in (

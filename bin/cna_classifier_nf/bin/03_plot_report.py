@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import re
 import shutil
 import warnings
@@ -423,6 +424,29 @@ def plot_binary_matrix(X: pd.DataFrame, classification: pd.DataFrame, figdir: Pa
     savefig(out, tight=True, pad_inches=0.32)
     outputs.append(str(out))
     return outputs
+
+
+def plot_coverage_assessment(data: dict, figdir: Path) -> list[str]:
+    """Make missing CNA evidence visible without a normal or deletion color."""
+    rows = data.get("samples", [])
+    if not rows:
+        return []
+    fig, ax = plt.subplots(figsize=(12, max(3, 1.5 + .32 * len(rows))))
+    ax.axis("off")
+    labels = [[row["sample"], "Assessable" if row["assessment"] == "assessable" else "NOT ASSESSABLE",
+               str(row.get("median_reads_per_bin", "NA")),
+               ("%.2f%%" % (100 * row["zero_read_bin_fraction"])) if row.get("zero_read_bin_fraction") is not None else "NA"] for row in rows]
+    table = ax.table(cellText=labels, colLabels=["Sample", "CNA assessment", "Median reads/bin", "Empty bins"],
+                     colWidths=[.43,.27,.15,.15], loc="center", cellLoc="left")
+    table.auto_set_font_size(False); table.set_fontsize(8); table.scale(1, 1.5)
+    for index, row in enumerate(rows, 1):
+        for col in range(4):
+            table[index, col].set_facecolor("#edf5f4" if row["assessment"] == "assessable" else "#dddddd")
+    ax.set_title("CNA assessability at the selected bin size", loc="left", pad=18)
+    fig.text(.02,.01,"Not assessable: insufficient reliable evidence. Excluded from CNA interpretation; not a flat profile or deep loss.",fontsize=8)
+    out = figdir / "cna_coverage_assessment.png"
+    savefig(out, tight=True)
+    return [str(out)]
 
 
 def plot_heatmap(heatmap_matrix: pd.DataFrame, classification: pd.DataFrame, figdir: Path, max_features: int) -> list[str]:
@@ -1088,6 +1112,7 @@ ul {{ line-height: 1.65; }}
 def main() -> None:
     setup_paper_theme()
     ap = argparse.ArgumentParser()
+    ap.add_argument("--cna-assessment", default="")
     ap.add_argument("--clean-events", required=True)
     ap.add_argument("--sample-summary", required=True)
     ap.add_argument("--event-matrix", required=True)
@@ -1130,6 +1155,8 @@ def main() -> None:
         pathology_concordance["sample"] = pathology_concordance["sample"].astype(str)
 
     figures: list[str] = []
+    if args.cna_assessment:
+        figures += plot_coverage_assessment(json.loads(Path(args.cna_assessment).read_text()), figdir)
     figures += plot_burden(classification, figdir)
     figures += plot_state_counts(summary, figdir)
     figures += plot_complexity_scatter(classification, figdir)

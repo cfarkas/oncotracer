@@ -106,9 +106,10 @@ bins_to_use <- function(object) {
   rep(TRUE, nrow(object))
 }
 
-log2_adhoc <- function(values, offset = .Machine$double.xmin) {
-  values[values < 0] <- 0
-  log2(values + offset)
+log2_adhoc <- function(values) {
+  # Zero read support is missing evidence, never log2(double.xmin) = -1022.
+  values[!is.finite(values) | values <= 0] <- NA_real_
+  log2(values)
 }
 
 export_samurai_seg <- function(object, destination, sample, include_calls = FALSE) {
@@ -138,11 +139,13 @@ export_samurai_seg <- function(object, destination, sample, include_calls = FALS
     call = calls[, 1L],
     segment = segments[, 1L]
   )
-  selected <- !is.na(data[, "call"])
+  selected <- !is.na(data[, "call"]) & is.finite(data[, "segment"])
   data <- data[selected, , drop = FALSE]
   if (!nrow(data)) fail("No called qDNAseq bins available for sample ", sample)
 
-  groups <- rle(paste(data[, "chromosome"], data[, "call"], sep = ":"))
+  # Preserve different segment means and gaps even when their call agrees.
+  gaps <- c(TRUE, as.numeric(data[-1L, "start"]) > as.numeric(data[-nrow(data), "end"]) + 1)
+  groups <- rle(paste(data[, "chromosome"], data[, "call"], data[, "segment"], cumsum(gaps), sep = ":"))
   end_indices <- cumsum(groups$lengths)
   start_indices <- c(1L, head(end_indices, -1L) + 1L)
   chromosome <- as.character(data[start_indices, "chromosome"])
@@ -253,6 +256,37 @@ run_analysis <- function(options) {
     blacklist = TRUE,
     chromosomes = c("X", "Y", "MT")
   )
+  # Reject insufficient raw read support before attempting GC correction.
+  usable <- bins_to_use(read_counts)
+  raw_counts <- Biobase::assayDataElement(read_counts, "counts")
+  # Portable raw evidence for the independent experimental broad-depth screen.
+  # Fractions use [0,1]; counts precede all correction/normalization/segmentation.
+  annotation <- Biobase::fData(read_counts)[usable, , drop=FALSE]
+  evidence <- data.frame(chromosome=annotation$chromosome, start=annotation$start,
+    end=annotation$end, gc=annotation$gc/100, mappability=annotation$mappability/100,
+    bases=annotation$bases/100, check.names=FALSE)
+  for (index in seq_len(ncol(raw_counts))) {
+    evidence[[paste0("sample:", samples$sample[index])]] <- raw_counts[usable, index]
+  }
+  handle <- gzfile(file.path(outdir, "broad_cna_counts.tsv.gz"), "wt")
+  tryCatch(write.table(evidence, handle, sep="\t", row.names=FALSE, quote=FALSE),
+           finally=close(handle))
+  per_sample_counts <- lapply(seq_len(ncol(raw_counts)), function(index) raw_counts[usable, index])
+  records <- qdnaseq_classify_normalized(samples$sample,
+    lapply(per_sample_counts, function(values) rep(1, length(values))), per_sample_counts)
+  preliminary_valid <- qdnaseq_valid_indices(records)
+  for (index in setdiff(seq_along(records), preliminary_valid)) {
+    records[[index]]$normalized_median <- NA_real_
+    records[[index]]$zero_bin_count <- sum(per_sample_counts[[index]] == 0, na.rm=TRUE)
+  }
+  write_qdnaseq_sample_status(status_path, records)
+  if (!length(preliminary_valid)) {
+    writeLines("ID\tchrom\tstart\tend\tnum.mark\tseg.mean", file.path(outdir, "all_segments.seg"))
+    writeLines("ID\tchrom\tstart\tend\tnum.mark\tseg.mean\tcall", file.path(outdir, "all_calls.seg"))
+    message("CNA not assessable: insufficient read support at the selected bin size. Inspect ", status_path)
+    return(invisible(NULL))
+  }
+  read_counts <- read_counts[, preliminary_valid]
   read_counts <- QDNAseq::estimateCorrection(read_counts)
   copy_numbers <- QDNAseq::correctBins(read_counts)
   copy_numbers <- QDNAseq::normalizeBins(copy_numbers)
@@ -263,14 +297,18 @@ run_analysis <- function(options) {
     seq_len(ncol(normalized)),
     function(index) normalized[usable, index]
   )
-  records <- qdnaseq_classify_normalized(samples$sample, normalized_values)
+  counts <- Biobase::assayDataElement(read_counts, "counts")
+  records[preliminary_valid] <- qdnaseq_classify_normalized(samples$sample[preliminary_valid], normalized_values,
+    lapply(seq_len(ncol(counts)), function(index) counts[usable, index]))
   valid_indices <- qdnaseq_valid_indices(records)
   write_qdnaseq_sample_status(status_path, records)
 
   for (record in records[vapply(records, function(item) item$status == "failed", logical(1L))]) {
     warning(
       "qDNAseq sample ", record$sample,
-      " failed post-normalization QC and will be excluded: ", record$error,
+      " is not assessable for CNA at this bin size and will be excluded: ", record$error,
+      "; median_reads_per_bin=", record$median_reads_per_bin,
+      "; zero_read_bin_fraction=", record$zero_read_bin_fraction,
       "; usable_bin_count=", record$usable_bin_count,
       "; zero_bin_count=", record$zero_bin_count,
       "; normalized_median=", record$normalized_median,
@@ -280,20 +318,23 @@ run_analysis <- function(options) {
   }
   if (!length(valid_indices)) {
     failed_samples <- paste(vapply(records, `[[`, character(1L), "sample"), collapse = ", ")
-    fail(
-      "qDNAseq post-normalization QC failed for every sample (", failed_samples,
-      "); inspect ", status_path
-    )
+    writeLines("ID\tchrom\tstart\tend\tnum.mark\tseg.mean", file.path(outdir, "all_segments.seg"))
+    writeLines("ID\tchrom\tstart\tend\tnum.mark\tseg.mean\tcall", file.path(outdir, "all_calls.seg"))
+    message("CNA not assessable for every sample at the selected bin size: ", failed_samples,
+      ". Consider coarser bins or additional sequencing; inspect ", status_path)
+    return(invisible(NULL))
   }
 
   # Invalid samples are removed before smoothing, log2 export, segmentation,
   # calling, aggregation, refinement, or reports.
-  copy_numbers <- copy_numbers[, valid_indices]
+  copy_numbers <- copy_numbers[, match(valid_indices, preliminary_valid)]
   samples <- samples[valid_indices, , drop = FALSE]
-  copy_numbers <- QDNAseq::smoothOutlierBins(copy_numbers)
+  # Keep zero bins finite during fitting rather than converting them to -1022.
+  copy_numbers <- QDNAseq::smoothOutlierBins(copy_numbers, logTransform = FALSE)
   saveRDS(copy_numbers, file.path(rds_dir, "all_samples.corrected.rds"))
 
-  segmented <- QDNAseq::segmentBins(copy_numbers, transformFun = "log2")
+  set.seed(1L)
+  segmented <- QDNAseq::segmentBins(copy_numbers, transformFun = "sqrt")
   called <- QDNAseq::callBins(segmented, method = "cutoff")
   if (!"calls" %in% Biobase::assayDataElementNames(called)) {
     fail("QDNAseq::callBins() did not add the required 'calls' assay element")
@@ -308,8 +349,12 @@ run_analysis <- function(options) {
   for (i in seq_len(nrow(samples))) {
     sample <- samples$sample[[i]]
     prefix <- paste0(sample, "_markdup")
+    exported <- copy_numbers[, i]
+    export_values <- Biobase::assayDataElement(exported, "copynumber")
+    export_values[!is.finite(export_values) | export_values <= 0] <- NA_real_
+    Biobase::assayDataElement(exported, "copynumber") <- export_values
     QDNAseq::exportBins(
-      copy_numbers[, i],
+      exported,
       file = file.path(bins_dir, paste0(prefix, "_bins.bed")),
       format = "bed",
       type = "copynumber",

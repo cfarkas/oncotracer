@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:terminal-progress-20261022"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:coverage-qc-20261023"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 

@@ -333,3 +333,11 @@ sed -n '1,200p' "$PROJECT_DIR/config/ont/ont.auto.yml"
 ```
 
 Confirm that every listed barcode exists, contains non-empty FASTQs, and maps to exactly one intended sample name.
+
+## Coverage and bin size
+
+Low coverage at the selected resolution is reported as **CNA not assessable**.
+This applies to QDNAseq and ichorCNA, independently of the Cancer/Normal
+assignment. Review the [coverage metrics and checks](../cna_evidence_assessment.md#coverage-comes-before-interpretation)
+before using a flat or loss profile. Consider coarser bins and recheck; OncoTracer
+does not automatically alter the selected resolution.

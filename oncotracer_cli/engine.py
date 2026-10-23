@@ -2456,7 +2456,8 @@ def run_qdnaseq(
     output = qdna_out / "all_segments.seg"
     status = qdna_out / "qdnaseq_sample_status.json"
     roles = qdna_out / "qdnaseq_sample_roles.tsv"
-    expected = [output, status, roles]
+    raw_evidence = qdna_out / "broad_cna_counts.tsv.gz"
+    expected = [output, status, roles, raw_evidence]
     with _validated_qdnaseq_reader(annotation, lpwgs_root, binsize, runner):
         signature = ledger.signature(
             "qdnaseq",
@@ -2474,6 +2475,7 @@ def run_qdnaseq(
                 (output, "native qDNAseq segments"),
                 (status, "native qDNAseq sample status"),
                 (roles, "native qDNAseq sample roles"),
+                (raw_evidence, "raw count evidence for the broad CNA screen"),
             ):
                 require_file(path, label)
             ledger.complete("qdnaseq", signature, expected)
@@ -2908,6 +2910,7 @@ def _run_ichorcna_with_assets(
     for index, sample in enumerate(samples):
         failed_stage = "readcounter"
         _remove_published_ichorcna_sample(ichor_out, sample.sample)
+        coverage = {}
         try:
             bam = bams[sample.sample]
             wig = wig_dir / f"{sample.sample}.wig"
@@ -2940,6 +2943,14 @@ def _run_ichorcna_with_assets(
                 require_file(wig, f"ichorCNA readCounter WIG for {sample.sample}")
                 ledger.complete(f"ichor-readcounter-{sample.sample}", signature, [wig])
 
+            failed_stage = "coverage_qc"
+            from .cna_quality import assess_ichor_counts
+            coverage = assess_ichor_counts(wig, assets["gc"], assets["map"])
+            from .broad_cna import export_wig_counts
+            export_wig_counts(wig, assets["gc"], assets["map"],
+                              ichor_out / "diagnostics/broad_counts" / f"{sample.sample}.tsv.gz")
+            if coverage["assessment"] != "assessable":
+                raise OncoTracerError(coverage["coverage_error"])
             failed_stage = "ichorcna"
             sample_out = ichor_out / "diagnostics" / sample.sample
             sample_out.mkdir(parents=True, exist_ok=True)
@@ -3022,6 +3033,7 @@ def _run_ichorcna_with_assets(
                 "status": "complete",
                 "stage": "complete",
                 "error": None,
+                **coverage,
                 "parameters": str(expected_params.relative_to(ichor_out)),
                 "segments": str(expected_seg.relative_to(ichor_out)),
             }
@@ -3034,6 +3046,8 @@ def _run_ichorcna_with_assets(
                 "status": "failed",
                 "stage": failed_stage,
                 "error": safe_error,
+                **coverage,
+                "assessment": "not_assessable",
                 "parameters": None,
                 "segments": None,
             }
@@ -3046,6 +3060,9 @@ def _run_ichorcna_with_assets(
         _write_ichorcna_sample_status(status_path, records)
 
     status = _write_ichorcna_sample_status(status_path, records)
+    if not completed and all(record.get("assessment") == "not_assessable" for record in records):
+        atomic_write_text(ichor_out / "segments_logR_corrected_gistic.seg", "sample\tchromosome\tstart\tend\tnum.mark\tadj.seg\n")
+        return ichor_out
     if not completed:
         failed = ", ".join(str(sample) for sample in status["failed_samples"])
         raise OncoTracerError(
@@ -3120,6 +3137,25 @@ def run_refinement_and_outputs(
         root / "bin" / "cna_codification" / "resources" / "hg38.cytoBand.txt.gz",
         "hg38 cytoband resource",
     )
+    from .cna_quality import publish_assessment, invalidate_derived_cna, summary_fields
+    assessment = None
+    if selected_caller in {"qdnaseq", "ichorcna"}:
+        status_path = qdna_or_ichor_dir / ("qdnaseq_sample_status.json" if selected_caller == "qdnaseq" else "ichorcna_sample_status.json")
+        bin_size = _as_int(config.get("illumina_binsize_kb" if mode == "illumina" else "ont_binsize_kb"), 100 if mode == "illumina" else 500)
+        assessment = publish_assessment(outdir, status_path, bin_size)
+        if assessment:
+            invalidate_derived_cna(outdir, status_path, qdna_or_ichor_dir / ("all_segments.seg" if selected_caller == "qdnaseq" else "segments_logR_corrected_gistic.seg"))
+            from .broad_cna import publish_screen
+            publish_screen(outdir, qdna_or_ichor_dir, selected_caller, assessment, cytoband)
+            if not any(row["assessment"] == "assessable" for row in assessment["samples"]):
+                summary = {"oncotracer_version": __version__, "engine": "native", "nextflow_used": False,
+                           "mode": mode, "caller": selected_caller, "outdir": str(outdir),
+                           "workflow_status": "partial_failure", "cna_status": "not_assessable",
+                           "completed_samples": [], "failed_samples": [r["sample"] for r in assessment["samples"]],
+                           selected_caller + "_sample_status": str(status_path), "completed_at": utc_now(), **summary_fields(assessment)}
+                atomic_write_workflow_summary(outdir / "06_workflow_summary", summary)
+                print("CNA: no samples assessable at the selected bin size. See 06_workflow_summary/cna_assessment.html", flush=True)
+                return
     refine_out = outdir / "02_bam_refinement"
     refine_out.mkdir(parents=True, exist_ok=True)
     refine_work = refine_out / "diagnostics"
@@ -3383,6 +3419,7 @@ def run_refinement_and_outputs(
                 "failed_samples": sample_status.get("failed_samples", []),
             }
         )
+    summary.update(summary_fields(assessment))
     atomic_write_workflow_summary(summary_dir, summary)
 
 
@@ -3398,6 +3435,12 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         ".oncotracer-native/output-owner.json",
         "06_workflow_summary/workflow_summary.txt",
         "06_workflow_summary/workflow_summary.json",
+        "06_workflow_summary/cna_assessment.json",
+        "06_workflow_summary/cna_assessment.tsv",
+        "06_workflow_summary/cna_assessment.html",
+        "06_workflow_summary/experimental_broad_cna/index.html",
+        "06_workflow_summary/experimental_broad_cna/screen.json",
+        "06_workflow_summary/experimental_broad_cna/regions.tsv",
         "03_cna_codification/cna_events.tsv",
         "03_cna_codification/cna_cytogenomic_notation.tsv",
         "04_cna_custom_plots/cna_per_sample_pages.pdf",

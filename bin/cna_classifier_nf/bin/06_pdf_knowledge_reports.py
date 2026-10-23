@@ -1365,6 +1365,7 @@ def write_index(
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Generate matched report-style PDF and HTML files for cancer-agnostic CNA knowledge interpretation.")
+    ap.add_argument("--cna-assessment", default="")
     ap.add_argument("--classification", required=True)
     ap.add_argument("--sample-summary", required=True)
     ap.add_argument("--clean-events", required=True)
@@ -1474,6 +1475,10 @@ def main() -> None:
             "driver_region_flags": row.get("driver_region_flags", ""),
         })
 
+    from cna_assessment_reports import unassessable_reports
+    unavailable = unassessable_reports(args.cna_assessment, outdir, "_CNA_knowledge_report")
+    rows.extend(unavailable)
+    pdf_paths.extend(outdir / row["pdf"] for row in unavailable)
     combine_pdfs(pdf_paths, outdir / "all_sample_CNA_knowledge_reports.pdf")
     write_index(outdir, rows, cohort_report_href=args.cohort_report_href,
                 clinician_reports_href=args.clinician_reports_href,

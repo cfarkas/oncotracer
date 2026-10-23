@@ -86,7 +86,16 @@ def final_report(root: Path, summary: dict) -> tuple[str, dict]:
     from .completion import summarize_completion, completion_html
     data["completion"] = summarize_completion(summary)
     body += completion_html(data["completion"])
+    from .cna_quality import load_assessment, assessment_html
+    assessment = load_assessment(root)
+    data["cna_assessment"] = assessment
+    body += assessment_html(assessment)
+    if (root / "06_workflow_summary/experimental_broad_cna/index.html").is_file():
+        body += '<p>' + link('06_workflow_summary/experimental_broad_cna/index.html', 'Open experimental broad CNA screen') + '</p>'
     events = [] if data['cna_status'] == 'not_requested' else _rows(root, '03_cna_codification/cna_events.tsv', limit=None)
+    if assessment:
+        eligible = {row['sample'] for row in assessment['samples'] if row['assessment'] == 'assessable'}
+        events = [row for row in events if row.get('sample') in eligible]
     for row in events:
         counts = data['cna_events'].setdefault(row.get('sample', 'unknown'), {})
         state = row.get('state', 'unknown')

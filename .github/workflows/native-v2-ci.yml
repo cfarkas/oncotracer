@@ -66,7 +66,7 @@ jobs:
             tests/test_nextflow_gateway.py \
             tests/test_native_engine.py \
             tests/test_sample_parallelism.py \
-            tests/test_terminal_progress.py \
+            tests/test_terminal_progress.py tests/test_cna_quality.py tests/test_broad_cna.py \
             tests/test_sample_resource_web.py \
             tests/test_native_variants.py \
             tests/test_variant_command.py \
@@ -336,8 +336,7 @@ jobs:
                 'library(Biobase); x <- readRDS(commandArgs(TRUE)[1]); stopifnot(inherits(x, "AnnotatedDataFrame")); cat("QDNASEQ_ANNOTATION_OK\n")' \
                 "$ANNOTATION_PATH"
               env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
-                "$PREFIX/bin/Rscript" --vanilla -e \
-                'source("bin/scripts/qdnaseq_post_normalization_qc.R"); x <- qdnaseq_classify_normalized(c("invalid", "valid"), list(c(0, 0), c(0.8, 1.2))); stopifnot(x[[1]]$status == "failed", x[[2]]$status == "pending"); cat("QDNASEQ_POST_NORMALIZATION_QC_OK\n")'
+                "$PREFIX/bin/Rscript" --vanilla tests/test_cna_coverage.R
               grep -F $'source_commit\tcf7c07e39de0ac64a9c38cb030cba4626e2aae83' \
                 "$ANNOTATION_PATH.provenance.tsv"
               test "$(awk -F '\t' '$1=="rds_sha256" {print $2}' "$ANNOTATION_PATH.provenance.tsv")" \
@@ -365,6 +364,9 @@ jobs:
               env CUDA_VISIBLE_DEVICES='' NVIDIA_VISIBLE_DEVICES=void \
                 "$PREFIX/bin/python" -c \
                 'import pandas,openpyxl,numpy,scipy,sklearn,matplotlib,jinja2,requests,reportlab,pypdf,transformers,torch,safetensors,huggingface_hub; print("CLASSIFIER_OK")'
+              env CUDA_VISIBLE_DEVICES='' NVIDIA_VISIBLE_DEVICES=void \
+                "$PREFIX/bin/python" -B scripts/smoke_cna_quality.py \
+                  --classifier-prefix "$PREFIX" --work-dir "$RUNNER_TEMP/cna-report-smoke"
               ;;
             native-variants)
               "$PREFIX/bin/samtools" --version | sed -n '1p'
@@ -579,6 +581,9 @@ jobs:
               "$ONCOTRACER_QDNASEQ_PREFIX/bin/Rscript" --vanilla -e \
               "library(Biobase); library(QDNAseq); cat(\"QDNASEQ_OK\\n\")"
             env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+              "$ONCOTRACER_QDNASEQ_PREFIX/bin/Rscript" --vanilla tests/test_cna_coverage.R
+            "$ONCOTRACER_CORE_PREFIX/bin/python" -B -m unittest tests.test_broad_cna -q
+            env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
               "$ONCOTRACER_ICHORCNA_PREFIX/bin/Rscript" --vanilla -e \
               "library(ichorCNA); cat(\"ICHORCNA_OK\\n\")"
             test -x "$ONCOTRACER_ICHORCNA_PREFIX/bin/readCounter"
@@ -592,6 +597,8 @@ jobs:
             env CUDA_VISIBLE_DEVICES="" NVIDIA_VISIBLE_DEVICES=void \
               "$ONCOTRACER_CLASSIFIER_PREFIX/bin/python" -c \
               "import pandas,openpyxl,numpy,scipy,sklearn,matplotlib,jinja2,requests,reportlab,pypdf,transformers,torch,safetensors,huggingface_hub; print(\"CLASSIFIER_OK\")"
+            "$ONCOTRACER_CLASSIFIER_PREFIX/bin/python" -B scripts/smoke_cna_quality.py \
+              --classifier-prefix "$ONCOTRACER_CLASSIFIER_PREFIX" --work-dir /tmp/cna-report-smoke
             "$ONCOTRACER_VARIANTS_PREFIX/bin/samtools" --version | sed -n "1p"
             "$ONCOTRACER_VARIANTS_PREFIX/bin/bcftools" --version | sed -n "1p"
             "$ONCOTRACER_VARIANTS_PREFIX/bin/freebayes" --version

@@ -739,7 +739,7 @@ class NativeEngineTests(unittest.TestCase):
                 if stage.startswith("ichor-readcounter-"):
                     assert stdout is not None
                     stdout.write(
-                        "fixedStep chrom=chr1 start=1 step=500000 span=500000\n1\n"
+                        "fixedStep chrom=chr1 start=1 step=500000 span=500000\n" + "40\n" * 200
                     )
                     return None
                 sample = str(command[command.index("--sample") + 1])
@@ -775,7 +775,7 @@ class NativeEngineTests(unittest.TestCase):
             fixture_sizes = {}
             for name in ("gc", "map", "centromere", "reptime", "pon"):
                 filename = f"{name}.asset"
-                payload = name.encode("utf-8")
+                payload = (("fixedStep chrom=chr1 start=1 step=500000 span=500000\n" + ("0.5\n" if name == "gc" else "0.95\n") * 200).encode() if name in {"gc", "map"} else name.encode("utf-8"))
                 asset = temporary / filename
                 asset.write_bytes(payload)
                 assets[name] = asset
@@ -908,6 +908,7 @@ class NativeEngineTests(unittest.TestCase):
                     "sample\tstatus\nSNC-E\ttumor\nSNC-F\tnormal\n",
                     encoding="utf-8",
                 )
+                (self.output.parent / "broad_cna_counts.tsv.gz").write_bytes(b"raw evidence")
                 return None
 
         with tempfile.TemporaryDirectory() as directory:
@@ -1009,6 +1010,7 @@ class NativeEngineTests(unittest.TestCase):
                 (self.output.parent / "qdnaseq_sample_roles.tsv").write_text(
                     "sample\tstatus\nCASE\ttumor\n", encoding="utf-8"
                 )
+                (self.output.parent / "broad_cna_counts.tsv.gz").write_bytes(b"raw evidence")
 
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)

@@ -61,7 +61,7 @@ def summarize_completion(summary):
             outstanding.append(label + " cohort outputs (" + str(status) + ")")
     states, remaining = {}, []
     for name in names:
-        missing = [branch["label"] + " (" + branch["sample_statuses"][name] + ")"
+        missing = [branch["label"] + " (" + ("not assessable" if branch["sample_statuses"][name] == "not_assessable" else branch["sample_statuses"][name]) + ")"
                    for branch in branches.values()
                    if branch["sample_statuses"][name] not in {"complete", "not_applicable"}]
         if missing:

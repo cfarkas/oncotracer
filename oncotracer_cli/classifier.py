@@ -517,6 +517,21 @@ def run_native_classifier(
         directory.mkdir(parents=True, exist_ok=True)
     classifier_environment = toolchain.environment("classifier")
 
+    from .cna_quality import eligible_classifier_samples, load_assessment, assessment_html
+    assessment = load_assessment(analysis_outdir)
+    selected = eligible_classifier_samples(analysis_outdir, sample_filter(config))
+    if assessment and not selected:
+        message = '<!doctype html><meta charset="utf-8"><title>CNA not assessable</title>' + assessment_html(assessment)
+        for name in ("cohort_report.html", "final_report.html", "clinician_report.html"):
+            atomic_write_text(classifier_out / name, message)
+        if _bool(config, "run_pdf_reports") or _bool(config, "run_clinician_reports"):
+            runner.run("cna-not-assessable-reports", toolchain.wrap("classifier", [
+                "python", scripts / "cna_assessment_reports.py", "--assessment",
+                analysis_outdir / "06_workflow_summary/cna_assessment.json", "--outdir", classifier_out]),
+                cwd=root, containment=classifier_environment)
+        _update_summary(analysis_outdir, classifier_out, reports_completed=False)
+        return classifier_out
+
     cna_input = require_directory(analysis_outdir / "03_cna_codification", "CNA classifier input")
     cna_events = require_file(cna_input / "cna_events.tsv", "CNA events")
     cna_notation = require_file(cna_input / "cna_cytogenomic_notation.tsv", "CNA notation")
@@ -538,7 +553,6 @@ def run_native_classifier(
         "--focal-mb", _string(config, "focal_mb"),
         "--broad-mb", _string(config, "broad_mb"),
     ]
-    selected = sample_filter(config)
     if selected:
         prepare_command.extend(["--samples", selected])
     if _bool(config, "include_sex"):
@@ -755,6 +769,8 @@ def run_native_classifier(
             "--pathology-records", pathology_out / "pathology_records_matched.tsv",
         ],
     )
+    if assessment:
+        plot_command.extend(["--cna-assessment", str(analysis_outdir / "06_workflow_summary/cna_assessment.json")])
     plot_outputs = [classifier_out / "cohort_report.html", classifier_out / "figures/summary/cna_event_burden.pdf"]
     _stage(
         "classifier-report", plot_command,
@@ -793,9 +809,11 @@ def run_native_classifier(
                 "--include-full-events", str(_bool(config, "pdf_include_full_events")).lower(),
             ],
         )
+        if assessment:
+            pdf_command.extend(["--cna-assessment", str(analysis_outdir / "06_workflow_summary/cna_assessment.json")])
         _stage(
             "classifier-pdf-reports", pdf_command,
-            classify_outputs + knowledge_outputs + pathology_outputs + [scripts / "06_pdf_knowledge_reports.py"],
+            classify_outputs + knowledge_outputs + pathology_outputs + [scripts / "06_pdf_knowledge_reports.py", scripts / "cna_assessment_reports.py"],
             [classifier_out / name for name in ("final_report.html", "final_report.pdf", "tables/report_index.tsv")],
             cwd=report, runner=runner, ledger=ledger, force=force,
             containment=classifier_environment, publish=lambda: organize_classifier(classifier_out),
@@ -818,13 +836,39 @@ def run_native_classifier(
                 "--max-drivers", _string(config, "clinician_max_drivers"),
             ],
         )
+        if assessment:
+            clinician_command.extend(["--cna-assessment", str(analysis_outdir / "06_workflow_summary/cna_assessment.json")])
         _stage(
             "classifier-clinician-reports", clinician_command,
-            classify_outputs + knowledge_outputs + pathology_outputs + [scripts / "08_clinician_driver_reports.py"],
+            classify_outputs + knowledge_outputs + pathology_outputs + [scripts / "08_clinician_driver_reports.py", scripts / "cna_assessment_reports.py"],
             [classifier_out / name for name in ("clinician_report.html", "clinician_report.pdf", "tables/clinician_report_index.tsv")],
             cwd=report, runner=runner, ledger=ledger, force=force,
             containment=classifier_environment, publish=lambda: organize_classifier(classifier_out),
         )
+
+    if assessment:
+        from .cna_quality import assessment_html
+        block = '<!-- oncotracer-cna-assessment -->' + assessment_html(assessment) + '<!-- /oncotracer-cna-assessment -->'
+        manifest_path = classifier_out / "layout_manifest.json"
+        layout = json.loads(manifest_path.read_text()) if manifest_path.is_file() else None
+        for name in ("cohort_report.html", "final_report.html", "clinician_report.html"):
+            page = classifier_out / name
+            if page.is_file():
+                import re
+                import hashlib
+                if layout and name in layout.get("files", {}) and hashlib.sha256(page.read_bytes()).hexdigest() != layout["files"][name]:
+                    raise OncoTracerError(f"Refusing to annotate a changed classifier artifact: {page}")
+                content = re.sub(r'<!-- oncotracer-cna-assessment -->.*?<!-- /oncotracer-cna-assessment -->', '', page.read_text(), flags=re.S)
+                if '<body' in content:
+                    content = re.sub(r'(<body[^>]*>)', lambda match: match.group(1) + block, content, count=1)
+                else:
+                    content = block + content
+                if page.read_text() != content:
+                    atomic_write_text(page, content)
+                if layout and name in layout.get("files", {}):
+                    layout["files"][name] = hashlib.sha256(page.read_bytes()).hexdigest()
+        if layout:
+            atomic_write_json(manifest_path, layout)
 
     for stage_name in ("classifier-report", "classifier-pdf-reports", "classifier-clinician-reports"):
         record = ledger.data.get("stages", {}).get(stage_name)

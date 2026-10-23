@@ -36,6 +36,7 @@ class QdnaseqResumeTests(unittest.TestCase):
                 (outputs / "all_segments.seg").write_text("sample segments\n")
                 (outputs / "qdnaseq_sample_status.json").write_text('{"overall_status":"complete"}\n')
                 (outputs / "qdnaseq_sample_roles.tsv").write_text("sample\tstatus\n")
+                (outputs / "broad_cna_counts.tsv.gz").write_bytes(b"raw evidence")
 
             runner.run.side_effect = create_outputs
 
@@ -63,6 +64,9 @@ class QdnaseqResumeTests(unittest.TestCase):
                 (outputs / "all_segments.seg").write_text("")
                 run(IlluminaSample("sample", sample.fastq_1, None, "normal"))
                 self.assertEqual(runner.run.call_count, 4, "empty results must be recomputed")
+                (outputs / "broad_cna_counts.tsv.gz").unlink()
+                run(IlluminaSample("sample", sample.fastq_1, None, "normal"))
+                self.assertEqual(runner.run.call_count, 5, "missing raw evidence must be regenerated")
 
 
 if __name__ == "__main__":
