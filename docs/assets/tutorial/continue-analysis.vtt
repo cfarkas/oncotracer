@@ -1,31 +1,31 @@
 WEBVTT
 
 1
-00:00:01.105 --> 00:00:06.249
+00:00:00.939 --> 00:00:06.028
 Continue an existing analysis
 Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo.
 
 2
-00:00:06.249 --> 00:00:15.413
+00:00:06.028 --> 00:00:14.930
 Continue an existing analysis · open the saved project
 Stop the project's current run. Choose Continue an existing analysis, then select its output project containing config/run.yml and results.
 
 3
-00:00:15.413 --> 00:00:18.311
+00:00:14.930 --> 00:00:17.739
 Continue an existing analysis · validate completed work
 Load saved settings and check. Saved samples and settings stay together. Incomplete alignments are not accepted as completed work.
 
 4
-00:00:18.311 --> 00:00:23.265
+00:00:17.739 --> 00:00:22.650
 Continue an existing analysis · choose concurrent samples
 In Review and run, choose parallel sample jobs × cores per sample. Run applies and checks the choice; Apply resources and check previews it without starting. Completed work is verified before reuse.
 
 5
-00:00:23.265 --> 00:00:36.047
+00:00:22.650 --> 00:00:35.311
 Continue an existing analysis · optional manual count
 Choose Manual to enter your own number of parallel samples. Suggestions remain available; too many jobs can exhaust memory. Automatic adapts to the machine.
 
 6
-00:00:36.047 --> 00:00:41.984
+00:00:35.311 --> 00:00:41.221
 Continue an existing analysis · resume when ready
 Review the checks, then choose Run analysis to continue. This recording stops here; its checks are simulated and no analysis runs.
