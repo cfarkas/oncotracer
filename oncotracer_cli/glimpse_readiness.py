@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 from .runtime import OncoTracerError
+from .nextflow_runtime import isolated_nextflow_environment
 
 MODULES = ('numpy', 'scipy', 'pysam', 'openpyxl', 'reportlab')
 
@@ -22,10 +23,10 @@ def _environment():
     return env
 
 
-def probe(command, label, *, timeout=60, marker=None):
+def probe(command, label, *, timeout=60, marker=None, env=None):
     try:
         result = subprocess.run(list(map(str, command)), text=True, capture_output=True,
-                                env=_environment(), timeout=timeout, check=False)
+                                env={**_environment(), **(env or {})}, timeout=timeout, check=False)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise OncoTracerError(f'{label} is not ready: {error}') from error
     output = (result.stdout or '') + '\n' + (result.stderr or '')
@@ -87,7 +88,8 @@ def check(request, tools, toolchain, bundle):
                 except ValueError as error:
                     raise OncoTracerError(str(error)) from error
                 print(contract.version_diagnostic(runtime), file=sys.stderr, flush=True)
-    probe([tools['nextflow'], '-version'], 'Nextflow')
+    with isolated_nextflow_environment() as nextflow_env:
+        probe([tools['nextflow'], '-version'], 'Nextflow', env=nextflow_env)
     probe([shutil.which('java') or 'java', '-version'], 'Java')
     tools['python'] = analysis_python(request, toolchain)
     spec = importlib.util.spec_from_file_location('_oncotracer_report_readiness', bundle / 'bin/llm_reporting.py')

@@ -424,7 +424,7 @@
       ]
     },
     "oncotracer_cli/cli.py": {
-      "current_sha256": "ef9fecd086b50359384a30f026b281b63e60a22c7194799989ed4f8e945ad5c4",
+      "current_sha256": "1887650428c7dd084e06c5343991c2930335aef5b73f26bbf717d13a308b257a",
       "recorded_sha256": "46667faedb142a8d7851f1333a877178d264e11790e6433fb7411d781d17679c",
       "changes": [
         {
@@ -435,128 +435,128 @@
         },
         {
           "start": 1655,
-          "end": 1722,
-          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:sample-names-20261024-r2\"\n",
+          "end": 1719,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:parallel-jvm-20261024\"\n",
           "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:run-audit-20261018\"\n"
         },
         {
-          "start": 12333,
-          "end": 12437,
+          "start": 12330,
+          "end": 12434,
           "current": "        candidates.append(path.parent if key == \"outdir\" else (path if path.is_dir() else path.parent))\n",
           "recorded": "        candidates.append(path if path.is_dir() else path.parent)\n"
         },
         {
-          "start": 20638,
-          "end": 20758,
+          "start": 20635,
+          "end": 20755,
           "current": "        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image):\n",
           "recorded": "        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run):\n"
         },
         {
-          "start": 23047,
-          "end": 23095,
+          "start": 23044,
+          "end": 23092,
           "current": "            outcome = OncoTracerPartialFailure(\n",
           "recorded": "            raise OncoTracerPartialFailure(\n"
         },
         {
-          "start": 23203,
-          "end": 23358,
+          "start": 23200,
+          "end": 23355,
           "current": "            )\n            outcome.terminal_reported = True  # The container already printed its verified final table.\n            raise outcome from error\n",
           "recorded": "            ) from error\n"
         },
         {
-          "start": 28664,
-          "end": 28909,
+          "start": 28661,
+          "end": 28906,
           "current": "    from .terminal_progress import terminal_session\n    with terminal_session(config_path, enabled=not args.dry_run):\n        return _execute_run(config_path, args)\n\n\ndef _execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:\n",
           "recorded": ""
         },
         {
-          "start": 28979,
-          "end": 29577,
+          "start": 28976,
+          "end": 29574,
           "current": "    if not args.dry_run and getattr(args, \"command\", None) != \"internal-run\":\n        from .project_resume import has_recorded_outputs, resume_project, audit_intermediates, audit_summary\n        if config_path.name == \"run.yml\" and config_path.parent.name == \"config\" and has_recorded_outputs(config_path.parent.parent):\n            result = resume_project(config_path.parent.parent, backend=getattr(args, \"backend\", None), image=getattr(args, \"image\", None))\n            args.backend = result[\"backend\"]\n            print(audit_summary(audit_intermediates(config_path.parent.parent)), flush=True)\n",
           "recorded": ""
         },
         {
-          "start": 31357,
-          "end": 31464,
+          "start": 31354,
+          "end": 31461,
           "current": "        from .docker_runtime import docker_host_preview, validate_docker_variants, output_runtime_identity\n",
           "recorded": "        from .docker_runtime import docker_host_preview, validate_docker_variants\n"
         },
         {
-          "start": 31552,
-          "end": 31702,
+          "start": 31549,
+          "end": 31699,
           "current": "        identity = output_runtime_identity(selected, image=getattr(args, \"image\", None))\n        with docker_host_preview(runtime_identity=identity):\n",
           "recorded": "        with docker_host_preview():\n"
         },
         {
-          "start": 32368,
-          "end": 32430,
+          "start": 32365,
+          "end": 32427,
           "current": "    if parallel is not None:\n        parallel_value(parallel)\n",
           "recorded": "    if parallel is not None and (type(parallel) is not int or parallel < 1):\n        raise OncoTracerError(\"parallel_samples must be a positive integer\")\n"
         },
         {
-          "start": 63040,
-          "end": 63250,
+          "start": 63037,
+          "end": 63247,
           "current": "    if getattr(args, \"runtime_identity\", False):\n        from .output_safety import current_runtime_identity\n        print(json.dumps(current_runtime_identity(runtime_root()), sort_keys=True))\n        return 0\n",
           "recorded": ""
         },
         {
-          "start": 64151,
-          "end": 64347,
+          "start": 64148,
+          "end": 64344,
           "current": "    parser.add_argument(\"--parallel-samples\", type=parallel_argument, help=\"concurrent samples: auto recommends a fit; a positive integer overrides resource recommendations (may exhaust memory)\")\n",
           "recorded": "    parser.add_argument(\"--parallel-samples\", type=int, help=\"maximum concurrent Illumina sample workflows (default: config, otherwise 1)\")\n"
         },
         {
-          "start": 67008,
-          "end": 67206,
+          "start": 67005,
+          "end": 67203,
           "current": "    parser.add_argument(\"--detect-resources\", \"--detect_resources\", action=\"store_true\",\n                        help=\"show parallel sample jobs \u00d7 cores per sample suggestions; starts no analysis\")\n",
           "recorded": ""
         },
         {
-          "start": 70577,
-          "end": 70679,
+          "start": 70574,
+          "end": 70676,
           "current": "    provenance_format = provenance.add_mutually_exclusive_group()\n    provenance_format.add_argument(\n",
           "recorded": "    provenance.add_argument(\n"
         },
         {
-          "start": 70755,
-          "end": 70929,
+          "start": 70752,
+          "end": 70926,
           "current": "    )\n    provenance_format.add_argument(\n        \"--runtime-identity\", action=\"store_true\",\n        help=\"Emit the exact runtime identity used to validate existing outputs\"\n",
           "recorded": ""
         },
         {
-          "start": 73503,
-          "end": 73912,
+          "start": 73500,
+          "end": 73909,
           "current": "    detection = {\"--detect-resources\", \"--detect_resources\"}\n    if top_level and detection.intersection(values):\n        if \"--interactive\" in values or \"--ffpe\" in values:\n            raise OncoTracerError(\"Resource detection is read-only; run --detect-resources separately before --interactive\")\n        values = [\"system\", *(value for value in values if value not in detection)]\n        top_level = False\n",
           "recorded": ""
         },
         {
-          "start": 76660,
-          "end": 76960,
+          "start": 76657,
+          "end": 76957,
           "current": "        if not getattr(outcome, \"terminal_reported\", False):\n            print(f\"Analysis incomplete. {outcome}\", file=sys.stderr)\n            print(f\"Completed outputs are preserved: {outcome.outdir}\", file=sys.stderr)\n            print(f\"Results: {outcome.outdir / 'index.html'}\", file=sys.stderr)\n",
           "recorded": "        print(f\"PARTIAL FAILURE: {outcome}\", file=sys.stderr)\n        print(f\"Completed outputs are preserved: {outcome.outdir}\", file=sys.stderr)\n        print(f\"Results: {outcome.outdir / 'index.html'}\", file=sys.stderr)\n"
         },
         {
-          "start": 77014,
-          "end": 77127,
+          "start": 77011,
+          "end": 77124,
           "current": "        if not getattr(error, \"terminal_reported\", False):\n            print(f\"ERROR: {error}\", file=sys.stderr)\n",
           "recorded": "        print(f\"ERROR: {error}\", file=sys.stderr)\n"
         },
         {
-          "start": 77173,
-          "end": 77342,
+          "start": 77170,
+          "end": 77339,
           "current": "        if not getattr(error, \"terminal_reported\", False):\n            print(f\"ERROR: could not access a required file, directory or command: {error}\", file=sys.stderr)\n",
           "recorded": "        print(f\"ERROR: could not access a required file, directory or command: {error}\", file=sys.stderr)\n"
         },
         {
-          "start": 77359,
-          "end": 77824,
+          "start": 77356,
+          "end": 77821,
           "current": "    except KeyboardInterrupt as error:\n        if not getattr(error, \"terminal_reported\", False):\n            print(\"Analysis interrupted; completed outputs are retained.\", file=sys.stderr)\n        if not getattr(error, \"terminal_reported\", False) and getattr(locals().get(\"args\"), \"command\", None) in {\"run\", \"internal-run\", \"variants\"}:\n            print(\"Sample completion counts were not finalized. Retained stages will be checked on resume.\", file=sys.stderr)\n",
           "recorded": "    except KeyboardInterrupt:\n        print(\"ERROR: interrupted\", file=sys.stderr)\n"
         }
       ]
     },
     "docs/assets/setup-demo/mock-api.js": {
-      "current_sha256": "d7abbf06b6da850a44670d74d587d1d2a9bb31cd439b8d08b2ea898d366c41f0",
+      "current_sha256": "74bc471fc521579dd51de6e4112c10ca56102dec77c57a4029131ee19a139fdd",
       "recorded_sha256": "48ea3705d5e29369e0af7ec24d60115ea90e2a6090473cfee3432a0205e9484a",
       "changes": [
         {
@@ -573,8 +573,8 @@
         },
         {
           "start": 17000,
-          "end": 18092,
-          "current": "    case '/api/system':return {default_docker_image:'carlosfarkas/oncotracer:sample-names-20261024-r2',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:sample-names-20261024-r2'}};\n    case '/api/resource-options':return demoResourceOptions(payload);\n    case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');\n    case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');\n",
+          "end": 18086,
+          "current": "    case '/api/system':return {default_docker_image:'carlosfarkas/oncotracer:parallel-jvm-20261024',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:parallel-jvm-20261024'}};\n    case '/api/resource-options':return demoResourceOptions(payload);\n    case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');\n    case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');\n",
           "recorded": "    case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:run-audit-20261018'}};\n"
         }
       ]
@@ -622,7 +622,7 @@
       ]
     },
     "docs/assets/setup-demo/controls.js": {
-      "current_sha256": "290c4e94169f3d960e2eff41aaa3956fe3cbfe5ba57c84929fa95933f993a082",
+      "current_sha256": "17b9afeb8734357be3ea0c7fb9e9fa12fa115c10feda271565359f8467dda8f5",
       "recorded_sha256": "64de82caedfb51fb4fcb09eeba5cda5b0744ab574c716a4a37d68bfe9308bbd9",
       "changes": [
         {
@@ -633,20 +633,20 @@
         },
         {
           "start": 1107,
-          "end": 1340,
-          "current": "  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:sample-names-20261024-r2';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();\n",
+          "end": 1337,
+          "current": "  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:parallel-jvm-20261024';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();\n",
           "recorded": "  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:run-audit-20261018';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();\n"
         }
       ]
     },
     "oncotracer_cli/variant_install_help.py": {
-      "current_sha256": "f093c2aef61e02a81e538168624f99162bb1406e93839a3886cb8e7a29774547",
+      "current_sha256": "c3862bf40b938dd998c00ade21cc124c7f6b9f5be6cd5cdf81c46d6195062b43",
       "recorded_sha256": "bfc0fc1297e8301262cf442811f560f53b0116e0cc9d142791523da0e1aaeb34",
       "changes": [
         {
           "start": 345,
-          "end": 404,
-          "current": "IMAGE = \"carlosfarkas/oncotracer:sample-names-20261024-r2\"\n",
+          "end": 401,
+          "current": "IMAGE = \"carlosfarkas/oncotracer:parallel-jvm-20261024\"\n",
           "recorded": "IMAGE = \"carlosfarkas/oncotracer:run-audit-20261018\"\n"
         }
       ]

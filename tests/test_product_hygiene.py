@@ -85,7 +85,7 @@ INTENTIONAL_PYTHON_NEXTFLOW_AUDIT_LINES = {
         "result['variant_nextflow'] = '/usr/local/bin/nextflow'",
     },
     "oncotracer_cli/glimpse_readiness.py": {
-        "probe([tools['nextflow'], '-version'], 'Nextflow')",
+        "probe([tools['nextflow'], '-version'], 'Nextflow', env=nextflow_env)",
     },
     "oncotracer_cli/setup.py": {
         "for field in ('glimpse-reference-dir','glimpse-bin','resource-dir','patients','reuse-from','nextflow','workflow-source'):",
@@ -512,7 +512,7 @@ class ProductHygieneTests(unittest.TestCase):
     def test_glimpse_runtime_audit_exceptions_are_exact(self) -> None:
         cases = {
             "oncotracer_cli/docker_runtime.py": "result['variant_nextflow'] = '/usr/local/bin/nextflow'",
-            "oncotracer_cli/glimpse_readiness.py": "probe([tools['nextflow'], '-version'], 'Nextflow')",
+            "oncotracer_cli/glimpse_readiness.py": "probe([tools['nextflow'], '-version'], 'Nextflow', env=nextflow_env)",
         }
         for relative, line in cases.items():
             for prefix in ("", "payload/"):

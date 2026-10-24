@@ -34,7 +34,7 @@ Use the path printed by setup. The command above uses Conda. For Docker, use:
 
 ```bash
 oncotracer run --backend docker --config "$PWD/my-study/config/run.yml" \
-  --image carlosfarkas/oncotracer:sample-names-20261024-r2
+  --image carlosfarkas/oncotracer:parallel-jvm-20261024
 ```
 
 ## Check progress and results
@@ -170,6 +170,11 @@ Open another terminal and launch `oncotracer --interactive --backend conda`
 use its own printed URL. Give each run a different project/output directory and
 a share of the available CPU and memory. Concurrent writes to the same project
 are rejected. See [concurrent projects](nextflow_entry.md#concurrent-projects).
+
+Illumina variant samples also receive separate Java temporary directories, so
+concurrent Nextflow controllers cannot overwrite each other's extracted native
+libraries. Persistent work directories and validated resume records remain
+separate from those temporary files. See [Java startup crashes](troubleshooting.md#java-crashes-when-several-illumina-samples-start-together).
 
 ## Preview a run
 

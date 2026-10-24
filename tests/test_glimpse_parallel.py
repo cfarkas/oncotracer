@@ -94,6 +94,9 @@ class ParallelSamplesTests(ResourceFixtureCase):
                 if len(calls)<=2:barrier.wait(timeout=2)
                 time.sleep(.05)
                 params=owner.complete(command)
+                temporary=Path(kwargs['env']['NXF_TEMP'])
+                owner.assertTrue(temporary.is_dir())
+                (temporary/'libjansi-64.so').write_text(stage)
                 if params['threads']!=4 or params['memory']!='32768MB':raise AssertionError('Per-sample allocation escaped total budget')
                 with lock:active-=1
         result,bootstrap,cohort=self.run_pipeline(Runner())

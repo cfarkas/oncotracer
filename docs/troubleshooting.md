@@ -25,6 +25,26 @@ For methylation, `install --conda` does not install optional Dorado, Modkit, or 
 
 Start with the exact command, backend, YAML, `outdir`, and source identity. Avoid deleting reference indexes, `.oncotracer-native/state.json`, or partial outputs before identifying the failing stage.
 
+## Java crashes when several Illumina samples start together
+
+Some Nextflow distributions extract their native terminal library to the same
+`libjansi-64.so` file. Concurrent JVMs can overwrite that file while another JVM
+uses it, producing `SIGSEGV`, `SIGBUS`, or a native-library "file too short" error.
+The repaired OncoTracer gives every sample launch and Nextflow readiness check a
+private temporary directory. This applies to Conda and Docker, and to simultaneous
+projects. It does not reduce the selected sample concurrency.
+
+Update OncoTracer from the current GitHub source; for Docker, also select the
+current image shown in [installation](installation.md). Stop the affected project
+before updating. To recover its work, choose **Continue an existing analysis**,
+load the saved output project, and run again. Completed stages must pass the usual
+input, settings and output checks; failed or incomplete stages are recomputed.
+There is no need to delete valid alignments or reference downloads to fix this
+startup collision. Other Java failures still require their own diagnosis.
+
+The regression check starts simultaneous real Nextflow JVMs and verifies a
+synthetic task from every launch. It runs in the Docker CI tests too.
+
 ## 1. Verify the installed executable and backend
 
 ```bash
@@ -178,8 +198,8 @@ or digest. A bare `install --docker` selects the current default image.
 
 ```bash
 docker info
-oncotracer install --docker --image carlosfarkas/oncotracer:sample-names-20261024-r2
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:sample-names-20261024-r2
+oncotracer install --docker --image carlosfarkas/oncotracer:parallel-jvm-20261024
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:parallel-jvm-20261024
 ```
 
 If an older launcher accepts intermediate outputs but then reports a different

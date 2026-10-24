@@ -21,6 +21,7 @@ import subprocess
 import sys
 from typing import Mapping
 from .source_runtime import python_code, python_module
+from .nextflow_runtime import isolated_nextflow_environment
 from .runtime import CommandRunner, CommandResult, OncoTracerError, atomic_write_json, require_file, runtime_root, sha256_file, utc_now
 
 SCHEMA='oncotracer-glimpse2-v1'
@@ -492,7 +493,10 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
                 atomic_write_json(params_path,params)
                 if stop.is_set():raise _SampleCancelled('Stopped before launching sample')
                 with (launch/'nextflow.log').open('a') as log:
-                    sample_runner.run('complete-glimpse2-'+sample,command,cwd=launch,stdout=log,stderr=log)
+                    child_env = sample_runner.child_environment() if isinstance(sample_runner, CommandRunner) else os.environ
+                    with isolated_nextflow_environment(child_env) as nextflow_env:
+                        sample_runner.run('complete-glimpse2-'+sample,command,cwd=launch,
+                                          env=nextflow_env,stdout=log,stderr=log)
                 if stop.is_set():raise _SampleCancelled('Stopped after sample workflow')
                 vcf=sample_root/'cohort_vcf'/f'{sample}.cohort_vcf'/f'{sample}.annotated.vcf.gz'
                 require_file(vcf,'Completed annotated VCF')
