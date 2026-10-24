@@ -259,6 +259,10 @@ class NativeVariantIntegrationTests(ResourceFixtureCase):
             fixture = SyntheticInput(Path(directory))
             result = self.run_fixture(fixture)
             self.assertEqual(result["overall_status"], "complete")
+            caller = result["samples"][0]["callers"][0]
+            self.assertEqual(Path(caller["evidence"]).name, "FIXTURE.bcftools.evidence.tsv")
+            self.assertTrue(all(p.name == "complete.json" or p.name.startswith("FIXTURE.bcftools.")
+                                for p in Path(caller["vcf"]).parent.iterdir()))
             fixture.assert_unchanged(self)
             vcfs = list((fixture.outdir / "08_variants").rglob("*.vcf.gz"))
             self.assertTrue(vcfs, "successful branch must publish a VCF")
@@ -470,7 +474,7 @@ class NativeVariantIntegrationTests(ResourceFixtureCase):
             def fail_one_publication(source, target):
                 nonlocal injected
                 target = Path(target)
-                if not injected and target.parent == destination and target.name == "evidence.tsv":
+                if not injected and target.parent == destination and target.name == Path(caller["evidence"]).name:
                     injected = True
                     raise OSError("synthetic publication interruption")
                 return original_replace(source, target)
@@ -482,6 +486,33 @@ class NativeVariantIntegrationTests(ResourceFixtureCase):
             self.assertEqual(after, before, "prior generation, including completion manifest, must be intact")
             self.assertIn("complete.json", after)
             self.assertEqual(vcf_rows(Path(caller["vcf"]))[0]["genotype"]["GT"], "0/1")
+            fixture.assert_unchanged(self)
+
+    def test_legacy_filenames_resume_without_calling_again(self):
+        original_publish, original_digest = variants._publish, variants._module_digest
+        def legacy_publish(*args, **kwargs):
+            kwargs.pop('artifact_prefix', None)
+            return original_publish(*args, **kwargs)
+        def legacy_digest(module='variants.py'):
+            return ('d0dacffb5597528ac96d4c09debf9eb67493a551697c69e87d5ca958ba35b156'
+                    if module == 'variants.py' else original_digest(module))
+        with tempfile.TemporaryDirectory(prefix='oncotracer-legacy-names-') as directory:
+            fixture = SyntheticInput(Path(directory))
+            with patch.object(variants, '_publish', side_effect=legacy_publish), patch.object(
+                    variants, '_module_digest', side_effect=legacy_digest):
+                first = self.run_fixture(fixture)
+            caller = first['samples'][0]['callers'][0]
+            self.assertEqual(Path(caller['evidence']).name, 'evidence.tsv')
+            before = Path(caller['vcf']).read_bytes()
+            with patch.object(variants, '_call', side_effect=AssertionError('must reuse verified calls')) as call:
+                second = self.run_fixture(fixture)
+            self.assertEqual(second['overall_status'], 'complete')
+            call.assert_not_called()
+            caller = second['samples'][0]['callers'][0]
+            self.assertTrue(caller['resumed'])
+            self.assertEqual(Path(caller['vcf']).read_bytes(), before)
+            self.assertEqual(Path(caller['evidence']).name, 'FIXTURE.bcftools.evidence.tsv')
+            self.assertTrue(Path(caller['evidence']).is_file())
             fixture.assert_unchanged(self)
 
     def test_empty_success_does_not_invoke_available_annovar(self):

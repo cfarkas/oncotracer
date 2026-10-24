@@ -68,7 +68,7 @@ jobs:
             tests/test_sample_parallelism.py \
             tests/test_terminal_progress.py tests/test_cna_quality.py tests/test_broad_cna.py \
             tests/test_sample_resource_web.py \
-            tests/test_native_variants.py \
+            tests/test_native_variants.py tests/test_variant_artifact_names.py \
             tests/test_variant_command.py \
             tests/test_variant_engine.py \
             tests/test_variant_container.py \

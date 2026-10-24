@@ -74,6 +74,12 @@ class VariantResultsTests(unittest.TestCase):
         self.assertEqual(self.catalog()["status"], "partial_failure")
 
     def test_artifacts_are_categorized_links_resolve_and_inputs_are_unchanged(self):
+        self.check_artifact_links(prefixed=False)
+
+    def test_prefixed_artifacts_keep_working_links_and_raw_diagnostics_hidden(self):
+        self.check_artifact_links(prefixed=True)
+
+    def check_artifact_links(self, *, prefixed):
         names = ["variant_provenance.json", "owner.json",
                  "samples/TEST/bcftools/TEST.bcftools.vcf.gz",
                  "samples/TEST/bcftools/TEST.bcftools.vcf.gz.tbi",
@@ -84,6 +90,11 @@ class VariantResultsTests(unittest.TestCase):
                  "samples/TEST/bcftools/complete.json",
                  "samples/TEST/bcftools/call.stderr.log",
                  "failed_logs/OTHER/bcftools/call.stderr.log"]
+        prefix = 'TEST.bcftools.' if prefixed else ''
+        if prefixed:
+            names = [str(Path(name).with_name(prefix+Path(name).name))
+                     if name.startswith('samples/') and Path(name).name != 'complete.json'
+                     and not Path(name).name.startswith(prefix) else name for name in names]
         for name in names:
             self.put("08_variants/" + name)
         self.put("08_variants/variant_status.json", '{"overall_status":"complete","samples":[]}')
@@ -92,11 +103,11 @@ class VariantResultsTests(unittest.TestCase):
         write_results_index(self.root)
         self.assertEqual(before, {p: p.read_bytes() for p in before})
         stage = self.catalog()
-        self.assertIn("08_variants/samples/TEST/bcftools/evidence.tsv", stage["primary_files"])
-        self.assertIn("08_variants/samples/TEST/bcftools/annovar.hg38_multianno.vcf", stage["primary_files"])
+        self.assertIn("08_variants/samples/TEST/bcftools/"+prefix+"evidence.tsv", stage["primary_files"])
+        self.assertIn("08_variants/samples/TEST/bcftools/"+prefix+"annovar.hg38_multianno.vcf", stage["primary_files"])
         self.assertIn("08_variants/variant_status.json", stage["quality_control_files"])
         self.assertIn("08_variants/variant_provenance.json", stage["supporting_files"])
-        self.assertNotIn("08_variants/samples/TEST/bcftools/caller_raw.vcf.gz", stage["primary_files"])
+        self.assertNotIn("08_variants/samples/TEST/bcftools/"+prefix+"caller_raw.vcf.gz", stage["primary_files"])
         self.assertEqual(stage["diagnostic_file_count"], 5)
         class Links(HTMLParser):
             def __init__(self):

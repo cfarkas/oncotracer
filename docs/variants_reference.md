@@ -114,7 +114,7 @@ explain these separate choices.
 Choose **Docker** under analysis tools in the browser and enter the **Docker image
 tag or digest**. The following retained integration example uses the
 20260921 image with existing resources and the earlier caller set; it does not include Strelka2. For Strelka2 and automatic model preparation use
-`carlosfarkas/oncotracer:coverage-qc-20261023` consistently in setup and run,
+`carlosfarkas/oncotracer:sample-names-20261024` consistently in setup and run,
 as shown in the [current Docker guide](variants.md#run-cna-and-variants-with-docker).
 The same selection can prefill the form:
 

@@ -356,18 +356,33 @@ def _owned_outputs(destination: Path, previous) -> dict:
     return owned
 
 
-def _publish(destination: Path, artifacts, previous, signature: str, final_name: str, result):
+def _publish(destination: Path, artifacts, previous, signature: str, final_name: str, result, *, artifact_prefix=None):
     """Replace owned artifacts together, restoring the previous generation on failure."""
     owned = _owned_outputs(destination, previous)
+    artifacts = list(dict.fromkeys(artifacts))
+    if artifact_prefix is not None and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', artifact_prefix):
+        raise OncoTracerError('Unsafe variant artifact prefix')
+    names = {p: (p.name if artifact_prefix is None or p.name.startswith(artifact_prefix+'.')
+                 else artifact_prefix+'.'+p.name) for p in artifacts}
+    if len(set(names.values())) != len(names):
+        raise OncoTracerError('Variant artifact names collide after adding the sample/caller prefix')
+    paths = {str(destination/p.name): str(destination/name) for p, name in names.items()}
+    paths.update({str(p): str(destination/name) for p, name in names.items()})
+    def rewrite(value):
+        if isinstance(value, dict): return {key: rewrite(item) for key, item in value.items()}
+        if isinstance(value, list): return [rewrite(item) for item in value]
+        return paths.get(value, value) if isinstance(value, str) else value
+    published_result = rewrite(result)
+    published_final = next((name for p, name in names.items() if p.name == final_name), final_name)
     destination.mkdir(parents=True, exist_ok=True)
     for artifact in artifacts:
-        target = destination / artifact.name
-        if target.is_symlink() or (target.exists() and artifact.name not in owned):
+        target = destination / names[artifact]
+        if target.is_symlink() or (target.exists() and names[artifact] not in owned):
             raise OncoTracerError(f'Refusing to overwrite an unowned variant output: {target}')
     completion = destination / 'complete.json'
     if completion.is_symlink():
         raise OncoTracerError('Variant completion manifest must not be a symlink')
-    hashes = {p.name: sha256_file(p) for p in artifacts}
+    hashes = {names[p]: sha256_file(p) for p in artifacts}
     with tempfile.TemporaryDirectory(prefix='.previous-', dir=destination.parent) as temp:
         backup = Path(temp)
         saved, installed = [], []
@@ -378,16 +393,33 @@ def _publish(destination: Path, artifacts, previous, signature: str, final_name:
                     os.replace(target, backup / name)
                     saved.append(name)
             for artifact in artifacts:
-                os.replace(artifact, destination / artifact.name)
-                installed.append(artifact.name)
-            atomic_write_json(completion, {'schema': SCHEMA, 'signature': signature, 'vcf': final_name,
-                                         'result': result.copy(), 'outputs': hashes})
+                os.replace(artifact, destination / names[artifact])
+                installed.append(names[artifact])
+            atomic_write_json(completion, {'schema': SCHEMA, 'signature': signature, 'vcf': published_final,
+                                         'result': published_result, 'outputs': hashes})
         except BaseException:
             for name in installed:
                 (destination / name).unlink(missing_ok=True)
             for name in saved:
                 os.replace(backup / name, destination / name)
             raise
+    result.clear()
+    result.update(published_result)
+
+
+def _prefix_verified_outputs(destination, previous, signature, prefix):
+    """Rename verified legacy downloads without rerunning scientific tools."""
+    result = previous['result'].copy()
+    if all(name.startswith(prefix+'.') for name in previous['outputs']):
+        return result
+    with tempfile.TemporaryDirectory(prefix='.names-', dir=destination.parent) as temp:
+        staged = []
+        for name in previous['outputs']:
+            source, target = destination/name, Path(temp)/name
+            os.link(source, target)
+            staged.append(target)
+        _publish(destination, staged, previous, signature, previous['vcf'], result, artifact_prefix=prefix)
+    return result
 
 
 def _evidence(vcf: Path, text_vcf: Path, table: Path, request: VariantRequest, sample: str, caller: str):
@@ -661,21 +693,24 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                     signature_command = [json.dumps(request.as_dict(include_runtime_diagnostics=False),sort_keys=True),_module_digest(),json.dumps(status['annovar_detection'],sort_keys=True),_module_digest('annovar.py'),_module_digest('ffperase.py'),_module_digest('varlociraptor.py'),_module_digest('variant_filters.py'),_module_digest('strelka2.py'),json.dumps(detection,sort_keys=True)]
                     signature_inputs += [request.varlociraptor_scenario] if request.varlociraptor_scenario else []
                     signature = ledger.signature(f'variants-{sample}-{caller}', signature_command, signature_inputs)
-                    legacy_command = list(signature_command)
-                    # d13f8f3 used the same scientific caller/assessment contract.
-                    # This revision changes scheduling, not those computations.
-                    legacy_command[1] = 'c71529f4c2a04afc126fb0b00a39486b73aea022ab285eecde01beab2d3794c8'
-                    legacy_signature = ledger.signature(f'variants-{sample}-{caller}', legacy_command, signature_inputs)
+                    compatible_signatures = {signature}
+                    # Known predecessors have the same scientific caller contract;
+                    # only scheduling and published artifact names have changed.
+                    for digest in ('c71529f4c2a04afc126fb0b00a39486b73aea022ab285eecde01beab2d3794c8',
+                                   'd0dacffb5597528ac96d4c09debf9eb67493a551697c69e87d5ca958ba35b156'):
+                        legacy_command = list(signature_command)
+                        legacy_command[1] = digest
+                        compatible_signatures.add(ledger.signature(f'variants-{sample}-{caller}', legacy_command, signature_inputs))
                     completed = dest/'complete.json'
                     if completed.is_symlink():
                         raise OncoTracerError('Variant completion manifest must not be a symlink')
                     previous = json.loads(completed.read_text()) if completed.is_file() else None
                     _owned_outputs(dest, previous)
                     accepted_samples = {sample} if request.mode == 'ont' or caller == 'strelka2_somatic' else sm
-                    if not force and previous and previous.get('signature') in {signature, legacy_signature} and previous.get('result', {}).get('status') == 'complete':
+                    if not force and previous and previous.get('signature') in compatible_signatures and previous.get('result', {}).get('status') == 'complete':
                         if all((dest/f).is_file() and sha256_file(dest/f)==digest for f,digest in previous['outputs'].items()):
                             validate_vcf(dest/previous['vcf'], expected_samples=accepted_samples)
-                            result.update(previous['result'], resumed=True)
+                            result.update(_prefix_verified_outputs(dest, previous, signature, f'{sample}.{caller}'), resumed=True)
                             continue
                     scratch = work/caller
                     scratch.mkdir()
@@ -755,13 +790,13 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                         result['vcf_sample_names'] = sorted(accepted_samples)
                         result['diagnostics'] = [str(dest/p.name) for p in diagnostics]
                         artifacts = [final,Path(str(final)+'.tbi'),evidence,*annotation_files,*assessment_files,*diagnostics,*scratch.glob('*.log')]
-                        _publish(dest, artifacts, previous, signature, final.name, result)
+                        _publish(dest, artifacts, previous, signature, final.name, result, artifact_prefix=f'{sample}.{caller}')
                     except (OSError,OncoTracerError,ValueError) as error:
                         result.update(status='failed',error=str(error))
                         logs = root/'failed_logs'/sample/caller
                         logs.mkdir(parents=True,exist_ok=True)
                         for p in scratch.glob('*.log'):
-                            shutil.copy2(p,logs/p.name)
+                            shutil.copy2(p,logs/f'{sample}.{caller}.{p.name}')
                 states = [r['status'] for r in sample_result['callers'] if r['status']!='not_applicable']
                 sample_result['status'] = ('not_applicable' if not states else 'complete' if all(s=='complete' for s in states)
                                           else 'partial_failure' if any(s in {'complete','partial_failure'} for s in states) else 'failed')

@@ -112,9 +112,14 @@ def _diagnostic(stage: str, relative: Path) -> bool:
     if stage.startswith("01_samurai_") and (relative.suffix in {".bam", ".bai", ".rds"} or "input" in parts):
         return True
     if stage == "08_variants":
+        name = relative.name
+        if len(parts) >= 4 and parts[0] == "samples":
+            prefix = f"{parts[1]}.{parts[2]}."
+            if name.startswith(prefix):
+                name = name[len(prefix):]
         return ("failed_logs" in parts or any(part.startswith(".") for part in parts)
                 or relative.suffix == ".log" or relative.name in {"owner.json", "complete.json"}
-                or relative.name.startswith(("raw.", "caller_raw.", "unfiltered.", "normalized.", "review.", "f1r2.", "orientation-priors.")))
+                or name.startswith(("raw.", "caller_raw.", "unfiltered.", "normalized.", "review.", "f1r2.", "orientation-priors.", "before_assessment.", "strelka_original.")))
     if stage == "02_bam_refinement":
         return not (len(parts) == 3 and
                     ((parts[1] == "04_final_results" and relative.name in {"final_segments.tsv", "final_segments.bed", "refined_bins_boundary_bp_difference.csv", "refined_bins_boundary_bp_difference.xlsx"})
@@ -151,7 +156,7 @@ def _important(stage: str, relative: Path) -> bool:
     if stage == "07_methylation":
         return name in {"methylation_status.json", "methylation_provenance.json"} or (relative.suffix in {".tsv", ".csv", ".json", ".pdf", ".html"} and any(word in name.lower() for word in ("score", "prediction", "probabilit", "summary", "qc")))
     if stage == "08_variants":
-        return (name.endswith((".vcf.gz", ".vcf", "_multianno.txt")) or name == "evidence.tsv")
+        return (name.endswith((".vcf.gz", ".vcf", "_multianno.txt", ".evidence.tsv")) or name == "evidence.tsv")
     return name.endswith("sample_status.json") or name.endswith("summary_mqc.txt")
 
 

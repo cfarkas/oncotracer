@@ -215,7 +215,7 @@ Select **Docker** and this image in browser settings, or prefill them:
 
 ```bash
 oncotracer setup --backend docker \
-  --image carlosfarkas/oncotracer:coverage-qc-20261023 --variants
+  --image carlosfarkas/oncotracer:sample-names-20261024 --variants
 ```
 
 <details markdown="1">
@@ -227,7 +227,7 @@ image runs alignment, CNA and variants; no host Conda environment is needed.
 ```bash
 oncotracer setup --non-interactive --project "$PWD/docker-variant-study" \
   --mode illumina --analysis cna --backend docker --threads 4 \
-  --image carlosfarkas/oncotracer:coverage-qc-20261023 \
+  --image carlosfarkas/oncotracer:sample-names-20261024 \
   --sample-name TUMOR01 --status tumor \
   --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
   --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
@@ -236,7 +236,7 @@ oncotracer setup --non-interactive --project "$PWD/docker-variant-study" \
   --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
 oncotracer check --config "$PWD/docker-variant-study/config/run.yml"
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:coverage-qc-20261023 \
+  --image carlosfarkas/oncotracer:sample-names-20261024 \
   --config "$PWD/docker-variant-study/config/run.yml"
 ```
 
@@ -312,3 +312,30 @@ reason and available evidence. A nonzero terminal exit code can mean partial
 failure or failure; inspect `workflow_status` and the per-caller status rather
 than treating every nonzero return as loss of all results. [Output paths and
 status details](variants_reference.md#read-the-outputs) explain what was produced.
+
+## Sample names in downloaded files
+
+Per-sample variant downloads retain the exact sample ID, including hyphens and
+periods. Native caller outputs also include the caller name, so two callers for
+one sample remain distinguishable when downloaded into the same folder:
+
+```text
+CTRL-001.clair3.vcf.gz
+CTRL-001.clair3.vcf.gz.tbi
+CTRL-001.clair3.annovar.hg38_multianno.txt
+CTRL-001.clair3.annovar.hg38_multianno.vcf
+CTRL-001.clair3.evidence.tsv
+CTRL-001.clair3.ffperase.evidence.tsv  # only when this assessment was requested
+CTRL-001.clairs_to.evidence.tsv       # a different caller for the same sample
+```
+
+The same naming rule applies to published caller diagnostics, assessment files
+and logs. Internal completion manifests retain their fixed names. Illumina's
+GLIMPSE2 workflow already prefixes per-sample variant and annotation downloads,
+for example `CTRL003.germline.annotated.vcf.gz` and
+`CTRL003.germline.hg38_multianno.txt`; cohort outputs describe the cohort.
+
+The results page links to these filenames. On a compatible resume, verified
+legacy native outputs receive the prefixes without rerunning variant calling
+or changing VCF records. Files edited by the user and unowned filename
+collisions are rejected; a failed publication restores the prior generation.
