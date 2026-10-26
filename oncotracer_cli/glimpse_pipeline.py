@@ -88,7 +88,7 @@ def plan(request):
         'ffpe_handling':'FFPErase flagged variants excluded from accepted set unless stringent germline rescue criteria pass; all remain in the audit VCF.'}
 
 
-def preflight(request,toolchain=None):
+def preflight(request,toolchain=None,*,environment=None):
     validate_patient_table((request.glimpse_config or {}).get('patients'))
     # Preserve native dependency discovery without entering this dispatcher again.
     from dataclasses import replace
@@ -107,7 +107,9 @@ def preflight(request,toolchain=None):
     if not shutil.which('java'):raise OncoTracerError('Nextflow requires Java on PATH')
     bundle=workflow_bundle((request.glimpse_config or {}).get('workflow_source'))
     from .glimpse_readiness import check
-    return check(request,tools,toolchain,bundle)
+    if environment is None:
+        return check(request,tools,toolchain,bundle)
+    return check(request,tools,toolchain,bundle,environment=environment)
 
 
 def _source_folder(path):
@@ -412,7 +414,10 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
     for tumor,normal in request.matched_normals:
         if tumor not in bams or normal not in bams or (sample_statuses or {}).get(tumor)!='tumor' or (sample_statuses or {}).get(normal)!='normal':
             raise OncoTracerError('Matched normal mapping requires selected tumor/normal samples with explicit roles')
-    tools=preflight(request,toolchain)
+    # Readiness must see the runner's protected HOME/cache, not the controller's
+    # already warmed HOME. No sample is scheduled until preparation succeeds.
+    child_environment=runner.child_environment() if isinstance(runner,CommandRunner) else dict(os.environ)
+    tools=preflight(request,toolchain,environment=child_environment)
     reference=require_file(Path(reference['fasta'] if isinstance(reference,Mapping) else reference),'GRCh38 FASTA').resolve()
     base,root=_claim_output_root(outdir,bams)
     options=request.glimpse_config or {};resources=Path(options.get('resource_dir') or root/'resources').resolve()
@@ -494,9 +499,10 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
                 if stop.is_set():raise _SampleCancelled('Stopped before launching sample')
                 with (launch/'nextflow.log').open('a') as log:
                     child_env = sample_runner.child_environment() if isinstance(sample_runner, CommandRunner) else os.environ
-                    with isolated_nextflow_environment(child_env) as nextflow_env:
+                    prepared=tools.get('nextflow_environment',{})
+                    with isolated_nextflow_environment({**child_env,**prepared}) as nextflow_env:
                         sample_runner.run('complete-glimpse2-'+sample,command,cwd=launch,
-                                          env=nextflow_env,stdout=log,stderr=log)
+                                          env={**prepared,**nextflow_env},stdout=log,stderr=log)
                 if stop.is_set():raise _SampleCancelled('Stopped after sample workflow')
                 vcf=sample_root/'cohort_vcf'/f'{sample}.cohort_vcf'/f'{sample}.annotated.vcf.gz'
                 require_file(vcf,'Completed annotated VCF')

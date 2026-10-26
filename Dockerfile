@@ -9,7 +9,7 @@ ARG SOURCE_COMMIT
 ARG SOURCE_SHA256
 
 LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="2.1.0" \
+      org.opencontainers.image.version="2.1.1" \
       org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
       org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
@@ -88,6 +88,11 @@ RUN chmod 0755 /usr/local/bin/run_clairs_to /usr/local/bin/run_clair3.sh \
     && /usr/local/bin/run_clair3.sh --help >/dev/null
 
 ENV ONCOTRACER_CONTAINER_RUNTIME=docker
+
+# Authenticate the bundled launcher and JAR before publishing the image. Runtime
+# preparation copies this read-only distribution into a verified generation.
+RUN echo 'a73e0d796932b9455cbef207dda4937b98b06b687b049acda46c152d1d25f2c9  /usr/local/bin/nextflow' | sha256sum -c - \
+    && echo 'a0fc1d8cadedd6c8aae0532da04da06a3b642d910bc9a15718ba263ac9013a2b  /opt/nextflow/framework/26.04.2/nextflow-26.04.2-one.jar' | sha256sum -c -
 
 COPY . ${ONCOTRACER_HOME}/
 

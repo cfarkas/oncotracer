@@ -28,7 +28,7 @@ Choose one command below. Conda/Poetry install the core CNA tools and verified s
 
 ```bash
 oncotracer install --conda
-oncotracer install --docker --image carlosfarkas/oncotracer:parallel-jvm-20261024
+oncotracer install --docker --image carlosfarkas/oncotracer:2.1.1
 oncotracer install --singularity
 ./oncotracer install --poetry
 ```
@@ -289,7 +289,7 @@ CLI values override methylation, classifier, input, and GPU YAML values. Choose 
 | `methylation_only` | `false` | skip CNA; enabled by `setup --analysis methylation` |
 | `threads` | up to 16 if not set | CPU worker threads; `--threads` overrides this value |
 | `methylation_gpu` | `false` | Dorado `cuda:all`; MARLIN GPU visibility; Modkit/Sturgeon remain CPU |
-| `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.1.0 |
+| `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.1.1 |
 | `methylation_dorado_executable` | required local executable | Dorado binary; no download or installation |
 | `methylation_modkit_executable` | required local executable | Modkit binary; no download or installation |
 | `methylation_samtools_executable` | `samtools` | Explicit or PATH-resolved SAMtools binary |

@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 from .runtime import OncoTracerError
-from .nextflow_runtime import isolated_nextflow_environment
+from .nextflow_runtime import isolated_nextflow_environment, prepare_nextflow_environment
 
 MODULES = ('numpy', 'scipy', 'pysam', 'openpyxl', 'reportlab')
 
@@ -74,7 +74,7 @@ def analysis_python(request, toolchain=None):
                          '. Prepare the managed core environment.\n' + '\n'.join(errors))
 
 
-def check(request, tools, toolchain, bundle):
+def check(request, tools, toolchain, bundle, *, environment=None):
     tools = dict(tools)
     for name in ('samtools', 'bcftools', 'gatk'):
         if name in tools:
@@ -88,8 +88,11 @@ def check(request, tools, toolchain, bundle):
                 except ValueError as error:
                     raise OncoTracerError(str(error)) from error
                 print(contract.version_diagnostic(runtime), file=sys.stderr, flush=True)
-    with isolated_nextflow_environment() as nextflow_env:
-        probe([tools['nextflow'], '-version'], 'Nextflow', env=nextflow_env)
+    child = _environment() if environment is None else dict(environment)
+    prepared = prepare_nextflow_environment(tools['nextflow'], child)
+    tools['nextflow_environment'] = prepared
+    with isolated_nextflow_environment({**child, **prepared}) as nextflow_env:
+        probe([tools['nextflow'], '-version'], 'Nextflow', env={**child, **prepared, **nextflow_env})
     probe([shutil.which('java') or 'java', '-version'], 'Java')
     tools['python'] = analysis_python(request, toolchain)
     spec = importlib.util.spec_from_file_location('_oncotracer_report_readiness', bundle / 'bin/llm_reporting.py')

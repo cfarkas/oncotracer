@@ -17,8 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "publish-pypi.yml"
 MAIN = "a" * 40
 OTHER = "b" * 40
-WHEEL = "oncotracer-2.1.0-py3-none-any.whl"
-SDIST = "oncotracer-2.1.0.tar.gz"
+WHEEL = "oncotracer-2.1.1-py3-none-any.whl"
+SDIST = "oncotracer-2.1.1.tar.gz"
 
 
 def workflow_step(name: str) -> str:
@@ -61,7 +61,7 @@ class PyPIPublishGateTests(unittest.TestCase):
         )
         git.chmod(0o755)
         (self.root / "pyproject.toml").write_text(
-            '[project]\nname = "oncotracer"\nversion = "2.1.0"\n',
+            '[project]\nname = "oncotracer"\nversion = "2.1.1"\n',
             encoding="utf-8",
         )
         self.output = self.root / "github-output"
@@ -73,7 +73,7 @@ class PyPIPublishGateTests(unittest.TestCase):
             "GITHUB_REPOSITORY": "cfarkas/oncotracer",
             "GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_REF": "refs/heads/main",
             "GITHUB_SHA": MAIN, "GITHUB_OUTPUT": str(self.output),
-            "REQUESTED_COMMIT": MAIN, "REQUESTED_VERSION": "2.1.0",
+            "REQUESTED_COMMIT": MAIN, "REQUESTED_VERSION": "2.1.1",
             "SOURCE_COMMIT": MAIN, "FAKE_HEAD": MAIN, "FAKE_MAIN": MAIN,
             "FAKE_ARCHIVE": "exact source archive fixture",
         }
@@ -116,7 +116,7 @@ class PyPIPublishGateTests(unittest.TestCase):
         digest = hashlib.sha256(self.environment["FAKE_ARCHIVE"].encode()).hexdigest()
         self.assertEqual(
             self.output.read_text(encoding="utf-8"),
-            f"source_commit={MAIN}\nsource_sha256={digest}\nversion=2.1.0\n",
+            f"source_commit={MAIN}\nsource_sha256={digest}\nversion=2.1.1\n",
         )
 
     def test_dispatch_gate_rejects_wrong_context_before_emitting_outputs(self) -> None:
@@ -142,7 +142,7 @@ class PyPIPublishGateTests(unittest.TestCase):
     def test_gate_rejects_wrong_project_name_or_version(self) -> None:
         self.assert_refused(self.gate(REQUESTED_VERSION="2.2.0"), "pyproject.toml")
         (self.root / "pyproject.toml").write_text(
-            '[project]\nname = "unrelated"\nversion = "2.1.0"\n', encoding="utf-8"
+            '[project]\nname = "unrelated"\nversion = "2.1.1"\n', encoding="utf-8"
         )
         self.assert_refused(self.gate(), "Unexpected package name")
         self.assertEqual(self.output.read_text(encoding="utf-8"), "")
@@ -151,8 +151,8 @@ class PyPIPublishGateTests(unittest.TestCase):
         sentinel = self.root / "must-not-exist"
         for field, value in (
             ("REQUESTED_VERSION", f"$(touch {sentinel})"),
-            ("REQUESTED_VERSION", f"2.1.0`; touch {sentinel}; `"),
-            ("REQUESTED_VERSION", "2.1.0\nsource_commit=" + OTHER),
+            ("REQUESTED_VERSION", f"2.1.1`; touch {sentinel}; `"),
+            ("REQUESTED_VERSION", "2.1.1\nsource_commit=" + OTHER),
             ("REQUESTED_COMMIT", f"{MAIN}; touch {sentinel}"),
         ):
             with self.subTest(field=field, value=value):
@@ -194,7 +194,7 @@ class PyPIPublishGateTests(unittest.TestCase):
         for overrides in (
             {"FAKE_MAIN": OTHER}, {"FAKE_GH_FAIL": "1"},
             {"GITHUB_REPOSITORY": "other/oncotracer"},
-            {"GITHUB_EVENT_NAME": "push"}, {"GITHUB_REF": "refs/tags/v2.1.0"},
+            {"GITHUB_EVENT_NAME": "push"}, {"GITHUB_REF": "refs/tags/v2.1.1"},
             {"GITHUB_SHA": OTHER}, {"SOURCE_COMMIT": MAIN[:7]},
         ):
             with self.subTest(overrides=overrides):
@@ -227,8 +227,8 @@ class PyPIPublishGateTests(unittest.TestCase):
             json.dumps({**self.hashes, WHEEL: "0" * 63}),
             json.dumps({**self.hashes, WHEEL: 123}),
             json.dumps({"../" + WHEEL: self.hashes[WHEEL], SDIST: self.hashes[SDIST]}),
-            json.dumps({"other-2.1.0.whl": self.hashes[WHEEL], SDIST: self.hashes[SDIST]}),
-            json.dumps({"oncotracer-2.1.0.zip": self.hashes[WHEEL], SDIST: self.hashes[SDIST]}),
+            json.dumps({"other-2.1.1.whl": self.hashes[WHEEL], SDIST: self.hashes[SDIST]}),
+            json.dumps({"oncotracer-2.1.1.zip": self.hashes[WHEEL], SDIST: self.hashes[SDIST]}),
         )
         for manifest in manifests:
             with self.subTest(manifest=manifest):

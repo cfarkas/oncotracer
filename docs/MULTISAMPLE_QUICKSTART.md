@@ -5,6 +5,22 @@ for **Illumina and ONT alignment**, **ONT variant calling**, and complete
 **Illumina/FFPE variant analysis with GLIMPSE2**. Illumina variants retain their
 Nextflow workflows; native stages use cancellable sample workers.
 
+### Safe startup for parallel Illumina and FFPE jobs
+
+Version 2.1.1 prepares Nextflow once in the environment the sample workers will
+actually use, before starting their workflows. It checks the distribution,
+publishes it atomically, and gives each JVM a separate temporary directory.
+This covers an empty cache and installations where `/tmp` and the output folder
+are on different filesystems. Conda and Docker use the same preparation code.
+
+An interrupted download is never marked ready. If a managed cached JAR changes,
+OncoTracer prepares a new generation without overwriting files used by another
+run. Preparation failures stop variant sample launch with an error. Sequencing
+results and Nextflow work directories are separate from this runtime cache.
+
+The regression tests include simultaneous startup with an empty private cache,
+damaged downloads, separate controller processes and real Nextflow tasks.
+
 ## Detect sample-job combinations first
 
 ```bash

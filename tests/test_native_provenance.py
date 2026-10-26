@@ -35,7 +35,7 @@ class OwningDistributionTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
-    def distribution(self, root: Path, version: str = "2.1.0", name: str = "oncotracer") -> Path:
+    def distribution(self, root: Path, version: str = "2.1.1", name: str = "oncotracer") -> Path:
         package = root / "oncotracer_cli"
         package.mkdir(parents=True, exist_ok=True)
         (package / "provenance.py").write_text("# fixture package\n", encoding="utf-8")
@@ -320,7 +320,7 @@ class NativeProvenanceTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        self.assertIn("OncoTracer 2.1.0", version.stdout)
+        self.assertIn("OncoTracer 2.1.1", version.stdout)
         result = subprocess.run(
             [str(copied), "provenance", "--json"],
             cwd=outside,

@@ -170,7 +170,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/outside-checkout"
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
-          ./oncotracer --version | grep -F 'OncoTracer 2.1.0'
+          ./oncotracer --version | grep -F 'OncoTracer 2.1.1'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA and variant analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
@@ -239,7 +239,7 @@ jobs:
           python3 -m pip install 'poetry>=2,<3'
           poetry check --lock
           poetry install --no-interaction
-          poetry run oncotracer --version | grep -F 'OncoTracer 2.1.0'
+          poetry run oncotracer --version | grep -F 'OncoTracer 2.1.1'
       - name: Build documentation strictly
         run: |
           python3 -m pip install -r docs/requirements.txt
@@ -536,7 +536,7 @@ jobs:
             "$RUNNER_TEMP/docker-installed-doctor.json"
       - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
-          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.1.0'
+          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.1.1'
           docker run --rm oncotracer:v2-ci provenance --json \
             | tee "$RUNNER_TEMP/docker-provenance.json"
           jq -e \
@@ -558,7 +558,8 @@ jobs:
           docker run --rm --network none --user 1000:1000 --env HOME=/tmp \
             --entrypoint /opt/conda/bin/python oncotracer:v2-ci -B \
             /opt/oncotracer/scripts/smoke_nextflow_parallel.py \
-            --work-dir /tmp/nextflow-parallel-smoke --jobs 4 --rounds 2
+            --work-dir /tmp/nextflow-parallel-smoke --jobs 4 --rounds 2 \
+            --distribution-jar /opt/nextflow/framework/26.04.2/nextflow-26.04.2-one.jar
           docker run --rm --network none --user 1000:1000 --workdir /tmp --env HOME=/tmp \
             --entrypoint /usr/local/bin/nextflow oncotracer:v2-ci \
             run /opt/oncotracer/oncotracer_cli/lpwgs/main.nf --help -ansi-log false

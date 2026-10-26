@@ -68,7 +68,7 @@ oncotracer install --conda \
 ### FASTQ to CNA and variants
 
 The current Linux x86-64 image is
-`carlosfarkas/oncotracer:parallel-jvm-20261024`. It includes the complete
+`carlosfarkas/oncotracer:2.1.1`. It includes the complete
 Illumina GLIMPSE2 workflow, FFPE repairs, integrated ONT callers and concurrent
 project support. `oncotracer install --docker` selects this image by default.
 
@@ -126,7 +126,7 @@ The stable release below predates the complete GLIMPSE2 branch.
 Stable native image:
 
 ```text
-ghcr.io/cfarkas/oncotracer:2.1.0
+ghcr.io/cfarkas/oncotracer:2.1.1
 ```
 
 Install and run:
@@ -150,7 +150,7 @@ Select a local image tag or immutable registry digest:
 ```bash
 oncotracer run \
   --backend docker \
-  --image ghcr.io/cfarkas/oncotracer:2.1.0 \
+  --image ghcr.io/cfarkas/oncotracer:2.1.1 \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
@@ -203,7 +203,7 @@ Choose an explicit SIF location:
 
 ```bash
 oncotracer install --singularity \
-  --sif "/large/storage/containers/oncotracer-2.1.0.sif"
+  --sif "/large/storage/containers/oncotracer-2.1.1.sif"
 ```
 
 To install a source-built image already present in your local Docker daemon,
@@ -224,7 +224,7 @@ Or override it for one run:
 ```bash
 oncotracer run \
   --backend singularity \
-  --sif "/large/storage/containers/oncotracer-2.1.0.sif" \
+  --sif "/large/storage/containers/oncotracer-2.1.1.sif" \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 

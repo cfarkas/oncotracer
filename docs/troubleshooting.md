@@ -198,8 +198,8 @@ or digest. A bare `install --docker` selects the current default image.
 
 ```bash
 docker info
-oncotracer install --docker --image carlosfarkas/oncotracer:parallel-jvm-20261024
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:parallel-jvm-20261024
+oncotracer install --docker --image carlosfarkas/oncotracer:2.1.1
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:2.1.1
 ```
 
 If an older launcher accepts intermediate outputs but then reports a different
@@ -397,7 +397,7 @@ The override is an advanced integration option. It must name an absent or empty 
 The default cache layout is:
 
 ```text
-${XDG_CACHE_HOME:-$HOME/.cache}/oncotracer/2.1.0/<executable-sha256>/payload
+${XDG_CACHE_HOME:-$HOME/.cache}/oncotracer/2.1.1/<executable-sha256>/payload
 ```
 
 Every `--dry-run` uses a separate temporary payload and removes it on success, error, or interruption. A dry-run must not create persistent XDG state, outputs, environments, images, or SIF files.
@@ -414,3 +414,15 @@ Include only de-identified information:
 - whether the problem reproduces in QuickStart 1 or 2.
 
 Never attach identifiable patient data or private pathology text to a public issue.
+
+## Parallel samples fail while Nextflow starts
+
+Version 2.1.1 fixes two startup races: JVMs sharing an extracted native library,
+and multiple first-time launches copying the same distribution JAR across
+filesystems. Errors included `Invalid or corrupt jarfile`, `Unable to access
+jarfile`, class-loading failures, and earlier native-library crashes.
+
+Update the application and Docker image together. OncoTracer prepares and verifies
+the runtime before releasing parallel variant samples. An interrupted download is
+not reused. The preparation message is expected; it does not restart completed
+sequencing work. See [parallel samples](MULTISAMPLE_QUICKSTART.md).

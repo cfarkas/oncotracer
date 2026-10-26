@@ -111,7 +111,9 @@ def _valid_source(value: object) -> bool:
             "source_commit",
             "source_sha256",
         }
-        and value.get("oncotracer_version") == __version__
+        # Recognize prior owned environments during the 2.1.1 upgrade. Reuse
+        # still requires exact dependency definitions and inventory checks.
+        and value.get("oncotracer_version") in {__version__, "2.1.0"}
         and isinstance(value.get("source_commit"), str)
         and bool(_HEX_40.fullmatch(str(value["source_commit"])))
         and isinstance(value.get("source_sha256"), str)

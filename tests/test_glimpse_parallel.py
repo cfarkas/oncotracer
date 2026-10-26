@@ -143,6 +143,18 @@ class ParallelSamplesTests(ResourceFixtureCase):
         self.assertTrue(all(row['status']=='not_started' for row in result['samples']))
         self.assertEqual(json.loads(Path(result['status_file']).read_text())['overall_status'],'failed')
 
+    def test_private_worker_environment_is_checked_before_scheduling(self):
+        runner=CommandRunner(self.root/'commands.tsv', protected_environment={
+            'HOME':str(self.root/'worker-home'), 'XDG_CACHE_HOME':str(self.root/'worker-cache')})
+        with patch.object(pipeline,'preflight',side_effect=OncoTracerError('bootstrap failed')) as check, \
+             patch.object(pipeline,'ensure_resources') as resources, \
+             patch.object(pipeline,'ThreadPoolExecutor') as workers:
+            with self.assertRaisesRegex(OncoTracerError,'bootstrap failed'):
+                pipeline.run(self.request,self.bams,self.reference,self.root/'output',runner,None,threads=8)
+        self.assertEqual(check.call_args.kwargs['environment']['HOME'],str(self.root/'worker-home'))
+        self.assertEqual(check.call_args.kwargs['environment']['XDG_CACHE_HOME'],str(self.root/'worker-cache'))
+        resources.assert_not_called(); workers.assert_not_called()
+
     def test_same_sample_reuse_mapping_never_imports_another_genotype(self):
         donor=self.root/'donor/08_variants/glimpse2/samples/SAMPLE_A'
         (donor/'pipeline_info').mkdir(parents=True)

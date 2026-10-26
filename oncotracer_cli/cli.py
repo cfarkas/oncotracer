@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:parallel-jvm-20261024"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:2.1.1"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -203,7 +203,7 @@ def _install_singularity(args: argparse.Namespace, *, save: bool = True) -> dict
     destination = (
         Path(args.sif)
         if args.sif
-        else (_data_home() / "images" / "oncotracer-2.1.0.sif")
+        else (_data_home() / "images" / "oncotracer-2.1.1.sif")
     )
     with installer_cli_target_arguments(destination):
         installed = install_sif_managed(
@@ -606,7 +606,7 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
             "no SIF is configured; run 'oncotracer install --singularity'"
         )
     sif_candidate = (
-        Path(str(sif_value or "/path/to/oncotracer-2.1.0.sif")).expanduser().resolve()
+        Path(str(sif_value or "/path/to/oncotracer-2.1.1.sif")).expanduser().resolve()
     )
     sif = (
         sif_candidate if args.dry_run else require_file(sif_candidate, "OncoTracer SIF")

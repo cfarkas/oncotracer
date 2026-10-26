@@ -85,7 +85,11 @@ INTENTIONAL_PYTHON_NEXTFLOW_AUDIT_LINES = {
         "result['variant_nextflow'] = '/usr/local/bin/nextflow'",
     },
     "oncotracer_cli/glimpse_readiness.py": {
-        "probe([tools['nextflow'], '-version'], 'Nextflow', env=nextflow_env)",
+        "probe([tools['nextflow'], '-version'], 'Nextflow', env={**child, **prepared, **nextflow_env})",
+        "prepared = prepare_nextflow_environment(tools['nextflow'], child)",
+    },
+    "oncotracer_cli/nextflow_runtime.py": {
+        "root = cache / 'oncotracer' / 'nextflow' / key",
     },
     "oncotracer_cli/setup.py": {
         "for field in ('glimpse-reference-dir','glimpse-bin','resource-dir','patients','reuse-from','nextflow','workflow-source'):",
@@ -111,6 +115,7 @@ GLIMPSE_WORKFLOW_FILES = frozenset({
 })
 GLIMPSE_COMMAND_MODULES = frozenset({
     'oncotracer_cli/glimpse_pipeline.py', 'oncotracer_cli/nextflow_gateway.py',
+    'oncotracer_cli/nextflow_runtime.py',
 })
 GZIP_MAGIC_MODULES = frozenset({
     'oncotracer_cli/lpwgs/bin/clinvar_resource.py',
@@ -512,7 +517,7 @@ class ProductHygieneTests(unittest.TestCase):
     def test_glimpse_runtime_audit_exceptions_are_exact(self) -> None:
         cases = {
             "oncotracer_cli/docker_runtime.py": "result['variant_nextflow'] = '/usr/local/bin/nextflow'",
-            "oncotracer_cli/glimpse_readiness.py": "probe([tools['nextflow'], '-version'], 'Nextflow', env=nextflow_env)",
+            "oncotracer_cli/glimpse_readiness.py": "probe([tools['nextflow'], '-version'], 'Nextflow', env={**child, **prepared, **nextflow_env})",
         }
         for relative, line in cases.items():
             for prefix in ("", "payload/"):

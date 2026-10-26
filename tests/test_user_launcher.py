@@ -102,8 +102,8 @@ class UserLauncherTests(unittest.TestCase):
         site = self.home / ".local/lib/python/site-packages"
         module = site / "oncotracer_cli/user_launcher.py"
         module.parent.mkdir(parents=True); module.write_text("# installed module\n")
-        info = site / "oncotracer-2.1.0.dist-info"; info.mkdir()
-        (info / "METADATA").write_text("Name: oncotracer\nVersion: 2.1.0\n")
+        info = site / "oncotracer-2.1.1.dist-info"; info.mkdir()
+        (info / "METADATA").write_text("Name: oncotracer\nVersion: 2.1.1\n")
         (info / "entry_points.txt").write_text("[console_scripts]\noncotracer = oncotracer_cli.cli:main\n")
         digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
         with (info / "RECORD").open("w", newline="") as output:

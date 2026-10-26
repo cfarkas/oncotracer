@@ -11,7 +11,7 @@ import sys
 import threading
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from oncotracer_cli.nextflow_runtime import isolated_nextflow_environment
+from oncotracer_cli.nextflow_runtime import isolated_nextflow_environment, prepare_nextflow_environment
 
 
 def main():
@@ -20,6 +20,8 @@ def main():
     parser.add_argument('--nextflow', default='nextflow')
     parser.add_argument('--jobs', type=int, default=4)
     parser.add_argument('--rounds', type=int, default=2)
+    parser.add_argument('--distribution-jar', type=Path,
+                        help='Test an empty private cache, using this real JAR as the download source')
     args = parser.parse_args()
     if args.jobs < 2 or args.rounds < 1:
         parser.error('Use at least two jobs and one round')
@@ -48,6 +50,15 @@ workflow {
     base = dict(os.environ, NXF_TEMP=str(temp_parent), NXF_OFFLINE='true',
                 NXF_DISABLE_CHECK_LATEST='true', NXF_ANSI_LOG='false',
                 NXF_OPTS='-Xms32m -Xmx256m -XX:ActiveProcessorCount=2 -XX:-CreateCoredumpOnCrash')
+    if args.distribution_jar:
+        jar = args.distribution_jar.resolve(strict=True)
+        home = root / 'private-home'; home.mkdir()
+        for key in ('NXF_DIST', 'NXF_BIN', 'NXF_JAR', 'NXF_HOME'):
+            base.pop(key, None)
+        base.update(HOME=str(home), XDG_CACHE_HOME=str(home/'.cache'),
+                    NXF_URL=jar.as_uri())
+    prepared = prepare_nextflow_environment(executable, base)
+    base.update(prepared)
     records = []
     for wave in range(args.rounds):
         barrier = threading.Barrier(args.jobs)
@@ -70,6 +81,7 @@ workflow {
         with ThreadPoolExecutor(max_workers=args.jobs) as pool:
             records.extend(pool.map(run, range(args.jobs)))
     receipt = {'synthetic_only': True, 'simultaneous_jobs': args.jobs, 'rounds': args.rounds,
+               'cold_cache': bool(args.distribution_jar), 'prepared_environment': prepared,
                'passed': all(r['passed'] and r['cleaned'] for r in records)
                          and len({r['temporary_directory'] for r in records}) == len(records),
                'runs': records}

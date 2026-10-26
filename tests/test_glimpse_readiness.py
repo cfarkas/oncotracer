@@ -63,9 +63,16 @@ class GlimpseReadinessTests(unittest.TestCase):
         (bundle/'bin/llm_reporting.py').write_text(
             'def prepare(c):\n c["llm_python"]="/report/python"\n c["llm_model_directory"]="/local/model"\n')
         tools = {'samtools':'samtools','bcftools':'bcftools','gatk':'gatk','nextflow':'nextflow'}
+        child = {'HOME':'/private/worker/home', 'XDG_CACHE_HOME':'/private/worker/cache'}
         with patch.object(ready,'analysis_python',return_value='/scientific/python'), \
+             patch.object(ready,'prepare_nextflow_environment',return_value={'NXF_DIST':'/prepared/framework'}) as prepare, \
              patch.object(ready,'probe',return_value='bcftools 1.23.1\nUsing htslib 1.24\n') as probe:
-            result = ready.check(self.request, tools, None, bundle)
+            result = ready.check(self.request, tools, None, bundle, environment=child)
+        prepare.assert_called_once_with('nextflow', child)
+        self.assertEqual(result['nextflow_environment']['NXF_DIST'], '/prepared/framework')
+        nf_probe = next(c for c in probe.call_args_list if c.args[0] == ['nextflow','-version'])
+        self.assertEqual(nf_probe.kwargs['env']['HOME'], child['HOME'])
+        self.assertEqual(nf_probe.kwargs['env']['NXF_DIST'], '/prepared/framework')
         self.assertEqual(result['python'], '/scientific/python')
         self.assertEqual(result['llm_python'], '/report/python')
         self.assertEqual(result['llm_model'], '/local/model')
@@ -78,7 +85,8 @@ class GlimpseReadinessTests(unittest.TestCase):
     def test_invalid_report_resources_fail_in_preflight(self):
         bundle = self.root/'bundle';(bundle/'bin').mkdir(parents=True)
         (bundle/'bin/llm_reporting.py').write_text('def prepare(c):\n raise ValueError("model missing")\n')
-        with patch.object(ready,'analysis_python',return_value='/scientific/python'),patch.object(ready,'probe'):
+        with patch.object(ready,'analysis_python',return_value='/scientific/python'), \
+             patch.object(ready,'prepare_nextflow_environment',return_value={'NXF_DIST':'/prepared/framework'}),patch.object(ready,'probe'):
             with self.assertRaisesRegex(OncoTracerError, 'Local report resources are not ready.*model missing'):
                 ready.check(self.request, {'nextflow':'nextflow'}, None, bundle)
 

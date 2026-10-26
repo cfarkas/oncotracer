@@ -1,106 +1,106 @@
 WEBVTT
 
 1
-00:00:01.377 --> 00:00:06.472
+00:00:01.333 --> 00:00:06.409
 QuickStart 1 · Illumina
 Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo.
 
 2
-00:00:06.472 --> 00:00:08.406
+00:00:06.409 --> 00:00:08.330
 QuickStart 1 · Illumina · new analysis
 Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project.
 
 3
-00:00:08.406 --> 00:00:15.218
+00:00:08.330 --> 00:00:15.103
 QuickStart 1 · Illumina · preservation
 Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.
 
 4
-00:00:15.218 --> 00:00:29.823
+00:00:15.103 --> 00:00:29.691
 QuickStart 1 · Illumina · discover inputs
 Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together.
 
 5
-00:00:29.823 --> 00:00:37.355
+00:00:29.691 --> 00:00:37.224
 QuickStart 1 · Illumina · sample groups
 Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups.
 
 6
-00:00:37.355 --> 00:00:45.879
+00:00:37.224 --> 00:00:45.760
 QuickStart 1 · Illumina · CNA settings
 Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins.
 
 7
-00:00:45.879 --> 00:00:52.387
+00:00:45.760 --> 00:00:52.219
 QuickStart 1 · Illumina · tools and reference
 Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis.
 
 8
-00:00:52.387 --> 00:00:59.160
+00:00:52.219 --> 00:00:58.989
 QuickStart 1 · Illumina · separate project
 Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart.
 
 9
-00:00:59.160 --> 00:01:05.969
+00:00:58.989 --> 00:01:05.799
 QuickStart 1 · Illumina · save and review
 Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated.
 
 10
-00:01:05.969 --> 00:01:13.823
+00:01:05.799 --> 00:01:13.650
 QuickStart 1 · Illumina · ready for your run
 In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run.
 
 11
-00:01:13.823 --> 00:01:18.842
+00:01:13.650 --> 00:01:18.668
 QuickStart 1 · Oxford Nanopore
 Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo.
 
 12
-00:01:18.842 --> 00:01:20.736
+00:01:18.668 --> 00:01:20.569
 QuickStart 1 · Oxford Nanopore · new analysis
 Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project.
 
 13
-00:01:20.736 --> 00:01:27.547
+00:01:20.569 --> 00:01:27.364
 QuickStart 1 · Oxford Nanopore · preservation
 Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.
 
 14
-00:01:27.547 --> 00:01:42.155
+00:01:27.364 --> 00:01:41.949
 QuickStart 1 · Oxford Nanopore · discover inputs
 Choose fastq_pass. Each barcode stays one sample, even when it contains several FASTQ batches.
 
 15
-00:01:42.155 --> 00:01:47.672
+00:01:41.949 --> 00:01:47.458
 QuickStart 1 · Oxford Nanopore · sample groups
 Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups.
 
 16
-00:01:47.672 --> 00:01:51.948
+00:01:47.458 --> 00:01:51.734
 QuickStart 1 · Oxford Nanopore · sample name
 Rename barcode01 to DRR165691. The barcode still identifies the same FASTQ input.
 
 17
-00:01:51.948 --> 00:02:00.452
+00:01:51.734 --> 00:02:00.241
 QuickStart 1 · Oxford Nanopore · CNA settings
 Keep Copy-number analysis, ichorCNA and 500 kb bins. FASTQs alone do not provide methylation calls.
 
 18
-00:02:00.452 --> 00:02:06.946
+00:02:00.241 --> 00:02:06.728
 QuickStart 1 · Oxford Nanopore · tools and reference
 Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis.
 
 19
-00:02:06.946 --> 00:02:13.719
+00:02:06.728 --> 00:02:13.472
 QuickStart 1 · Oxford Nanopore · separate project
 Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart.
 
 20
-00:02:13.719 --> 00:02:20.517
+00:02:13.472 --> 00:02:20.254
 QuickStart 1 · Oxford Nanopore · save and review
 Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated.
 
 21
-00:02:20.517 --> 00:02:27.419
+00:02:20.254 --> 00:02:27.154
 QuickStart 1 · Oxford Nanopore · ready for your run
 In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run.
