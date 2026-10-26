@@ -499,7 +499,7 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
                 if stop.is_set():raise _SampleCancelled('Stopped before launching sample')
                 with (launch/'nextflow.log').open('a') as log:
                     child_env = sample_runner.child_environment() if isinstance(sample_runner, CommandRunner) else os.environ
-                    prepared=tools.get('nextflow_environment',{})
+                    prepared=getattr(tools,'nextflow_environment',{})
                     with isolated_nextflow_environment({**child_env,**prepared}) as nextflow_env:
                         sample_runner.run('complete-glimpse2-'+sample,command,cwd=launch,
                                           env={**prepared,**nextflow_env},stdout=log,stderr=log)

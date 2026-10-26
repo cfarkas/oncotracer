@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import os
 import py_compile
 import re
 import shlex
@@ -274,6 +275,29 @@ def materialized_tree_violations(staging: Path) -> list[str]:
 
 
 class ProductHygieneTests(unittest.TestCase):
+    def test_standalone_launch_does_not_add_bytecode_to_verified_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); staging=root/'staging';staging.mkdir()
+            package=staging/'oncotracer_cli';package.mkdir()
+            (package/'__init__.py').write_text('')
+            (package/'cli.py').write_text(
+                'import importlib.util,sys\n'
+                'def main():\n'
+                ' assert sys.dont_write_bytecode\n'
+                ' spec=importlib.util.spec_from_file_location("payload_probe",sys.argv[1])\n'
+                ' spec.loader.exec_module(importlib.util.module_from_spec(spec))\n'
+                ' return 0\n')
+            payload=root/'verified-payload';payload.mkdir()
+            helper=payload/'helper.py';helper.write_text('VALUE=42\n')
+            builder._write_main_module(staging)
+            executable=root/'oncotracer'
+            builder.write_deterministic_zipapp(staging,executable)
+            environment={k:v for k,v in os.environ.items() if k not in ('PYTHONDONTWRITEBYTECODE','PYTHONPYCACHEPREFIX')}
+            result=subprocess.run([sys.executable,str(executable),str(helper)],env=environment,
+                                  capture_output=True,text=True,check=False)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual(list(payload.iterdir()),[helper])
+
     def test_tracked_tree_has_no_local_paths_secrets_or_runtime_artifacts(self) -> None:
         paths = tracked_paths()
         relative_names = {

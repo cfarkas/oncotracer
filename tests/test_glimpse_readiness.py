@@ -69,7 +69,10 @@ class GlimpseReadinessTests(unittest.TestCase):
              patch.object(ready,'probe',return_value='bcftools 1.23.1\nUsing htslib 1.24\n') as probe:
             result = ready.check(self.request, tools, None, bundle, environment=child)
         prepare.assert_called_once_with('nextflow', child)
-        self.assertEqual(result['nextflow_environment']['NXF_DIST'], '/prepared/framework')
+        self.assertEqual(result.nextflow_environment['NXF_DIST'], '/prepared/framework')
+        # The existing-BAM browser snapshots every mapping value as a path.
+        self.assertTrue(all(isinstance(value,str) for value in result.values()))
+        self.assertNotIn('nextflow_environment',json.loads(json.dumps(result)))
         nf_probe = next(c for c in probe.call_args_list if c.args[0] == ['nextflow','-version'])
         self.assertEqual(nf_probe.kwargs['env']['HOME'], child['HOME'])
         self.assertEqual(nf_probe.kwargs['env']['NXF_DIST'], '/prepared/framework')

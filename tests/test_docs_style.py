@@ -188,7 +188,7 @@ REQUIRED_TEXT = {
     ),
     "docs/containers.md": (
         "All backends use the same native stage graph",
-        "ghcr.io/cfarkas/oncotracer:2.1.0",
+        "ghcr.io/cfarkas/oncotracer:2.1.1",
         "The five core Conda groups are",
         "`variants` and `ffperase` environments",
         "core",

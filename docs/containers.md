@@ -119,9 +119,10 @@ use the [explicit sample commands](headless.md) with `--non-interactive`.
 
 See the [resume and FFPE repair notes](glimpse2_repair.txt) for validation scope,
 compatible resource requirements and the existing-output ownership boundary.
-The stable release below predates the complete GLIMPSE2 branch.
+Version 2.1.1 includes the complete GLIMPSE2 workflow and verified runtime
+preparation before parallel samples start.
 
-### Stable CNA release
+### Versioned release
 
 Stable native image:
 

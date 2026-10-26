@@ -183,6 +183,7 @@ def sha256_file(path: Path) -> str:
 def _write_main_module(staging: Path) -> None:
     main_module = staging / "__main__.py"
     main_module.write_text(
+        "import sys\nsys.dont_write_bytecode = True\n"
         "from oncotracer_cli.cli import main\nraise SystemExit(main())\n",
         encoding="utf-8",
     )

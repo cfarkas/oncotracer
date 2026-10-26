@@ -15,6 +15,14 @@ from .nextflow_runtime import isolated_nextflow_environment, prepare_nextflow_en
 MODULES = ('numpy', 'scipy', 'pysam', 'openpyxl', 'reportlab')
 
 
+class ReadyTools(dict):
+    """Keep the executable-path mapping compatible with browser inventories."""
+
+    def __init__(self, tools, environment):
+        super().__init__(tools)
+        self.nextflow_environment = dict(environment)
+
+
 def _environment():
     env = os.environ.copy()
     env.update(PYTHONDONTWRITEBYTECODE='1', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
@@ -90,7 +98,6 @@ def check(request, tools, toolchain, bundle, *, environment=None):
                 print(contract.version_diagnostic(runtime), file=sys.stderr, flush=True)
     child = _environment() if environment is None else dict(environment)
     prepared = prepare_nextflow_environment(tools['nextflow'], child)
-    tools['nextflow_environment'] = prepared
     with isolated_nextflow_environment({**child, **prepared}) as nextflow_env:
         probe([tools['nextflow'], '-version'], 'Nextflow', env={**child, **prepared, **nextflow_env})
     probe([shutil.which('java') or 'java', '-version'], 'Java')
@@ -118,4 +125,4 @@ def check(request, tools, toolchain, bundle, *, environment=None):
         raise OncoTracerError(f'Local report resources are not ready: {error}') from error
     tools['llm_python'] = config['llm_python']
     tools['llm_model'] = config['llm_model_directory']
-    return tools
+    return ReadyTools(tools, prepared)

@@ -14,6 +14,7 @@ import unittest
 from tests.resource_fixture import ResourceFixtureCase
 from unittest.mock import patch
 from oncotracer_cli import glimpse_pipeline as pipeline
+from oncotracer_cli.glimpse_readiness import ReadyTools
 from oncotracer_cli.runtime import CommandRunner, OncoTracerError
 from oncotracer_cli.variants import resolve_variant_request
 
@@ -29,7 +30,8 @@ class ParallelSamplesTests(ResourceFixtureCase):
         for path in self.bams.values():path.write_bytes(b'fixture')
 
     def run_pipeline(self,runner,**kwargs):
-        with patch.object(pipeline,'preflight',return_value={'nextflow':'nextflow','bcftools':'bcftools'}), \
+        tools=ReadyTools({'nextflow':'nextflow','bcftools':'bcftools'}, {'NXF_DIST':str(self.root/'verified-runtime')})
+        with patch.object(pipeline,'preflight',return_value=tools), \
              patch.object(pipeline,'preflight_jobs',return_value=[]), \
              patch.object(pipeline,'ensure_resources') as bootstrap, \
              patch('oncotracer_cli.glimpse_joint.merge_cohort',return_value={'outputs':{}}) as cohort:
@@ -95,6 +97,7 @@ class ParallelSamplesTests(ResourceFixtureCase):
                 time.sleep(.05)
                 params=owner.complete(command)
                 temporary=Path(kwargs['env']['NXF_TEMP'])
+                owner.assertEqual(kwargs['env']['NXF_DIST'],str(owner.root/'verified-runtime'))
                 owner.assertTrue(temporary.is_dir())
                 (temporary/'libjansi-64.so').write_text(stage)
                 if params['threads']!=4 or params['memory']!='32768MB':raise AssertionError('Per-sample allocation escaped total budget')
