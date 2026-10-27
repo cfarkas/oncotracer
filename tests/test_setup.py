@@ -298,7 +298,8 @@ class SetupTests(unittest.TestCase):
                     "sample1",
                 ]
             )
-            with patch("builtins.input", side_effect=lambda prompt: next(answers)):
+            with patch("builtins.input", side_effect=lambda prompt: next(answers)), \
+                 patch('oncotracer_cli.gpu_runtime.options', return_value={'detected': False}):
                 code, output = self.cli("setup", "--manual")
             self.assertEqual(code, 0, output)
             self.assertTrue((fixture.root / "study/config/run.yml").is_file())

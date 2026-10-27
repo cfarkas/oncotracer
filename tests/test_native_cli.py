@@ -42,7 +42,7 @@ from oncotracer_cli.runtime import (  # noqa: E402
 
 class NativeCliTests(unittest.TestCase):
     def test_version_is_v2(self) -> None:
-        self.assertEqual(__version__, "2.1.1")
+        self.assertEqual(__version__, "2.2.0")
 
     def test_parser_exposes_native_commands(self) -> None:
         parser = build_parser()
@@ -70,7 +70,7 @@ class NativeCliTests(unittest.TestCase):
     def test_docker_install_default_still_pulls(self) -> None:
         from oncotracer_cli import cli
         for flags, image in [
-            ([], "carlosfarkas/oncotracer:2.1.1"),
+            ([], "carlosfarkas/oncotracer:2.2.0"),
             (["--image", "registry/image:tag"], "registry/image:tag"),
         ]:
             with self.subTest(image=image):
@@ -802,7 +802,7 @@ class SingularityIsolationTests(unittest.TestCase):
 
     def test_installer_doctor_and_provenance_share_isolation(self):
         from oncotracer_cli import install_safety
-        source = dict(oncotracer_version="2.1.1", source_commit="a" * 40,
+        source = dict(oncotracer_version="2.2.0", source_commit="a" * 40,
                       source_sha256="b" * 64, source_tree_dirty=False)
         seen = []
         def checked(command):

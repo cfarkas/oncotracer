@@ -1,0 +1,13 @@
+name: oncotracer-gpu-reports
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - reportlab>=4.0
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu124
+      - torch==2.6.0+cu124
+      - transformers==4.57.1
+      - safetensors>=0.4
+      - huggingface_hub>=0.34,<1

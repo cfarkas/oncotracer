@@ -192,7 +192,7 @@ The adapted MARLIN preprocessing code retains its upstream MIT terms; the comple
 
 ## GPU behavior
 
-`--gpu` selects `cuda:all` for Dorado modified-base basecalling. It also makes the GPU visible to the external MARLIN R/Keras process; whether MARLIN uses it depends on that user-supplied environment. Modkit and Sturgeon do not gain GPU acceleration from this flag and remain CPU-threaded.
+`--gpu` reserves one NVIDIA GPU for Dorado modified-base basecalling or MARLIN inference. Dorado uses a bounded batch size; MARLIN requires a CUDA-compatible external R/Keras environment. Modkit and Sturgeon remain on CPU. See [GPU setup and memory limits](../gpu.md).
 
 Without a GPU request in the flags or YAML, Dorado is forced to `cpu`, MARLIN receives no visible GPU, and all methylation tools run without GPU access. Use `--cpu` to override `methylation_gpu: true` in an existing YAML. The selected device and executable hashes are written to methylation provenance.
 

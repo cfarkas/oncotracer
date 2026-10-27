@@ -24,19 +24,19 @@
   "unknown_sample": "ONCO-003",
   "browser": {
     "name": "firefox",
-    "version": "155.0"
+    "version": "157.0"
   },
-  "pace": 1.0,
-  "ui_page_sha256": "016602d2ba02aa88743b9ed430cd3ae22dac7a4b177881bab23dda6f1012209b",
+  "pace": 0.9,
+  "ui_page_sha256": "fc79be330cdfec73ff1fac403e3f5527ab6c901dc1fca18e76cd8bca2ed8aebd",
   "source_files": {
-    "oncotracer_cli/web.py": "e178aa680980d816d8ebe1d434ec7fa8c8eaa8fbd4667ce55ebf34c7750319a7",
-    "oncotracer_cli/web_ui.py": "f2ccabd0a787aef1107f61010917591a54945fd2d7f7458d9a838caa50cc5e12",
-    "oncotracer_cli/setup.py": "721ec9e4b02c19c9a5a6bf5c3402ac037381064cd11537b9c15937cdd7c10a8b",
+    "oncotracer_cli/web.py": "6b0a70c11ab78f92f4c444911889d5aa4c94215a2f1efa4dd3da96a712278732",
+    "oncotracer_cli/web_ui.py": "9013bdff52c5696ba5480fd6e1c7fe6ed2f92d2a15bbccb31a4ea09035e6f07d",
+    "oncotracer_cli/setup.py": "550cc3d57fffcaa56a4e67f25fcf98799a7290f589080a35d19f7a803cd5b492",
     "oncotracer_cli/cpg_setup.py": "5f1fcb96370c40d48b2770d49e50c713b51361d773ee393ed430a12648505f79",
     "oncotracer_cli/resume_ui.py": "1e17c6b457e3a5f657f1fec1c10a1b707ea47821184c8428ac53982b1f545b97",
     "scripts/record_post_ont_cpg_video.py": "3185a55b4069e994adb3ca3d4b5e4c60b34603511e68faf00de595f152a73da8",
     "scripts/record_quickstart_videos.py": "825a51455b482eb50b851c6cac1e922822807cf895bd97a961c62168e31c5a27",
-    "tests/test_native_methylation.py": "f6d4eedbe4200261d81c7b576f9664564a47232efcc25fd58f0a36f3a7b588fa",
+    "tests/test_native_methylation.py": "1f80800772e8d13ef847eecd40a2569404cba1414065a45990b9bc9d427df363",
     "tests/test_web.py": "6e4ddd33a6cb6031c978dc834a11b8e29c24b48c7592acdfa5d49a3c35fd1445"
   },
   "pointer_drags": [
@@ -74,7 +74,7 @@
       "signal_source": "pod5",
       "configuration_saved": true,
       "configuration_checked": true,
-      "config_sha256": "c2547d6f2f7934aaf9462fcd70b1aa5380bdabf0f754b028cac290161943720c",
+      "config_sha256": "fda108a6f836e5d8e1e371b3016a50baafbccdd4bcace81f2550e7c0b8db3b59",
       "analysis_started": false,
       "results_created": false,
       "reference_created": false,
@@ -93,7 +93,7 @@
       "signal_source": "pod5",
       "configuration_saved": true,
       "configuration_checked": true,
-      "config_sha256": "ba36da865f3d6e468344e1272fd9c744dfbcf2dabb300be275a4f3067491a0af",
+      "config_sha256": "6ba96375d40c22a50cbd2992126f99d39d1e969c97492e99dfb7e265fa815800",
       "analysis_started": false,
       "results_created": false,
       "reference_created": false,
@@ -119,7 +119,7 @@
           "classifier": ""
         }
       ],
-      "scan_id": "bMEF3bWFv4ICkP4DSkVpjXTi",
+      "scan_id": "TqHWZbjMwgGnPi5NdO8VKKit",
       "samples": [
         {
           "id": 0,
@@ -143,14 +143,15 @@
           "role": "tumor"
         }
       ],
-      "project": "/tmp/oncotracer-terminal-cpg-video-final/demo/ONT-project_MARLIN",
+      "project": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/ONT-project_MARLIN",
       "project_mode": "new",
       "analysis": "methylation",
       "threads": 4,
       "resources_selection": {
         "threads": 4,
         "parallel_samples": "auto",
-        "memory": "auto"
+        "memory": "auto",
+        "gpu_usage": false
       },
       "backend": "conda",
       "docker_image": "",
@@ -161,24 +162,24 @@
       "report_detail": "catalog",
       "gistic": false,
       "reference": "reuse",
-      "reference_path": "/tmp/oncotracer-terminal-cpg-video-final/demo/prepared-hg38",
+      "reference_path": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/prepared-hg38",
       "classifier": "marlin",
       "methylation_source": "pod5",
-      "methylation_path": "/tmp/oncotracer-terminal-cpg-video-final/demo/ONT",
+      "methylation_path": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/ONT",
       "resource_paths": {
-        "methylation_dorado_executable": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/bin/dorado",
-        "methylation_modkit_executable": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/bin/modkit",
-        "methylation_samtools_executable": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/bin/samtools",
-        "methylation_dorado_model": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/dorado-base-model",
-        "methylation_dorado_modbase_model": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/dorado-mod-model",
-        "marlin_rscript": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/marlin/bin/Rscript",
-        "marlin_python": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/marlin/bin/python",
-        "marlin_model": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/marlin/marlin-model.h5",
-        "marlin_features": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/marlin/features.RData",
-        "marlin_class_annotations": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/marlin/classes.xlsx",
-        "marlin_probe_bed": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/marlin/marlin-probes.bed"
+        "methylation_dorado_executable": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/bin/dorado",
+        "methylation_modkit_executable": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/bin/modkit",
+        "methylation_samtools_executable": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/bin/samtools",
+        "methylation_dorado_model": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/dorado-base-model",
+        "methylation_dorado_modbase_model": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/dorado-mod-model",
+        "marlin_rscript": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/marlin/bin/Rscript",
+        "marlin_python": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/marlin/bin/python",
+        "marlin_model": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/marlin/marlin-model.h5",
+        "marlin_features": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/marlin/features.RData",
+        "marlin_class_annotations": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/marlin/classes.xlsx",
+        "marlin_probe_bed": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/marlin/marlin-probes.bed"
       },
-      "resources": "/tmp/oncotracer-terminal-cpg-video-final/demo/ONT-project/config/run.yml",
+      "resources": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/ONT-project/config/run.yml",
       "device": "cpu",
       "accept_sturgeon_license": false
     },
@@ -199,7 +200,7 @@
           "classifier": ""
         }
       ],
-      "scan_id": "bMEF3bWFv4ICkP4DSkVpjXTi",
+      "scan_id": "TqHWZbjMwgGnPi5NdO8VKKit",
       "samples": [
         {
           "id": 0,
@@ -223,14 +224,15 @@
           "role": "tumor"
         }
       ],
-      "project": "/tmp/oncotracer-terminal-cpg-video-final/demo/ONT-project_Sturgeon",
+      "project": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/ONT-project_Sturgeon",
       "project_mode": "new",
       "analysis": "methylation",
       "threads": 4,
       "resources_selection": {
         "threads": 4,
         "parallel_samples": "auto",
-        "memory": "auto"
+        "memory": "auto",
+        "gpu_usage": false
       },
       "backend": "conda",
       "docker_image": "",
@@ -241,21 +243,21 @@
       "report_detail": "catalog",
       "gistic": false,
       "reference": "reuse",
-      "reference_path": "/tmp/oncotracer-terminal-cpg-video-final/demo/prepared-hg38",
+      "reference_path": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/prepared-hg38",
       "classifier": "sturgeon",
       "methylation_source": "pod5",
-      "methylation_path": "/tmp/oncotracer-terminal-cpg-video-final/demo/ONT",
+      "methylation_path": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/ONT",
       "resource_paths": {
-        "methylation_dorado_executable": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/bin/dorado",
-        "methylation_modkit_executable": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/bin/modkit",
-        "methylation_samtools_executable": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/bin/samtools",
-        "methylation_dorado_model": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/dorado-base-model",
-        "methylation_dorado_modbase_model": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/dorado-mod-model",
-        "sturgeon_executable": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/bin/sturgeon",
-        "sturgeon_model": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/sturgeon-model.zip",
-        "sturgeon_probes": "/tmp/oncotracer-terminal-cpg-video-final/demo/resources/sturgeon/sturgeon-probes.bed"
+        "methylation_dorado_executable": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/bin/dorado",
+        "methylation_modkit_executable": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/bin/modkit",
+        "methylation_samtools_executable": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/bin/samtools",
+        "methylation_dorado_model": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/dorado-base-model",
+        "methylation_dorado_modbase_model": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/dorado-mod-model",
+        "sturgeon_executable": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/bin/sturgeon",
+        "sturgeon_model": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/sturgeon-model.zip",
+        "sturgeon_probes": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/resources/sturgeon/sturgeon-probes.bed"
       },
-      "resources": "/tmp/oncotracer-terminal-cpg-video-final/demo/ONT-project/config/run.yml",
+      "resources": "/tmp/oncotracer-gpu-cpg-recording-20261027-r2/demo/ONT-project/config/run.yml",
       "device": "cpu",
       "accept_sturgeon_license": true
     }
@@ -266,7 +268,7 @@
   "videos": [
     {
       "name": "post-ont-cpg",
-      "duration_seconds": 53.666667,
+      "duration_seconds": 49.583333,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -276,50 +278,50 @@
       ],
       "cues": [
         {
-          "start": 0.5535659431479871,
-          "end": 3.568872230127454,
+          "start": 0.5247259298339486,
+          "end": 3.2736045122146606,
           "title": "One named folder per ONT library",
           "text": "Each ONCO-style library has fastq_pass and pod5_pass. This demo restores three libraries from their saved ONT project."
         },
         {
-          "start": 3.568872230127454,
-          "end": 11.268167918082327,
+          "start": 3.2736045122146606,
+          "end": 10.306912487838417,
           "title": "Matching POD5 is selected",
           "text": "Each library keeps its own passed signal reads. Compatible Dorado and classifier models are required; these are synthetic fixtures."
         },
         {
-          "start": 11.268167918082327,
-          "end": 19.096051845001057,
+          "start": 10.306912487838417,
+          "end": 17.661656726151705,
           "title": "1 \u00b7 Drag samples",
           "text": "Synthetic example: ONCO-001 \u2192 MARLIN; ONCO-002 \u2192 Sturgeon. For real data use clinical records; never infer diagnosis from names."
         },
         {
-          "start": 19.096051845001057,
-          "end": 26.96298159402795,
+          "start": 17.661656726151705,
+          "end": 25.133468790911138,
           "title": "Unknown is separate from Cancer or Normal",
           "text": "Cancer/Normal records the clinical role. These columns only choose a CpG classifier. Return unsuitable samples to Unknown / do not classify."
         },
         {
-          "start": 26.96298159402795,
-          "end": 35.36546588107012,
+          "start": 25.133468790911138,
+          "end": 32.77733909105882,
           "title": "2 \u00b7 Save the chosen group",
           "text": "Choose MARLIN and save. Its new project contains only ONCO-001."
         },
         {
-          "start": 35.36546588107012,
-          "end": 38.99192249495536,
+          "start": 32.77733909105882,
+          "end": 36.070522440131754,
           "title": "2 \u00b7 Save the chosen group",
           "text": "Choose Sturgeon and save ONCO-002 separately. The other group and Unknown sample are excluded."
         },
         {
-          "start": 38.99192249495536,
-          "end": 47.678671604022384,
+          "start": 36.070522440131754,
+          "end": 44.00737115321681,
           "title": "Confirm your Sturgeon license",
           "text": "Only acknowledge this after obtaining Sturgeon and accepting its terms. This demonstration uses synthetic resources."
         },
         {
-          "start": 47.678671604022384,
-          "end": 52.584114487981424,
+          "start": 44.00737115321681,
+          "end": 48.43951623700559,
           "title": "3 \u00b7 Run only when ready",
           "text": "Use valid POD5 and compatible models, resolve checks and license requirements, then click Run explicitly. This demo stops after saving."
         }
@@ -327,17 +329,17 @@
       "files": {
         ".mp4": {
           "name": "post-ont-cpg.mp4",
-          "sha256": "ad1e2b8146333c6cbaa78db70ca2ae1280dc77260ac86c15045de0297bc1f687",
-          "bytes": 3904663
+          "sha256": "6d40b30de5bb839facda044c59e0f888b1d281b8d9b208d204cdc8390e67ba0f",
+          "bytes": 2502529
         },
         ".jpg": {
           "name": "post-ont-cpg.jpg",
-          "sha256": "c1990408c6e08889ab3f636d7345241faeb199432ca857c4afd97902d6e22c9d",
-          "bytes": 180454
+          "sha256": "7dde0dadd31ed478aabdde1cc27ce0d79f0d99cc36db2bf9b4eeadfd45503304",
+          "bytes": 181138
         },
         ".vtt": {
           "name": "post-ont-cpg.vtt",
-          "sha256": "af3ebe4d8fc05123e00fa8042aabadd24aa859a8899aec7323e72fc91e6a3cea",
+          "sha256": "344d4e535aec850f09d0cd303d5ee4252ea3bf227b3a2c7b3218eaaf39edc795",
           "bytes": 1444
         },
         ".txt": {

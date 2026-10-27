@@ -27,12 +27,16 @@ Installation prepares alignment, QDNAseq, ichorCNA, classifier/reporting, GISTIC
 Docker must be running and accessible to your user. Host Conda is unnecessary:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.1.1
+oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
 
 Installation saves the selected image; doctor and setup reuse it. Select small variants in the browser when needed. See [Docker variants](variants.md#run-cna-and-variants-with-docker) for models, FFPERASE licensing and ANNOVAR. Use [Conda for ONT methylation](configuration/methylation.md).
+
+## Optional NVIDIA GPU
+
+Add `--gpu` to backend installation and `doctor` to prepare and test the compatible CUDA runtimes. Choose **GPU usage → Yes** in the browser. See [GPU setup, supported stages and memory limits](gpu.md).
 
 ## Start a project
 

@@ -4,6 +4,8 @@ set -euo pipefail
 export CONDA_PREFIX=/opt/micromamba/envs/clairs-to
 export PATH="${CONDA_PREFIX}/bin:/opt/bin:/usr/bin:/bin"
 export PYTHONNOUSERSITE=1
-export CUDA_VISIBLE_DEVICES=""
+if [[ "${ONCOTRACER_GPU_ENABLED:-0}" != 1 ]]; then
+    export CUDA_VISIBLE_DEVICES=""
+fi
 unset PYTHONHOME PYTHONPATH LD_LIBRARY_PATH
 exec "${CONDA_PREFIX}/bin/python" /opt/bin/run_clairs_to --conda_prefix "$CONDA_PREFIX" "$@"

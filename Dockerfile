@@ -2,6 +2,11 @@
 # No Docker socket, privileged execution, or nested Singularity is needed.
 FROM hkubal/clairs-to:v0.4.4@sha256:4587ee6307575f68eec686f8cce23919a59b20b8f97c6d84d0084b1ef46a8c01 AS ont_callers
 
+# Keep TensorFlow CUDA 12.2 separate from ClairS-TO's CUDA 12.4 PyTorch.
+FROM ont_callers AS clair3_gpu
+RUN /opt/micromamba/envs/clairs-to/bin/python -m venv --system-site-packages /opt/oncotracer-gpu/clair3 \
+    && /opt/oncotracer-gpu/clair3/bin/python -m pip install --no-cache-dir 'tensorflow[and-cuda]==2.15.1'
+
 # CNA uses the native controller; complete short variants use bundled Nextflow.
 FROM condaforge/miniforge3:24.11.3-0
 
@@ -9,7 +14,7 @@ ARG SOURCE_COMMIT
 ARG SOURCE_SHA256
 
 LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="2.1.1" \
+      org.opencontainers.image.version="2.2.0" \
       org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
       org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
@@ -81,11 +86,21 @@ RUN conda env create --prefix "${ONCOTRACER_STRELKA_PREFIX}" --file environments
 # ONT Python/TensorFlow/PyTorch libraries out of the core and short-read envs.
 COPY --from=ont_callers /opt/bin/ /opt/bin/
 COPY --from=ont_callers /opt/micromamba/ /opt/micromamba/
+COPY --from=clair3_gpu /opt/oncotracer-gpu/clair3/ /opt/oncotracer-gpu/clair3/
+COPY oncotracer_cli/gpu_callers.py /opt/build-support/gpu_callers.py
+RUN /opt/conda/bin/python /opt/build-support/gpu_callers.py \
+    --clair3-bin /opt/micromamba/envs/clairs-to/bin --clairsto-bin /opt/bin
 COPY scripts/docker_run_clairs_to.sh /usr/local/bin/run_clairs_to
 COPY scripts/docker_run_clair3.sh /usr/local/bin/run_clair3.sh
 RUN chmod 0755 /usr/local/bin/run_clairs_to /usr/local/bin/run_clair3.sh \
     && /usr/local/bin/run_clairs_to --help >/dev/null \
     && /usr/local/bin/run_clair3.sh --help >/dev/null
+
+# A bounded CUDA report runtime also serves Illumina projects. The normal
+# classifier environment remains available for CPU analyses.
+RUN conda env create --prefix /opt/oncotracer-envs/gpu-reports --file environments/native-gpu-reports.yml \
+    && conda clean -afy
+ENV ONCOTRACER_GPU_REPORTS_PREFIX=/opt/oncotracer-envs/gpu-reports
 
 ENV ONCOTRACER_CONTAINER_RUNTIME=docker
 

@@ -68,7 +68,7 @@ jobs:
             tests/test_native_engine.py \
             tests/test_sample_parallelism.py \
             tests/test_terminal_progress.py tests/test_cna_quality.py tests/test_broad_cna.py \
-            tests/test_sample_resource_web.py \
+            tests/test_sample_resource_web.py tests/test_gpu_resources.py \
             tests/test_native_variants.py tests/test_variant_artifact_names.py \
             tests/test_variant_command.py \
             tests/test_variant_engine.py \
@@ -170,7 +170,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/outside-checkout"
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
-          ./oncotracer --version | grep -F 'OncoTracer 2.1.1'
+          ./oncotracer --version | grep -F 'OncoTracer 2.2.0'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA and variant analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
@@ -239,7 +239,12 @@ jobs:
           python3 -m pip install 'poetry>=2,<3'
           poetry check --lock
           poetry install --no-interaction
-          poetry run oncotracer --version | grep -F 'OncoTracer 2.1.1'
+          poetry run oncotracer --version | grep -F 'OncoTracer 2.2.0'
+      - name: Verify GPU controls in Firefox without starting analysis
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps firefox
+          XDG_CONFIG_HOME="$RUNNER_TEMP/browser-config" python3 -B -m unittest tests.test_sample_resource_browser
       - name: Build documentation strictly
         run: |
           python3 -m pip install -r docs/requirements.txt
@@ -270,6 +275,8 @@ jobs:
           - native-variants
           - native-ffperase
           - native-strelka2
+          - native-gpu-reports
+          - native-gpu-clair3
     defaults:
       run:
         shell: bash -el {0}
@@ -298,6 +305,13 @@ jobs:
           set -Eeuo pipefail
           PREFIX="$RUNNER_TEMP/${{ matrix.environment }}"
           case '${{ matrix.environment }}' in
+            native-gpu-reports)
+              "$PREFIX/bin/python" -I -B -c 'import torch,transformers; assert torch.version.cuda == "12.4"; print("GPU_REPORTS_RUNTIME_OK")'
+              ;;
+            native-gpu-clair3)
+              "$PREFIX/bin/python" -I -B -c 'import tensorflow as tf; assert tf.__version__ == "2.15.1"; assert tf.test.is_built_with_cuda(); print("GPU_CLAIR3_RUNTIME_OK")'
+              python3 scripts/patch_gpu_callers.py --clair3-bin "$PREFIX/bin"
+              ;;
             native-core)
               "$PREFIX/bin/python" -c 'import numpy,pandas,pysam,scipy,openpyxl,matplotlib; print("CORE_OK")'
               "$PREFIX/bin/samtools" --version | sed -n '1p'
@@ -457,17 +471,18 @@ jobs:
           set -Eeuo pipefail
           # The existing 40 GiB CNA budget is extended for the variant and ONT
           # runtimes (the tested full image is 31.3 GiB) and upstream pull/export.
-          # Require 72 GiB free before the build.
+          # GPU runtimes add download and extraction space: require 96 GiB free.
           FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=14
           TRANSIENT_SOLVE_AND_EXPORT_GIB=18
           VARIANT_AND_ONT_RUNTIME_GIB=20
           ONT_PULL_AND_EXPORT_GIB=12
+          GPU_RUNTIME_AND_EXPORT_GIB=24
           RUNNER_RESERVE_GIB=8
           MIN_PHYSICAL_GIB=15
           MIN_FREE_GIB=$((
             FINAL_SCIENTIFIC_ENVIRONMENTS_GIB +
             TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB +
-            VARIANT_AND_ONT_RUNTIME_GIB + ONT_PULL_AND_EXPORT_GIB
+            VARIANT_AND_ONT_RUNTIME_GIB + ONT_PULL_AND_EXPORT_GIB + GPU_RUNTIME_AND_EXPORT_GIB
           ))
           DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
           bash scripts/ci_resource_preflight.sh \
@@ -536,7 +551,7 @@ jobs:
             "$RUNNER_TEMP/docker-installed-doctor.json"
       - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
-          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.1.1'
+          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.2.0'
           docker run --rm oncotracer:v2-ci provenance --json \
             | tee "$RUNNER_TEMP/docker-provenance.json"
           jq -e \
@@ -551,7 +566,7 @@ jobs:
           docker run --rm --network none --workdir /opt/oncotracer \
             --env XDG_CONFIG_HOME=/tmp/oncotracer-test-config \
             --entrypoint /opt/conda/bin/python oncotracer:v2-ci -B -m unittest \
-            tests.test_sample_parallelism tests.test_glimpse_parallel tests.test_nextflow_runtime tests.test_completion_counts tests.test_terminal_progress \
+            tests.test_sample_parallelism tests.test_glimpse_parallel tests.test_nextflow_runtime tests.test_completion_counts tests.test_terminal_progress tests.test_gpu_resources \
             tests.test_docker_variants tests.test_project_resume
           python3 -B scripts/smoke_docker_resume.py --image oncotracer:v2-ci \
             --work-dir "$RUNNER_TEMP/docker-resume-smoke"

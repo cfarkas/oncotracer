@@ -29,16 +29,18 @@ oncotracer --interactive --backend conda
 With Docker running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.1.1
+oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
 
-The Docker image is saved for later commands. See [installation](docs/installation.md) for Python environments, requirements and other options. FFPE/ONT callers, model resources and ANNOVAR have [additional setup requirements](docs/variants.md); use Conda for ONT methylation.
+The image is saved for later commands. See [installation](docs/installation.md) and [FFPE/ONT resources](docs/variants.md). Use Conda for ONT methylation.
 
 Before setup, `oncotracer --detect-resources` (also `--detect_resources`) suggests [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) from this machine's CPU/RAM; choose the combination in new setup or **Review and run** for continuation.
 
-### Open interactive setup with Nextflow
+For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
+
+### Interactive setup with Nextflow
 
 From the [source checkout](docs/installation_details.md#install-from-github), Nextflow opens the same interface:
 
@@ -54,7 +56,7 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 2. Select input files, assign samples to Normal or Cancer, and choose the analysis and project folder.
 3. Review settings, select **Save configuration and check**, then **Run analysis**.
 
-Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
+Keep the terminal open and use its complete printed URL, including the code after `#`. Concurrent projects use separate terminals, ports and output folders; share CPU and RAM between them.
 
 ## Interactive demo
 
@@ -99,7 +101,6 @@ matching modified-base BAMs with `MM`/`ML` tags, or POD5 with compatible Dorado
 models. Legacy single MinKNOW runs, barcode folders and single ligation libraries
 remain supported. See [ONT settings](docs/configuration/ont.md) and the
 [CpG guide](docs/post_ont_cpg.md).
-
 ### Run saved settings
 
 ```bash
@@ -122,10 +123,10 @@ oncotracer uninstall --conda --yes --purge
 **Docker image:** remove the selected image/tag:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:2.1.1
+docker image rm carlosfarkas/oncotracer:2.2.0
 ```
 
-This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Shared image layers may remain.
+This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Image layers may remain.
 
 **Python application:** in the Python environment used for installation:
 

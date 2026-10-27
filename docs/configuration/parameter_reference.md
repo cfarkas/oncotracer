@@ -28,7 +28,7 @@ Choose one command below. Conda/Poetry install the core CNA tools and verified s
 
 ```bash
 oncotracer install --conda
-oncotracer install --docker --image carlosfarkas/oncotracer:2.1.1
+oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0
 oncotracer install --singularity
 ./oncotracer install --poetry
 ```
@@ -218,7 +218,7 @@ oncotracer run \
 | `--modbam PATH` | reuse calls from an existing modified-base BAM or directory of BAMs; CPU alignment |
 | `--methylation-only` | request methylation and skip copy-number analysis |
 | `--cpu` | keep methylation on CPU, overriding GPU YAML settings |
-| `--gpu` | Use `cuda:all` for Dorado and expose the GPU to MARLIN; requires `--methylation` |
+| `--gpu` | Use a reserved NVIDIA GPU for supported stages; see [GPU usage](../gpu.md) |
 
 Repeating the same command reuses valid content-matched stages automatically.
 Give `--backend` explicitly for reproducible scripts: ordinary `run` does not
@@ -288,8 +288,8 @@ CLI values override methylation, classifier, input, and GPU YAML values. Choose 
 | `methylation_modbam` | one input required | existing modified-base BAM file or directory; replaces POD5 input |
 | `methylation_only` | `false` | skip CNA; enabled by `setup --analysis methylation` |
 | `threads` | up to 16 if not set | CPU worker threads; `--threads` overrides this value |
-| `methylation_gpu` | `false` | Dorado `cuda:all`; MARLIN GPU visibility; Modkit/Sturgeon remain CPU |
-| `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.1.1 |
+| `methylation_gpu` | `false` | Legacy methylation-only setting; `gpu_usage` takes precedence. Dorado/MARLIN reserve one GPU; Modkit/Sturgeon use CPU |
+| `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.2.0 |
 | `methylation_dorado_executable` | required local executable | Dorado binary; no download or installation |
 | `methylation_modkit_executable` | required local executable | Modkit binary; no download or installation |
 | `methylation_samtools_executable` | `samtools` | Explicit or PATH-resolved SAMtools binary |

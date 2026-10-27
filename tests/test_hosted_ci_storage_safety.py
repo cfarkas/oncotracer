@@ -3375,7 +3375,7 @@ run_native_environment_probe ichorcna readcounter 255 \\
                      '\nprintf "%s %s\\n" "$MIN_FREE_GIB" "$MIN_PHYSICAL_GIB"'],
                     capture_output=True, text=True, check=True,
                 )
-                self.assertEqual(result.stdout.strip(), "72 15")
+                self.assertEqual(result.stdout.strip(), "96 15")
 
     def test_parity_artifact_upload_is_exact_and_fail_closed(self) -> None:
         driver = (ROOT / "scripts" / "ci_native_parity.sh").read_text(encoding="utf-8")

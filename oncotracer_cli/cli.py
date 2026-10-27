@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:2.1.1"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:2.2.0"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -156,6 +156,7 @@ def _install_conda(
             conda=conda,
             force=args.force,
             dry_run=args.dry_run,
+            gpu=getattr(args, 'gpu', False),
         )
     result: dict[str, object] = {
         "backend": "conda",
@@ -166,6 +167,9 @@ def _install_conda(
         "gistic_prefix": str(prefixes["gistic"]),
         "variants_prefix": str(prefixes["variants"]),
     }
+    for name in ('gpu-reports', 'gpu-clair3'):
+        if name in prefixes:
+            result[name.replace('-', '_') + '_prefix'] = str(prefixes[name])
     if save and not args.dry_run:
         _save_install_config(result)
     return result
@@ -203,7 +207,7 @@ def _install_singularity(args: argparse.Namespace, *, save: bool = True) -> dict
     destination = (
         Path(args.sif)
         if args.sif
-        else (_data_home() / "images" / "oncotracer-2.1.1.sif")
+        else (_data_home() / "images" / "oncotracer-2.2.0.sif")
     )
     with installer_cli_target_arguments(destination):
         installed = install_sif_managed(
@@ -239,13 +243,14 @@ def _install_poetry(root: Path, args: argparse.Namespace, *, save: bool = True) 
             force=args.force,
             dry_run=args.dry_run,
             poetry=poetry,
+            gpu=getattr(args, 'gpu', False),
         )
     result: dict[str, object] = {
         "backend": "poetry",
         "repository": str(root),
         "poetry_prefix": str(managed_sibling_base(base, "poetry") / "poetry-runtime"),
         "scientific_backend": "conda",
-        **{f"{name}_prefix": str(path) for name, path in prefixes.items()},
+        **{f"{name.replace('-', '_')}_prefix": str(path) for name, path in prefixes.items()},
     }
     if save and not args.dry_run:
         _save_install_config(result)
@@ -270,11 +275,12 @@ def command_install(args: argparse.Namespace) -> int:
         "--force": bool(args.force),
         "--root": args.root is not None,
         "--no-pull": bool(getattr(args, "no_pull", False)),
+        "--gpu": bool(getattr(args, 'gpu', False)),
     }
     allowed = {
-        "conda": {"--prefix", "--force", "--root"},
-        "poetry": {"--prefix", "--force", "--root"},
-        "docker": {"--image", "--no-pull"},
+        "conda": {"--prefix", "--force", "--root", "--gpu"},
+        "poetry": {"--prefix", "--force", "--root", "--gpu"},
+        "docker": {"--image", "--no-pull", "--gpu"},
         "singularity": {"--image", "--sif", "--force"},
     }[backend]
     irrelevant = sorted(
@@ -285,6 +291,10 @@ def command_install(args: argparse.Namespace) -> int:
             f"install --{backend} does not accept backend-irrelevant option(s): "
             f"{', '.join(irrelevant)}"
         )
+    if getattr(args, 'gpu', False) and not args.dry_run:
+        from .gpu_runtime import inventory
+        if not inventory():
+            raise OncoTracerError('GPU installation requires a visible NVIDIA GPU with a working driver')
     with operation(
         f"{'Previewing' if args.dry_run else 'Preparing'} {backend} tools",
         verbose=getattr(args, "verbose", False),
@@ -307,6 +317,12 @@ def command_install(args: argparse.Namespace) -> int:
                 result = _install_singularity(args, save=False)
             else:
                 result = _install_poetry(runtime_root(args.root), args, save=False)
+            if getattr(args, 'gpu', False) and not args.dry_run:
+                from .gpu_runtime import doctor_gpu
+                gpu_check = doctor_gpu(backend, result, image=result.get('image'))
+                if not gpu_check['success']:
+                    raise OncoTracerError('GPU installation checks failed: ' + str(gpu_check))
+                result['gpu_validation'] = gpu_check
             if launcher is not None:
                 result["global_launcher"] = launcher.publish(result)
             if not args.dry_run:
@@ -424,6 +440,9 @@ def _native_environment(config: dict[str, object]) -> dict[str, str]:
         environment["ONCOTRACER_CLASSIFIER_PREFIX"] = str(config["classifier_prefix"])
     if config.get("gistic_prefix"):
         environment["ONCOTRACER_GISTIC_PREFIX"] = str(config["gistic_prefix"])
+    for name in ('gpu_reports', 'gpu_clair3'):
+        if config.get(name + '_prefix'):
+            environment['ONCOTRACER_' + name.upper() + '_PREFIX'] = str(config[name + '_prefix'])
     return environment
 
 
@@ -443,7 +462,12 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
     variants_lock = (contextlib.nullcontext() if args.dry_run else managed_variant_runtime(
         selection_config, mode=str(selection_config.get("mode") or ""),
         backend=backend, install_config=install, semantic=False))
-    with lock, variant_runtime_backend(backend), variants_lock:
+    with lock, variant_runtime_backend(backend), variants_lock, contextlib.ExitStack() as gpu_locks:
+        from .gpu_runtime import enabled as gpu_enabled
+        if not args.dry_run and managed_backend and gpu_enabled(selection_config, args.gpu) and selection_config.get('run_variants'):
+            from .install_safety import managed_gpu_runtime_lock
+            family = 'gpu-reports' if selection_config.get('mode') == 'illumina' else 'gpu-clair3'
+            gpu_locks.enter_context(managed_gpu_runtime_lock(install, family))
         old = os.environ.copy()
         try:
             os.environ.update(_native_environment(install))
@@ -534,6 +558,8 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         f"{os.getuid()}:{os.getgid()}",
     ]
     command.extend(["--env", "HOME=/tmp", "--env", "MPLCONFIGDIR=/tmp/matplotlib"])
+    from .gpu_runtime import docker_arguments
+    command.extend(docker_arguments(config, args.gpu, create=not args.dry_run))
     if enabled:
         environment = docker_resource_environment(config)
         for key, value in environment.items():
@@ -568,6 +594,8 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--pod5-dir", Path(args.pod5_dir).expanduser().resolve()])
     if args.gpu:
         command.append("--gpu")
+    elif args.gpu is False:
+        command.append("--cpu")
     outdir = Path(str(config["outdir"])).expanduser().absolute() if config.get("outdir") else None
     config_sha256 = sha256_file(config_path) if outdir is not None else ""
     manifest_path = outdir / "06_workflow_summary/native_run_manifest.json" if outdir is not None else None
@@ -592,6 +620,9 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
 
 
 def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
+    from .gpu_runtime import enabled
+    if enabled(load_flat_yaml(config_path), args.gpu):
+        raise OncoTracerError('Reserved GPU execution requires Docker or native Conda/Poetry tools; use --cpu for Apptainer/Singularity')
     install = _load_install_config()
     executable = str(
         install.get("singularity_command")
@@ -606,7 +637,7 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
             "no SIF is configured; run 'oncotracer install --singularity'"
         )
     sif_candidate = (
-        Path(str(sif_value or "/path/to/oncotracer-2.1.1.sif")).expanduser().resolve()
+        Path(str(sif_value or "/path/to/oncotracer-2.2.0.sif")).expanduser().resolve()
     )
     sif = (
         sif_candidate if args.dry_run else require_file(sif_candidate, "OncoTracer SIF")
@@ -1567,13 +1598,17 @@ def _command_doctor(args: argparse.Namespace) -> int:
         except OncoTracerError as error:
             checks["managed_sif"] = {"success": False, "error": str(error)}
             success = False
+    if getattr(args, 'gpu', False):
+        from .gpu_runtime import doctor_gpu
+        checks['gpu'] = doctor_gpu(backend, _load_install_config(), image=getattr(args, 'image', None))
+        success = success and checks['gpu']['success']
     success = bool(success) and source_success
     checks["success"] = success
     if getattr(args, "json", False):
         print(json.dumps(checks, indent=2, sort_keys=True))
     else:
         print(f"OncoTracer {__version__} — {backend} health check")
-        for name in ("source", "managed_install", "managed_sif", "docker"):
+        for name in ("source", "managed_install", "managed_sif", "docker", "gpu"):
             if name in checks:
                 item = checks[name]
                 print(f"  {'OK' if item.get('success') else 'FAIL'}  {name.replace('_', ' ')}")
@@ -1668,14 +1703,14 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
         "--gpu",
         action="store_true",
         default=None,
-        help="use GPU for methylation Dorado and expose it to MARLIN",
+        help="use reserved GPU memory for supported variant, report and methylation stages",
     )
     device.add_argument(
         "--cpu",
         dest="gpu",
         action="store_false",
         default=None,
-        help="keep methylation on CPU, overriding methylation_gpu in YAML",
+        help="use CPU only, overriding gpu_usage and methylation_gpu in YAML",
     )
 
 
@@ -1716,6 +1751,7 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("--prefix")
     install.add_argument("--image")
     install.add_argument("--no-pull", action="store_true", help="use an existing local Docker image; still verify it with doctor")
+    install.add_argument("--gpu", action="store_true", help="install and verify compatible optional CUDA runtimes (requires an NVIDIA GPU)")
     install.add_argument("--no-launcher", action="store_true", help="leave ~/.local/bin/oncotracer unchanged; do not publish a user command")
     install.add_argument("--sif")
     install.add_argument("--force", action="store_true")
@@ -1756,6 +1792,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
     )
     doctor.add_argument("--image")
+    doctor.add_argument("--gpu", action="store_true", help="also verify real CUDA computation and the reserved GPU runtimes")
     doctor.add_argument("--json", action="store_true", help="complete machine-readable health report")
     doctor.add_argument("--verbose", action="store_true", help="show detailed tool checks")
     doctor.set_defaults(func=command_doctor)

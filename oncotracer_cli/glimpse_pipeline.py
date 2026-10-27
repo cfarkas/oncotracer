@@ -160,12 +160,15 @@ def sample_parameters(request,sample,bam,reference,output,resources,threads,veri
         'ancestry_explorer':True,'interpretation_report':True,'report_llm':True,'report_pdf':True,
         'homozygosity_report':True,'cancer_report':True,'cardiomyopathy_report':True,'unified_vcf':True,
         'pgs_reference_stats':True,'confidence_gwas':options.get('confidence_gwas','medium'),
-        'resource_dir':str(resources),'llm_threads':min(threads,4),
+        'resource_dir':str(resources),'llm_threads':min(threads,4),'gpu_usage':request.gpu_usage,
         'pgs_cache':str(resources/'pgs'),'ancestry_explorer_cache':str(resources/'ancestry_explorer'),
         'literature_cache':str(resources/'literature'),'clinvar':str(resources/'clinvar/clinvar_GRCh38.vcf.gz'),
         'min_mapping_quality':request.min_mapping_quality,'min_base_quality':request.min_base_quality}
     for key in OPTION_KEYS:
         if key in options and key not in {'parallel_samples','analysis_reuse_from','reuse_from','nextflow','workflow_source','memory'}:params[key]=options[key]
+    if request.gpu_usage:
+        from .gpu_runtime import native_prefix
+        params['llm_python'] = str(native_prefix('gpu-reports') / 'bin/python')
     if request.tool_prefix:params['tool_prefix']=str(request.tool_prefix)
     if request.annovar_dir:params['annovar_dir']=str(request.annovar_dir)
     if request.annovar_db:params['annovar_db']=str(request.annovar_db)

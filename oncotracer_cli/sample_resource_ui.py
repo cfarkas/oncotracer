@@ -12,6 +12,8 @@ def _controls(prefix, *, resume=False):
 <div id="{prefix}-manual-field" hidden><label for="{prefix}-manual-parallel">Manual number of parallel samples</label><input id="{prefix}-manual-parallel" type="number" min="1" step="1" value="1"><p class="hint">This overrides the suggested fits. The count is limited only by the number of samples. Too many jobs may slow processing or exhaust memory.</p></div>
 <p id="{prefix}-manual-note" class="hint" role="status" hidden></p>
 <p id="{prefix}-resource-note" class="hint" role="status">Detect resources to compare sample-job combinations. Cores here mean CPU threads available to this process; other analyses share this server.</p>
+<div id="{prefix}-gpu-field" hidden><label for="{prefix}-gpu">GPU usage</label><select id="{prefix}-gpu"><option value="false">No · CPU</option><option value="true">Yes · accelerate supported stages</option></select><p id="{prefix}-gpu-note" class="hint"></p></div>
+<div id="{prefix}-gpu-unavailable" class="notice" hidden>Saved settings request a GPU, but no NVIDIA GPU is visible. Restore GPU access or <button id="{prefix}-use-cpu" type="button">Use CPU for this analysis</button>.</div>
 <button id="{prefix}-detect-resources" type="button">Detect sample-job options</button>
 {('<button id="resume-apply-resources" type="button">Apply resources and check</button><p class="hint">Run analysis also applies and checks these choices before starting.</p>') if resume else ''}
 </section>'''
@@ -30,7 +32,7 @@ const resourcePlans={sample:null,resume:null};
 let resumeResourcesReady=false;
 function resourceSelection(prefix){
   const raw=$(prefix+'-parallel').value;
-  return {threads:Number($(prefix==='sample'?'threads':'resume-threads').value),parallel_samples:raw==='auto'?'auto':Number(raw==='manual'?$(prefix+'-manual-parallel').value:raw),memory:$(prefix+'-memory').value.trim()||'auto'};
+  return {threads:Number($(prefix==='sample'?'threads':'resume-threads').value),parallel_samples:raw==='auto'?'auto':Number(raw==='manual'?$(prefix+'-manual-parallel').value:raw),memory:$(prefix+'-memory').value.trim()||'auto',gpu_usage:$(prefix+'-gpu').value==='true'};
 }
 function updateManualResources(prefix){
   const manual=$(prefix+'-parallel').value==='manual',result=resourcePlans[prefix];
@@ -44,8 +46,10 @@ function updateManualResources(prefix){
     if(count>result.threads||ram<result.minimum_memory_gb_per_sample)note+=' Exceeds the suggested fit; jobs may slow down or fail. Your manual count will be kept.';
   }
   $(prefix+'-manual-note').textContent=note;
+  const missingGpu=$(prefix+'-gpu').value==='true'&&!result?.gpu?.detected;
+  show(prefix+'-gpu-unavailable',missingGpu);
   if(prefix==='resume'){
-    resumeResourcesReady=Boolean(result&&!result.error&&valid&&(n!=='auto'||result.recommended));
+    resumeResourcesReady=Boolean(result&&!result.error&&valid&&!missingGpu&&(n!=='auto'||result.recommended));
     $('run').disabled=!prepared?.valid||!resumeResourcesReady;
   }
 }
@@ -55,6 +59,9 @@ function showResourceChoices(prefix,result,initial=false){
   show(prefix+'-resources',true);
   if(prefix==='resume')resumeResourcesReady=!result.error;
   if(result.error){$(prefix+'-resource-note').textContent=result.error;return;}
+  show(prefix+'-gpu-field',Boolean(result.gpu?.detected));
+  if(initial)$(prefix+'-gpu').value=String(Boolean(result.selected_gpu_usage));
+  $(prefix+'-gpu-note').textContent=(result.gpu?.devices||[]).map(d=>d.name+' · '+(d.budget_mb/1024).toFixed(1)+' GiB available after reserve').join('; ')+'. '+(result.gpu?.note||'');
   const select=$(prefix+'-parallel'),prior=initial?String(result.selected_parallel_samples??'auto'):select.value;
   select.replaceChildren();
   const label=a=>a.parallel_samples+' sample job'+(a.parallel_samples===1?'':'s')+' × '+a.threads_per_sample+' cores each · '+a.memory_gb_per_sample.toFixed(1)+' GiB RAM each';
@@ -86,9 +93,11 @@ async function refreshResourceChoices(prefix){
   }
 }
 for(const prefix of ['sample','resume']){
+  $(prefix+'-use-cpu').onclick=()=>{$(prefix+'-gpu').value='false';$(prefix+'-gpu').dispatchEvent(new Event('change'));};
   $(prefix+'-detect-resources').onclick=()=>busy($(prefix+'-detect-resources'),()=>refreshResourceChoices(prefix));
-  for(const id of [prefix+'-memory',prefix+'-parallel',prefix+'-manual-parallel',prefix==='sample'?'threads':'resume-threads']){
+  for(const id of [prefix+'-memory',prefix+'-parallel',prefix+'-manual-parallel',prefix+'-gpu',prefix==='sample'?'threads':'resume-threads']){
     $(id).addEventListener('change',()=>{
+      if(prefix==='sample'&&id==='sample-gpu')$('device').value=$('sample-gpu').value==='true'?'gpu':'cpu';
       if(prefix==='sample'){invalidate();$('run').disabled=true;}
       else $('check-badge').textContent='Resources changed · checked again at Run';
       updateManualResources(prefix);

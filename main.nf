@@ -31,6 +31,8 @@ workflow {
             selectedFlag(namedOntAlias, 'ont-named-samples')) argv.add('--ont-named-samples')
         if (selectedFlag(params.no_browser, 'no_browser')) argv.add('--no-browser')
         if (selectedFlag(params.dry_run, 'dry_run')) argv.add('--dry-run')
+        if (selectedFlag(params.gpu, 'gpu')) argv.add('--gpu')
+        if (selectedFlag(params.cpu, 'cpu')) argv.add('--cpu')
         ['config', 'start_dir', 'backend', 'threads', 'parallel_samples', 'project', 'input_folder',
          'cpg_from', 'classifier', 'resources',
          'image', 'variant_tool_prefix', 'variant_ffperase_root', 'variant_ffperase_models',

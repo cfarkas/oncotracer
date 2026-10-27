@@ -1,33 +1,33 @@
 WEBVTT
 
 1
-00:00:00.554 --> 00:00:03.569
+00:00:00.525 --> 00:00:03.274
 One named folder per ONT library: Each ONCO-style library has fastq_pass and pod5_pass. This demo restores three libraries from their saved ONT project.
 
 2
-00:00:03.569 --> 00:00:11.268
+00:00:03.274 --> 00:00:10.307
 Matching POD5 is selected: Each library keeps its own passed signal reads. Compatible Dorado and classifier models are required; these are synthetic fixtures.
 
 3
-00:00:11.268 --> 00:00:19.096
+00:00:10.307 --> 00:00:17.662
 1 · Drag samples: Synthetic example: ONCO-001 → MARLIN; ONCO-002 → Sturgeon. For real data use clinical records; never infer diagnosis from names.
 
 4
-00:00:19.096 --> 00:00:26.963
+00:00:17.662 --> 00:00:25.133
 Unknown is separate from Cancer or Normal: Cancer/Normal records the clinical role. These columns only choose a CpG classifier. Return unsuitable samples to Unknown / do not classify.
 
 5
-00:00:26.963 --> 00:00:35.365
+00:00:25.133 --> 00:00:32.777
 2 · Save the chosen group: Choose MARLIN and save. Its new project contains only ONCO-001.
 
 6
-00:00:35.365 --> 00:00:38.992
+00:00:32.777 --> 00:00:36.071
 2 · Save the chosen group: Choose Sturgeon and save ONCO-002 separately. The other group and Unknown sample are excluded.
 
 7
-00:00:38.992 --> 00:00:47.679
+00:00:36.071 --> 00:00:44.007
 Confirm your Sturgeon license: Only acknowledge this after obtaining Sturgeon and accepting its terms. This demonstration uses synthetic resources.
 
 8
-00:00:47.679 --> 00:00:52.584
+00:00:44.007 --> 00:00:48.440
 3 · Run only when ready: Use valid POD5 and compatible models, resolve checks and license requirements, then click Run explicitly. This demo stops after saving.

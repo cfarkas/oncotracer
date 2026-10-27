@@ -321,6 +321,9 @@ def copy_payload(
         copy_payload_from_git_archive(root, staging, source_commit)
     else:
         copy_payload_from_tree(root, staging)
+    gpu_policy = staging / "payload/oncotracer_cli/lpwgs/bin/gpu_resources.py"
+    if gpu_policy.is_file():
+        shutil.copyfile(gpu_policy, staging / "oncotracer_cli/_gpu_policy.py")
 
 
 def write_build_metadata(

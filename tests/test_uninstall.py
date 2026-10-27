@@ -54,7 +54,7 @@ class UninstallTests(unittest.TestCase):
         return base
 
     def sibling_fixture(self, base, family="variants", *, owned=True):
-        suffix = "poetry" if family == "poetry-runtime" else "variants"
+        suffix = "poetry" if family == "poetry-runtime" else family
         domain = base.with_name(f"{base.name}-{suffix}")
         domain.mkdir()
         install_id = "e" * 32
@@ -119,6 +119,23 @@ class UninstallTests(unittest.TestCase):
             self.assertEqual(keep.read_text(), "user reference")
             self.assertFalse((variants / safety.BASE_MARKER).exists())
             self.assertFalse(poetry.exists())
+
+    def test_optional_gpu_environments_are_previewed_and_purged_with_conda(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.fixture(root)
+            reports = self.sibling_fixture(base, 'gpu-reports')
+            clair3 = self.sibling_fixture(base, 'gpu-clair3')
+            project = root/'my-study'; project.mkdir()
+            (project/'reads.fastq').write_text('user reads')
+            preview = uninstall_target(base, 'conda', dry_run=True)
+            self.assertEqual(set(preview['managed_roots']), {str(base), str(reports), str(clair3)})
+            self.assertTrue((reports/'gpu-reports/installed-file').exists())
+            with patch.object(safety, '_active_processes', return_value=[]):
+                uninstall_target(base, 'conda', dry_run=False, purge=True)
+            self.assertFalse(reports.exists())
+            self.assertFalse(clair3.exists())
+            self.assertEqual((project/'reads.fastq').read_text(), 'user reads')
 
     def test_untrusted_sibling_refuses_entire_removal(self):
         for defect in ("unowned", "wrong-family", "tampered", "symlink", "pending"):

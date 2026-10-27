@@ -141,6 +141,7 @@ def answer_for(prompt, kind):
         "CNA bin size (kb)": "100",
         "Add CNA interpretation reports?": "no",
         "Add small-variant calling?": "no",
+        "GPU usage for supported stages": "no",
         "hg38 reference": "download",
         "Final action": "save",
     }
@@ -357,6 +358,8 @@ def caption_for(prompt, kind):
             "Keep small variants off",
             "Choose no. This CNA-only setup does not request variant or FFPE assessment.",
         )
+    if prompt.startswith("GPU usage"):
+        return "Choose CPU or GPU", "On an NVIDIA GPU server, choose Yes for supported stages or No to use CPU. This walkthrough keeps CPU."
     if prompt.startswith("hg38"):
         return (
             "Select reference handling",
@@ -624,7 +627,7 @@ def main():
     if "PLAYWRIGHT_BROWSERS_PATH" in os.environ:
         browser_env["PLAYWRIGHT_BROWSERS_PATH"] = os.environ["PLAYWRIGHT_BROWSERS_PATH"]
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(
+        browser = playwright.firefox.launch(
             headless=True,
             executable_path=str(args.browser_path) if args.browser_path else None,
             env=browser_env,

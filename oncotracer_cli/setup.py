@@ -616,6 +616,13 @@ def _command_setup(args: argparse.Namespace) -> int:
         choices=("cna", "methylation", "both"),
         interactive=interactive,
     )
+    if args.gpu is None and interactive:
+        from .gpu_runtime import options as gpu_options
+        gpu_plan = gpu_options()
+        if gpu_plan['detected']:
+            print(gpu_plan['note'])
+            args.gpu = _ask(None, 'GPU usage for supported stages', default='no',
+                            choices=('yes', 'no'), interactive=True) == 'yes'
     if mode == "illumina" and analysis != "cna":
         raise OncoTracerError(
             "methylation requires ONT reads; choose --mode ont or --analysis cna"
@@ -643,7 +650,6 @@ def _command_setup(args: argparse.Namespace) -> int:
             "modbam",
             "pod5_dir",
             "resources",
-            "gpu",
             "accept_sturgeon_license",
             *EXECUTABLES,
             *RESOURCE_FLAGS,
@@ -689,6 +695,7 @@ def _command_setup(args: argparse.Namespace) -> int:
         "threads": args.threads,
         "parallel_samples": getattr(args, "variant_parallel_samples", None) or "auto",
         "analysis_memory": getattr(args, "variant_memory", None) or "auto",
+        "gpu_usage": bool(args.gpu),
         "force": False,
         "run_cna_classifier": False,
         "run_gistic": False,
@@ -1349,7 +1356,7 @@ def add_setup_commands(subparsers) -> None:
     )
     device = meth.add_mutually_exclusive_group()
     device.add_argument(
-        "--gpu", action="store_true", help="allow GPU basecalling and MARLIN inference"
+        "--gpu", action="store_true", help="use reserved GPU memory for supported variant, report and methylation stages"
     )
     device.add_argument(
         "--cpu", dest="gpu", action="store_false", help="CPU only (default)"

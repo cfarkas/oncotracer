@@ -21,7 +21,7 @@ from oncotracer_cli import install_safety as safety
 from scripts import verify_python_dist as verify
 
 IDENTITY = {"source_commit": "a" * 40, "source_sha256": "b" * 64, "source_tree_dirty": False}
-DIST = "oncotracer-2.1.1.dist-info/"
+DIST = "oncotracer-2.2.0.dist-info/"
 
 
 class PythonDistributionTests(unittest.TestCase):
@@ -31,11 +31,11 @@ class PythonDistributionTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.files = {name: b"runtime asset\n" for name in verify.REQUIRED}
         self.files[backend.PROVENANCE] = b'{"schema":"historical-test"}\n'
-        self.files["oncotracer_cli/__init__.py"] = b'__version__ = "2.1.1"\n'
-        self.metadata = b"Metadata-Version: 2.3\nName: oncotracer\nVersion: 2.1.1\n\nDescription\n"
+        self.files["oncotracer_cli/__init__.py"] = b'__version__ = "2.2.0"\n'
+        self.metadata = b"Metadata-Version: 2.3\nName: oncotracer\nVersion: 2.2.0\n\nDescription\n"
 
     def wheel(self):
-        path = self.root / "oncotracer-2.1.1-py3-none-any.whl"
+        path = self.root / "oncotracer-2.2.0-py3-none-any.whl"
         with zipfile.ZipFile(path, "w") as archive:
             for name, data in self.files.items():
                 archive.writestr(name, data)
@@ -47,11 +47,11 @@ class PythonDistributionTests(unittest.TestCase):
         return path
 
     def sdist(self):
-        path = self.root / "oncotracer-2.1.1.tar.gz"
+        path = self.root / "oncotracer-2.2.0.tar.gz"
         files = {**self.files, "oncotracer_build_backend.py": b"# backend\n", "PKG-INFO": self.metadata}
         with tarfile.open(path, "w:gz") as archive:
             for name, data in files.items():
-                info = tarfile.TarInfo("oncotracer-2.1.1/" + name)
+                info = tarfile.TarInfo("oncotracer-2.2.0/" + name)
                 info.size = len(data); info.mode = 0o644
                 archive.addfile(info, io.BytesIO(data))
         backend.stamp_sdist(path, IDENTITY)
@@ -65,12 +65,12 @@ class PythonDistributionTests(unittest.TestCase):
         return root
 
     def test_wheel_has_exact_identity_complete_payload_manifest_and_valid_record(self):
-        result = verify.verify_archive(self.wheel(), IDENTITY, "2.1.1")
+        result = verify.verify_archive(self.wheel(), IDENTITY, "2.2.0")
         self.assertEqual(result["kind"], "wheel")
         self.assertGreater(result["payload_files"], len(verify.REQUIRED))
 
     def test_sdist_has_exact_identity_and_all_build_inputs(self):
-        result = verify.verify_archive(self.sdist(), IDENTITY, "2.1.1")
+        result = verify.verify_archive(self.sdist(), IDENTITY, "2.2.0")
         self.assertEqual(result["kind"], "sdist")
 
     def test_build_stamping_is_deterministic(self):
@@ -163,7 +163,7 @@ class PythonDistributionTests(unittest.TestCase):
         (stage / "oncotracer_cli").mkdir()
         (stage / backend.PROVENANCE).write_bytes(self.files[backend.PROVENANCE])
         (stage / "oncotracer_build_backend.py").write_text("# PEP 517 backend\n")
-        source = {"oncotracer_version": "2.1.1", "source_commit": IDENTITY["source_commit"], "source_sha256": IDENTITY["source_sha256"]}
+        source = {"oncotracer_version": "2.2.0", "source_commit": IDENTITY["source_commit"], "source_sha256": IDENTITY["source_sha256"]}
         safety._write_poetry_build_metadata(stage, source)
         self.assertEqual(backend._stage_sdist(stage, self.root / "restaged"), IDENTITY)
 

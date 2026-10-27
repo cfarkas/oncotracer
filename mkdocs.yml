@@ -32,6 +32,7 @@ nav:
       - Set Up Your Own Data: setup.md
       - CLI and Headless Servers: headless.md
       - Nextflow Entry: nextflow_entry.md
+      - GPU Usage: gpu.md
       - Run, Stop and Resume: running.md
       - How OncoTracer Works: native_architecture.md
       - Uninstall: uninstall.md

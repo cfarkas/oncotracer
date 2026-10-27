@@ -161,3 +161,7 @@ Use a new `outdir` and report every non-default setting. See [Advanced refinemen
 - [ONT setup](configuration/ont.md)
 - [Pathology and classifier](configuration/pathology.md)
 - [All native CLI and YAML fields](configuration/parameter_reference.md)
+
+## GPU selection
+
+`gpu_usage: true` enables supported GPU stages with shared reservations; `false` selects CPU. The browser writes this setting for both new and continued projects. `--gpu`/`--cpu` override it for a run. See [GPU setup and memory limits](gpu.md).

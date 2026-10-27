@@ -4,6 +4,7 @@ from __future__ import annotations
 from .sample_resources import parallel_value, parallel_argument
 
 import csv
+import contextlib
 import json
 import os
 import tempfile
@@ -146,7 +147,13 @@ def command_variants(args) -> int:
     config = load_flat_yaml(config_path)
     from .variant_runtime import managed_variant_runtime
     from .terminal_progress import terminal_session
-    with terminal_session(config_path), managed_variant_runtime(config, mode=str(config.get("mode") or "").strip().lower(), semantic=True):
+    from .gpu_runtime import enabled
+    with terminal_session(config_path), managed_variant_runtime(config, mode=str(config.get("mode") or "").strip().lower(), semantic=True), contextlib.ExitStack() as locks:
+        if enabled(config, getattr(args, 'gpu', None)) and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') != 'docker':
+            from .cli import _load_install_config
+            from .install_safety import managed_gpu_runtime_lock
+            family = 'gpu-reports' if config.get('mode') == 'illumina' else 'gpu-clair3'
+            locks.enter_context(managed_gpu_runtime_lock(_load_install_config(), family))
         return _command_variants(args)
 
 
@@ -157,6 +164,8 @@ def _command_variants(args) -> int:
     if sha256_file(config_path) != digest:
         raise OncoTracerError("Variant configuration changed while being read")
     parallel_samples = getattr(args, "parallel_samples", None)
+    if getattr(args, 'gpu', None) is not None:
+        config['gpu_usage'] = args.gpu
     if parallel_samples is not None:
         config["variant_parallel_samples"] = parallel_value(parallel_samples)
     mode = str(config.get("mode") or "").strip().lower()
@@ -281,6 +290,9 @@ def add_variants_command(subparsers) -> None:
     parser.add_argument("--config", required=True, help="flat YAML with mode, outdir, variant_bam_manifest, variant_reference and variant options")
     parser.add_argument("--threads", type=int, help="total CPU budget shared across concurrent samples")
     parser.add_argument("--parallel-samples", type=parallel_argument, help="maximum concurrent samples: auto or a positive integer; total CPU/RAM budgets are shared")
+    device = parser.add_mutually_exclusive_group()
+    device.add_argument('--gpu', action='store_true', default=None, help='use reserved GPU memory for supported stages')
+    device.add_argument('--cpu', dest='gpu', action='store_false', help='CPU only')
     parser.add_argument("--force", action="store_true", default=None, help="rerun owned variant outputs; never permits overwriting foreign files")
     parser.add_argument("--dry-run", action="store_true", help="validate paths/config and print a plan without writing files or running tools")
     parser.set_defaults(func=command_variants)

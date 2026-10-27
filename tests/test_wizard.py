@@ -168,7 +168,7 @@ class WizardTests(unittest.TestCase):
                 result = subprocess.run(
                     [sys.executable, "-B", "-m", "oncotracer_cli.cli", "setup", "--terminal", "--project", str(project),
                      "--mode", "ont", "--input-folder", str(reads.parent), "--threads", "1",
-                     "--backend", "conda", "--hg38_build"],
+                     "--backend", "conda", "--cpu", "--hg38_build"],
                     cwd=Path(__file__).resolve().parents[1], input=answers, text=True,
                     capture_output=True, timeout=30,
                 )

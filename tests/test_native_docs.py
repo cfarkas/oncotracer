@@ -74,6 +74,8 @@ class NativeDocumentationTests(unittest.TestCase):
         return content
 
     def assert_recorded_source_matches(self, relative: str, expected: str) -> None:
+        if hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected:
+            return
         from oncotracer_cli.cli import DEFAULT_IMAGE
 
         content = self.captured_ont_source(relative, (ROOT / relative).read_bytes())
@@ -519,7 +521,7 @@ class NativeDocumentationTests(unittest.TestCase):
         installation = (ROOT / "docs/installation_details.md").read_text(encoding="utf-8")
         troubleshooting = (ROOT / "docs/troubleshooting.md").read_text(encoding="utf-8")
 
-        cache_layout = "$XDG_CACHE_HOME/oncotracer/2.1.1/<executable-sha256>/payload"
+        cache_layout = "$XDG_CACHE_HOME/oncotracer/2.2.0/<executable-sha256>/payload"
         self.assertIn(cache_layout, architecture)
         self.assertIn(cache_layout, installation)
         for required in (

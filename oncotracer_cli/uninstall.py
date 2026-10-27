@@ -76,7 +76,8 @@ def uninstall_target(
             domains = [conda_domain(target)]
             marker = domains[0][1]
             if marker["managed_children"] == list(safety.MANAGED_CHILDREN):
-                for suffix, family in (("variants", "variants"), ("poetry", "poetry-runtime")):
+                for suffix, family in (("variants", "variants"), ("poetry", "poetry-runtime"),
+                                       ("gpu-reports", "gpu-reports"), ("gpu-clair3", "gpu-clair3")):
                     sibling = safety.managed_sibling_base(target, suffix)
                     if os.path.lexists(sibling) or os.path.lexists(
                         safety._journal_path(sibling, "conda")
@@ -126,7 +127,7 @@ def uninstall_target(
         # appear between the final inspection and removal of the parent tools.
         lock_targets.update(
             safety.managed_sibling_base(target, suffix)
-            for suffix in ("variants", "poetry")
+            for suffix in ("variants", "poetry", "gpu-reports", "gpu-clair3")
         )
     lock_targets = sorted(lock_targets, key=str)
     # Inspect every independent domain before moving any asset. Hold all locks

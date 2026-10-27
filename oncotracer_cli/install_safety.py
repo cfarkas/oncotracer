@@ -52,8 +52,9 @@ CONDA_NAMES = ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
 MANAGED_CHILDREN = (*CONDA_NAMES, "poetry-runtime")
 VARIANTS_CHILDREN = ("variants",)
 POETRY_CHILDREN = ("poetry-runtime",)
-MANAGED_FAMILIES = (MANAGED_CHILDREN, VARIANTS_CHILDREN, POETRY_CHILDREN)
-KNOWN_CHILDREN = (*MANAGED_CHILDREN, "variants")
+GPU_FAMILIES = (("gpu-reports",), ("gpu-clair3",))
+MANAGED_FAMILIES = (MANAGED_CHILDREN, VARIANTS_CHILDREN, POETRY_CHILDREN, *GPU_FAMILIES)
+KNOWN_CHILDREN = (*MANAGED_CHILDREN, "variants", "gpu-reports", "gpu-clair3")
 BASE_MARKER = ".oncotracer-conda-root.json"
 ENV_MARKER = ".oncotracer-environment.json"
 POETRY_MARKER = ".oncotracer-poetry-runtime.json"
@@ -111,9 +112,9 @@ def _valid_source(value: object) -> bool:
             "source_commit",
             "source_sha256",
         }
-        # Recognize prior owned environments during the 2.1.1 upgrade. Reuse
+        # Recognize prior owned environments during the 2.2.0 upgrade. Reuse
         # still requires exact dependency definitions and inventory checks.
-        and value.get("oncotracer_version") in {__version__, "2.1.0"}
+        and value.get("oncotracer_version") in {__version__, "2.1.0", "2.1.1"}
         and isinstance(value.get("source_commit"), str)
         and bool(_HEX_40.fullmatch(str(value["source_commit"])))
         and isinstance(value.get("source_sha256"), str)
@@ -1189,6 +1190,10 @@ def _verify_conda_runtime(destination: Path, name: str) -> None:
         verify_variant_environment(destination, runner=managed_probe)
         return
     probes: dict[str, tuple[list[str | Path], str]] = {
+        "gpu-reports": ([destination / 'bin/python', '-I', '-B', '-c',
+                         "import torch,transformers,reportlab; assert torch.version.cuda == '12.4'; print('GPU_REPORTS_OK')"], 'GPU_REPORTS_OK'),
+        "gpu-clair3": ([destination / 'bin/python', '-I', '-B', '-c',
+                        "import tensorflow as tf; assert tf.__version__ == '2.15.1'; assert tf.test.is_built_with_cuda(); print('GPU_CLAIR3_OK')"], 'GPU_CLAIR3_OK'),
         "core": (
             [
                 destination / "bin" / "python",
@@ -3512,7 +3517,7 @@ def _recover_conda_journal(base: Path) -> None:
 
 
 def managed_sibling_base(base: Path, family: str) -> Path:
-    if family not in {"variants", "poetry"}:
+    if family not in {"variants", "poetry", "gpu-reports", "gpu-clair3"}:
         raise OncoTracerError("unsupported managed sibling family")
     base = _absolute(base)
     return base.with_name(base.name + "-" + family)
@@ -3525,7 +3530,7 @@ def _conda_definitions(root: Path, names: Sequence[str]) -> dict[str, Path]:
 
 def install_conda_managed(
     root: Path, base: Path, *, conda: str, force: bool, dry_run: bool,
-    poetry: str | None = None,
+    poetry: str | None = None, gpu: bool = False,
 ) -> dict[str, Path]:
     """Install the five native groups plus mandatory variants before publishing settings."""
     if poetry is not None and not dry_run:
@@ -3534,6 +3539,8 @@ def install_conda_managed(
     families = [(base, MANAGED_CHILDREN), (managed_sibling_base(base, "variants"), VARIANTS_CHILDREN)]
     if poetry is not None:
         families.append((managed_sibling_base(base, "poetry"), POETRY_CHILDREN))
+    if gpu:
+        families.extend((managed_sibling_base(base, family[0]), family) for family in GPU_FAMILIES)
     for family_base, children in families:
         family_base = _guard_dedicated(family_base, "managed installation family")
         journal_path = _journal_path(family_base, "conda")
@@ -3552,6 +3559,10 @@ def install_conda_managed(
     if poetry is not None:
         _install_conda_family(root, managed_sibling_base(base, "poetry"), conda=conda,
                               force=force, dry_run=dry_run, native_names=(), poetry=poetry)
+    if gpu:
+        for family in GPU_FAMILIES:
+            prefixes.update(_install_conda_family(root, managed_sibling_base(base, family[0]), conda=conda,
+                                                  force=force, dry_run=dry_run, native_names=family))
     return prefixes
 
 
@@ -3650,6 +3661,7 @@ def _install_conda_family(
     native_names = tuple(native_names)
     children = MANAGED_CHILDREN if native_names == CONDA_NAMES else (
         VARIANTS_CHILDREN if native_names == VARIANTS_CHILDREN and poetry is None else
+        native_names if native_names in GPU_FAMILIES and poetry is None else
         POETRY_CHILDREN if not native_names and poetry is not None else ()
     )
     if not children:
@@ -3951,6 +3963,9 @@ def _install_conda_family(
                             raise OncoTracerError(
                                 f"Conda prefix lacks conda-meta/history: {target}"
                             )
+                        if name == 'gpu-clair3':
+                            from .gpu_callers import repair
+                            repair((target / 'bin/run_clair3.sh').resolve().parent)
                         _verify_conda_runtime(target, name)
                         inventory_sha256 = _write_child_inventory(target)
                         final_marker = _environment_marker(
@@ -4872,6 +4887,25 @@ def managed_variants_prefix(config: Mapping[str, object], *, semantic: bool = Fa
         raise OncoTracerError(f"configured variants_prefix is not the canonical managed child {expected}: {selected}")
     with managed_variants_runtime_lock(selected, semantic=semantic) as verified:
         return verified
+
+
+@contextlib.contextmanager
+def managed_gpu_runtime_lock(config: Mapping[str, object], kind: str, *, semantic=False):
+    """Authenticate optional GPU tools using the normal managed ownership rules."""
+    if (kind,) not in GPU_FAMILIES:
+        raise OncoTracerError('Unknown GPU environment')
+    key = kind.replace('-', '_') + '_prefix'
+    if not config.get('core_prefix') or not config.get(key):
+        raise OncoTracerError('GPU tools are not installed. Run oncotracer install --conda --gpu (or --poetry --gpu).')
+    base = _absolute(Path(str(config['core_prefix']))).parent
+    expected = managed_sibling_base(base, kind) / kind
+    selected = _absolute(Path(str(config[key])))
+    if selected != expected:
+        raise OncoTracerError('GPU prefix is not the canonical managed child: ' + str(selected))
+    with _managed_family_runtime_lock(expected.parent, names=(kind,), children=(kind,), semantic=semantic):
+        _verify_runtime_conda_definitions(expected.parent, runtime_root(), (kind,))
+        yield expected
+        _verify_runtime_conda_definitions(expected.parent, runtime_root(), (kind,))
 
 
 def verify_managed_conda_runtime(

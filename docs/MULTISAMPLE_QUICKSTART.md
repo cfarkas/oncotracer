@@ -7,7 +7,7 @@ Nextflow workflows; native stages use cancellable sample workers.
 
 ### Safe startup for parallel Illumina and FFPE jobs
 
-Version 2.1.1 prepares Nextflow once in the environment the sample workers will
+Version 2.2.0 prepares Nextflow once in the environment the sample workers will
 actually use, before starting their workflows. It checks the distribution,
 publishes it atomically, and gives each JVM a separate temporary directory.
 This covers an empty cache and installations where `/tmp` and the output folder
@@ -343,3 +343,7 @@ It does not replace whole-genome QuickStart parity or validate biological accura
 At the end, [sample completion counts](outputs.md#completed-and-incomplete-samples)
 show completed/total and incomplete/total for the whole analysis and each
 requested branch. Queued or interrupted samples remain in the total.
+
+## GPU stages
+
+New and continued projects show **GPU usage → Yes/No** when a GPU is visible. GPU stages share one queue per device across projects, independently of the selected number of CPU sample jobs. See [GPU installation and memory limits](gpu.md).

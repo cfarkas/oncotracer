@@ -341,6 +341,7 @@ def parser():
     p.add_argument('--literature-offline',action='store_true',help='Use cached literature only; label unavailable sources explicitly')
     p.add_argument('--interpretation-report',action=argparse.BooleanOptionalAction,default=False,help='Integrated interpretation, variant support scores and orderly report deliverables')
     p.add_argument('--report-llm',action=argparse.BooleanOptionalAction,default=False,help='Generate cited narrative drafts with a local model; implies --interpretation-report')
+    p.add_argument('--gpu-usage',action=argparse.BooleanOptionalAction,default=False,help='Use reserved GPU memory for local report generation')
     p.add_argument('--report-pdf',action=argparse.BooleanOptionalAction,default=True)
     p.add_argument('--llm-model',default=__import__('llm_reporting').DEFAULT_MODEL,help='Cached pinned model ID or local Safetensors directory; no hosted API')
     p.add_argument('--llm-python',help='Python environment with torch/transformers and, for PDF, reportlab')

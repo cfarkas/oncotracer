@@ -93,6 +93,21 @@ class GlimpseReadinessTests(unittest.TestCase):
             with self.assertRaisesRegex(OncoTracerError, 'Local report resources are not ready.*model missing'):
                 ready.check(self.request, {'nextflow':'nextflow'}, None, bundle)
 
+    def test_gpu_report_runtime_replaces_saved_cpu_interpreter_before_preflight(self):
+        bundle = self.root/'bundle'; (bundle/'bin').mkdir(parents=True)
+        (bundle/'bin/llm_reporting.py').write_text(
+            'def prepare(c):\n assert c["gpu_usage"] is True\n'
+            ' assert c["llm_python"]=="/verified/gpu-reports/bin/python"\n'
+            ' c["llm_model_directory"]="/local/model"\n')
+        request = replace(self.request, gpu_usage=True, glimpse_config={'llm_python': '/old/cpu/python'})
+        with patch.object(ready,'analysis_python',return_value='/scientific/python'), \
+             patch.object(ready,'prepare_nextflow_environment',return_value={}), \
+             patch.object(ready,'probe') as probe, \
+             patch('oncotracer_cli.gpu_runtime.native_prefix',return_value=Path('/verified/gpu-reports')):
+            result = ready.check(request, {'nextflow':'nextflow'}, None, bundle)
+        self.assertEqual(result['llm_python'], '/verified/gpu-reports/bin/python')
+        self.assertEqual(probe.call_args.args[0][0], result['llm_python'])
+
     def test_resource_and_ffpe_children_use_selected_scientific_python(self):
         resources=self.root/'resources'
         params={'resource_dir':str(resources),'clinvar':str(resources/'clinvar.vcf.gz'),

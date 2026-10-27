@@ -107,6 +107,7 @@ def worker_environment(allocation):
     return {**{key: '1' for key in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS',
              'NUMEXPR_NUM_THREADS', 'VECLIB_MAXIMUM_THREADS', 'BLIS_NUM_THREADS')},
             'LOKY_MAX_CPU_COUNT': str(cpu),
+            'ONCOTRACER_SAMPLE_THREADS': str(cpu),
             'ONCOTRACER_SAMPLE_MEMORY_MB': str(int(memory * 1024)),
             '_JAVA_OPTIONS': f'-Xmx{max(1, int(memory * .7))}g -XX:ActiveProcessorCount={cpu}'}
 
@@ -130,7 +131,9 @@ def offers(config, sample_count, *, threads=None, memory=None, hardware=None):
     maximum = min(sample_count, budget['total_threads'], int(budget['total_memory_gb'] // minimum))
     choices = [allocate(threads, sample_count, parallel=n, memory=memory,
                        minimum_gb=minimum, hardware=hardware) for n in range(1, maximum + 1)]
+    from .gpu_runtime import enabled, options
     return {'hardware': hardware, 'recommended': recommended, 'choices': choices,
+            'gpu': options(), 'selected_gpu_usage': enabled(config),
             'memory': memory, 'threads': budget['total_threads'],
             'total_memory_gb': budget['total_memory_gb'], 'sample_count': sample_count,
             'minimum_memory_gb_per_sample': minimum, 'recommendation_error': recommendation_error,
@@ -167,14 +170,24 @@ def planning_suggestions(config, *, hardware, threads=None, memory=None, sample_
 
 
 def selected_config(config, sample_count, selection):
-    if not isinstance(selection, dict) or set(selection) - {'threads', 'parallel_samples', 'memory'}:
-        raise OncoTracerError('Select only CPU threads, parallel samples and memory in resource settings')
+    if not isinstance(selection, dict) or set(selection) - {'threads', 'parallel_samples', 'memory', 'gpu_usage'}:
+        raise OncoTracerError('Select only CPU threads, parallel samples, memory and GPU usage in resource settings')
     choices = offers(config, sample_count, threads=selection.get('threads'), memory=selection.get('memory'))
     parallel = parallel_value(selection.get('parallel_samples', 'auto'))
     requested_memory = selection.get('memory', choices['memory'])
     # Keep the user's explicit count, even if it exceeds a later recommendation.
     allocate(choices['threads'], sample_count, parallel=parallel, memory=requested_memory,
              minimum_gb=choices['minimum_memory_gb_per_sample'], hardware=choices['hardware'])
-    return {'threads': choices['threads'], 'parallel_samples': parallel,
+    gpu = {}
+    if 'gpu_usage' in selection:
+        from .gpu_runtime import enabled
+        try:
+            requested_gpu = enabled(selection)
+        except ValueError as error:
+            raise OncoTracerError(str(error)) from error
+        if requested_gpu and not choices['gpu']['detected']:
+            raise OncoTracerError('GPU usage Yes requires a visible NVIDIA GPU; detect resources again or choose No')
+        gpu = {'gpu_usage': requested_gpu, 'methylation_gpu': requested_gpu}
+    return {**gpu, 'threads': choices['threads'], 'parallel_samples': parallel,
             'analysis_memory': requested_memory, 'variant_parallel_samples': parallel,
             'variant_memory': requested_memory}

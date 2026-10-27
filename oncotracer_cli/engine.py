@@ -3902,6 +3902,9 @@ def _run_native_impl(
     if mode not in {"illumina", "ont"}:
         raise OncoTracerError("config mode must be illumina or ont")
     ont_caller = _ont_caller(config) if mode == "ont" else None
+    if methylation_gpu is not None:
+        config['gpu_usage'] = methylation_gpu
+        config['methylation_gpu'] = methylation_gpu
     variant_request = resolve_variant_request(config, mode=mode)
     if variant_request and only_methylation:
         raise OncoTracerError("Variants require alignment; select CNA with optional methylation, not methylation_only")

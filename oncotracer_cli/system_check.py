@@ -426,6 +426,11 @@ def print_resource_report(report: dict) -> None:
               "20% of available RAM is reserved; separate analyses share this machine.")
     else:
         print(f"Suggested starting setting: threads: {report['suggested_threads']}")
+    if report.get('gpu', {}).get('detected'):
+        for device in report['gpu']['devices']:
+            print(f"GPU budget: {device['name']}; {device['budget_mb']/1024:.1f} GiB available after reserve.")
+        print(report['gpu']['note'])
+        print('Use oncotracer doctor --gpu to test CUDA before selecting GPU usage Yes.')
     print(report["limits"])
 
 
@@ -445,6 +450,8 @@ def command_system(args: argparse.Namespace) -> int:
         raise OncoTracerError('Use positive --threads and --samples values for resource planning')
     report['sample_job_plans'] = planning_suggestions(config, hardware=report['hardware'],
         threads=args.threads, memory=args.memory, sample_count=args.samples)
+    from .gpu_runtime import options
+    report['gpu'] = options()
     if args.json:
         print(json.dumps(report, indent=2))
     else:

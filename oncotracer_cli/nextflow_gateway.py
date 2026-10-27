@@ -23,6 +23,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--project-dir', default=str(Path(__file__).resolve().parents[1]), help=argparse.SUPPRESS)
     p.add_argument('--launch-dir', default=str(Path.cwd()), help=argparse.SUPPRESS)
     p.add_argument('--interactive', action='store_true', help='open the local OncoTracer visual browser setup')
+    device = p.add_mutually_exclusive_group()
+    device.add_argument('--gpu', action='store_true', default=None, help='use reserved GPU memory for supported stages')
+    device.add_argument('--cpu', dest='gpu', action='store_false', help='CPU only')
     p.add_argument('--ffpe', action='store_true', help='with --interactive, preselect Illumina FFPE variants and FFPErase')
     p.add_argument('--ont_named_samples', '--ont-named-samples', action='store_true',
                    help='with --interactive, select ONT setup with named library folders')
@@ -132,6 +135,8 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         argv += ['--threads', str(args.threads)]
     if args.parallel_samples is not None:
         argv += ['--parallel-samples', str(args.parallel_samples)]
+    if args.gpu is not None:
+        argv.append('--gpu' if args.gpu else '--cpu')
     env = os.environ.copy()
     old = env.get('PYTHONPATH', '')
     env['PYTHONPATH'] = str(source) + (os.pathsep + old if old else '')

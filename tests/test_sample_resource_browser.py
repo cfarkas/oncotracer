@@ -32,6 +32,8 @@ class SampleJobBrowserTests(unittest.TestCase):
         self.stack = contextlib.ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(patch('oncotracer_cli.cli._load_install_config', return_value={}))
+        self.gpu_options = {'detected': False, 'devices': [], 'note': 'GPU resource test'}
+        self.stack.enter_context(patch('oncotracer_cli.gpu_runtime.options', side_effect=lambda: dict(self.gpu_options)))
         self.stack.enter_context(patch('oncotracer_cli.sample_resources.inspect_hardware', return_value=self.hardware))
         args = parse_arguments(['setup', '--mode', 'illumina', '--backend', 'host',
                                 '--input-folder', str(self.reads), '--project', str(self.root/'project')])
@@ -95,6 +97,44 @@ class SampleJobBrowserTests(unittest.TestCase):
         # Changing this field used to hide the whole review and stall Run.
         expect(self.page.locator('#review-card #resume-resources')).to_be_visible()
         expect(self.page.locator('#run')).to_be_enabled()
+
+    def test_gpu_choice_is_visible_only_when_detected_and_is_saved(self):
+        self.new_form()
+        expect(self.page.locator('#sample-gpu-field')).to_be_hidden()
+        self.gpu_options.update(detected=True, devices=[{'name': 'Test GPU', 'budget_mb': 16000}])
+        self.page.locator('#sample-detect-resources').click()
+        expect(self.page.locator('#sample-gpu-field')).to_be_visible()
+        self.page.locator('#sample-gpu').select_option('true')
+        self.page.locator('#prepare').click()
+        expect(self.page.locator('#run')).to_be_enabled(timeout=30000)
+        saved = load_flat_yaml(self.root/'project/config/run.yml')
+        self.assertTrue(saved['gpu_usage'])
+        self.assertFalse(self.errors, self.errors)
+
+    def test_continue_gpu_choice_persists_and_requires_explicit_cpu_if_gpu_missing(self):
+        self.save_fixture()
+        path = self.root/'project/config/run.yml'
+        text = path.read_text()
+        if 'gpu_usage: false' in text:
+            text = text.replace('gpu_usage: false', 'gpu_usage: true')
+        else:
+            text += '\ngpu_usage: true\n'
+        path.write_text(text)
+        self.page.locator('#choose-existing-analysis').click()
+        self.page.locator('#resume-project').fill(str(self.root/'project'))
+        self.page.locator('#resume-project-button').click()
+        expect(self.page.locator('#resume-resources')).to_be_visible(timeout=30000)
+        expect(self.page.locator('#resume-gpu-field')).to_be_hidden()
+        expect(self.page.locator('#resume-gpu-unavailable')).to_be_visible()
+        expect(self.page.locator('#run')).to_be_disabled()
+        self.assertTrue(load_flat_yaml(path)['gpu_usage'])
+        self.page.locator('#resume-use-cpu').click()
+        expect(self.page.locator('#resume-gpu-unavailable')).to_be_hidden()
+        expect(self.page.locator('#run')).to_be_enabled()
+        self.page.locator('#resume-apply-resources').click()
+        expect(self.page.locator('#run')).to_be_enabled(timeout=30000)
+        self.assertFalse(load_flat_yaml(path)['gpu_usage'])
+        self.assertFalse(self.errors, self.errors)
 
     def test_partial_completion_is_visible_at_the_end(self):
         from oncotracer_cli.completion import summarize_completion

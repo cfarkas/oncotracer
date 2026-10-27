@@ -1,0 +1,14 @@
+name: oncotracer-gpu-clair3
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.10
+  - clair3=1.2.0
+  - tensorflow=2.15.0=cpu*
+  - samtools=1.23.1
+  - bcftools=1.23.1
+  - htslib=1.24
+  - pip
+  - pip:
+      - tensorflow[and-cuda]==2.15.1

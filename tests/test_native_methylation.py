@@ -645,17 +645,19 @@ class NativeMethylationTests(unittest.TestCase):
         fai.write_text("chr1\t4\t6\t4\t5\n", encoding="utf-8")
         outdir = fixture.root / "result"
         runner = FakeRunner(pileup)
-        status = run_methylation(
-            ROOT,
-            request,
-            [OntSample("SNC_F", "barcode01", fixture.fastq)],
-            {"fasta": fasta, "fai": fai},
-            outdir,
-            runner,  # type: ignore[arg-type]
-            StageLedger(outdir / ".oncotracer-native" / "state.json"),
-            threads=4,
-            force=False,
-        )
+        with patch('oncotracer_cli.gpu_runtime.lease', return_value=contextlib.nullcontext(
+            {'uuid':'GPU-test-123','budget_mb':16384,'reserve_mb':4096})):
+            status = run_methylation(
+                ROOT,
+                request,
+                [OntSample("SNC_F", "barcode01", fixture.fastq)],
+                {"fasta": fasta, "fai": fai},
+                outdir,
+                runner,  # type: ignore[arg-type]
+                StageLedger(outdir / ".oncotracer-native" / "state.json"),
+                threads=4,
+                force=False,
+            )
         return temporary, fixture, outdir, runner, status
 
     def test_zero_cpg_aborts_classifier_but_preserves_status_for_cna(self) -> None:
@@ -712,7 +714,8 @@ class NativeMethylationTests(unittest.TestCase):
             for stage, command in runner.calls
             if stage == "methylation-dorado-basecall"
         )
-        self.assertEqual(dorado[dorado.index("--device") + 1], "cuda:all")
+        self.assertEqual(dorado[dorado.index("--device") + 1], "cuda:0")
+        self.assertEqual(dorado[dorado.index("--batchsize") + 1], "32")
         for stage, command in runner.calls:
             if stage.startswith("methylation-sturgeon-"):
                 self.assertEqual(command[1], "--no-logfile")
@@ -745,8 +748,8 @@ class NativeMethylationTests(unittest.TestCase):
         )
         self.assertTrue(provenance["gpu_requested"])
         self.assertEqual(provenance["modkit_acceleration"], "cpu_threads")
-        self.assertIsNone(
-            runner.environments["methylation-dorado-basecall"]["CUDA_VISIBLE_DEVICES"]
+        self.assertEqual(
+            runner.environments["methylation-dorado-basecall"]["CUDA_VISIBLE_DEVICES"], 'GPU-test-123'
         )
         self.assertEqual(
             runner.environments["methylation-adjust-SNC_F"]["CUDA_VISIBLE_DEVICES"],

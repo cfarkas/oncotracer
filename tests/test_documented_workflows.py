@@ -117,6 +117,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 "CNA bin size (kb)": "100",
                 "Add CNA interpretation reports?": "no",
                 "Add small-variant calling?": "no",
+                "GPU usage for supported stages": "no",
                 "Analysis tools (--backend)": "conda",
                 "hg38 reference": "download",
                 "Final action": "save",
@@ -449,7 +450,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
             ]
         self.assertTrue(setup.non_interactive)
         self.assertEqual((setup.mode, setup.analysis, setup.backend, run.backend), ("illumina", "cna", "docker", "docker"))
-        self.assertEqual(setup.image, "carlosfarkas/oncotracer:2.1.1")
+        self.assertEqual(setup.image, "carlosfarkas/oncotracer:2.2.0")
         self.assertEqual(run.image, setup.image)
         self.assertEqual(Path(check.config), Path(setup.project) / "config/run.yml")
         self.assertEqual(run.config, check.config)

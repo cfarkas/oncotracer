@@ -114,7 +114,7 @@ class VariantResourceTests(unittest.TestCase):
                 case_project = self.root / mechanism / "project"
                 case_project.mkdir(parents=True)
                 prefix = self.tools(case_home / ".local/share/oncotracer" /
-                                    ("optional-tools/variants" if mechanism == "optional" else "2.1.1/envs/core"),
+                                    ("optional-tools/variants" if mechanism == "optional" else "2.2.0/envs/core"),
                                     "samtools", "bcftools", "freebayes")
                 if mechanism == "saved":
                     self.file(case_home / ".config/oncotracer/config.json", json.dumps({"core_prefix": str(prefix)}))

@@ -159,6 +159,7 @@ function demoVariantResources(payload){
   if(payload.mode==='ont'&&payload.callers.includes('clair3')&&values.variant_clair3_model!=='auto')for(const path of ['/demo/resources/clair3-model','/demo/resources/clair3-alternative'])candidates.push({field:'variant_clair3_model',path,label:'Synthetic Clair3 model',status:'candidate',detail:'Fictional candidate: confirm chemistry and basecaller before choosing a real model.'});
   return {backend:payload.backend,fields,resources,candidates,install_guides:guides,searched:['/demo/tools','/demo/resources'],notes:['Synthetic resource discovery only. Your computer has not been inspected.']};
 }
+const demoGpu={detected:true,devices:[{name:'Demo NVIDIA GPU',budget_mb:16000}],note:'Fictional GPU. Supported stages share a device queue; CPU tools remain on CPU.'};
 function demoResourceOptions(payload={}){
  const cpu=Math.min(16,payload.threads||8),available=48*.8;
  const memory=!payload.memory||payload.memory==='auto'?Math.max(payload.variants?32:8,available*cpu/16):parseFloat(payload.memory);
@@ -166,12 +167,12 @@ function demoResourceOptions(payload={}){
  const maximum=Math.min(count,cpu,Math.floor(budget/minimum));
 
  const plan=n=>({parallel_samples:n,threads_per_sample:Math.floor(cpu/n),memory_gb_per_sample:Math.floor(budget*1024/n)/1024,total_memory_gb:budget,total_threads:cpu});
- return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB},recommended:maximum?plan(Math.min(maximum,Math.max(1,Math.floor(cpu/8)))):null,total_memory_gb:budget,sample_count:count,minimum_memory_gb_per_sample:minimum,recommendation_error:maximum?null:'No suggested fit within this synthetic RAM budget. Manual selection remains available.',choices:Array.from({length:maximum},(_,i)=>plan(i+1)),threads:cpu,memory:payload.memory||'auto',note:'Fictional demo resources. The installed app checks your computer before Run.'};
+ return {gpu:demoGpu,selected_gpu_usage:false,hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB},recommended:maximum?plan(Math.min(maximum,Math.max(1,Math.floor(cpu/8)))):null,total_memory_gb:budget,sample_count:count,minimum_memory_gb_per_sample:minimum,recommendation_error:maximum?null:'No suggested fit within this synthetic RAM budget. Manual selection remains available.',choices:Array.from({length:maximum},(_,i)=>plan(i+1)),threads:cpu,memory:payload.memory||'auto',note:'Fictional demo resources. The installed app checks your computer before Run.'};
 }
 function demoApi(path,payload){
   const url=new URL(path,location.href);
   switch(url.pathname){
-    case '/api/system':return {default_docker_image:'carlosfarkas/oncotracer:2.1.1',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:2.1.1'}};
+    case '/api/system':return {gpu:demoGpu,default_docker_image:'carlosfarkas/oncotracer:2.2.0',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[{name:'Demo NVIDIA GPU',memory_total_bytes:24*demoGiB}],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:2.2.0'}};
     case '/api/resource-options':return demoResourceOptions(payload);
     case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');
     case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');

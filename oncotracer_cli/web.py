@@ -182,7 +182,9 @@ class WebState:
                   ("Other mounts", Path("/mnt"))]
         locations = [{"name": name, "path": str(path)} for name, path in places if path.is_dir()]
         from .cli import DEFAULT_IMAGE
+        from .gpu_runtime import options as gpu_options
         return {"hardware": self.hardware, "defaults": defaults, "locations": locations,
+                "gpu": gpu_options() if self.hardware.get('gpus') else {"detected": False, "devices": []},
                 "default_docker_image": DEFAULT_IMAGE,
                 "resume_project": defaults.get("project") if defaults.get("project") and
                     (Path(defaults["project"]) / "config/run.yml").is_file() else None,
@@ -486,7 +488,9 @@ class WebState:
                 selection = selected_config({'mode': discovered.mode, 'run_variants': args.variants,
                     'threads': threads}, len(entries), data['resources_selection'])
                 args.threads = selection['threads']
-                values.update({key: selection[key] for key in ('parallel_samples', 'analysis_memory')})
+                values.update({key: selection[key] for key in ('parallel_samples', 'analysis_memory', 'gpu_usage') if key in selection})
+                if 'gpu_usage' in selection:
+                    args.gpu = selection['gpu_usage']
                 if args.variants:
                     args.variant_parallel_samples = selection['variant_parallel_samples']
                     args.variant_memory = selection['variant_memory']

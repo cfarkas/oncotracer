@@ -111,6 +111,10 @@ def check(request, tools, toolchain, bundle, *, environment=None):
     for key in ('llm_python', 'llm_model'):
         if options.get(key):
             config[key] = options[key]
+    if request.gpu_usage:
+        from .gpu_runtime import native_prefix
+        config['gpu_usage'] = True
+        config['llm_python'] = str(native_prefix('gpu-reports') / 'bin/python')
     try:
         reporting.prepare(config)
         # Parse the local tokenizer/config without loading multi-GB model weights,

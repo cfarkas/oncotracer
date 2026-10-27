@@ -75,7 +75,7 @@ class MethylationRequest:
 
     @property
     def dorado_device(self) -> str:
-        return "cuda:all" if self.gpu and self.modbam_input is None else "cpu"
+        return "cuda:0" if self.gpu and self.modbam_input is None else "cpu"
 
 
 def _strict_bool(value: object, *, key: str, default: bool = False) -> bool:
@@ -382,8 +382,6 @@ def resolve_methylation_request(
         raise OncoTracerError("--pod5-dir requires --methylation")
     if modbam_override is not None and not enabled:
         raise OncoTracerError("--modbam requires --methylation or --methylation-only")
-    if gpu_override and not enabled:
-        raise OncoTracerError("--gpu requires --methylation")
     if not enabled:
         return None
     if mode != "ont":
@@ -433,11 +431,8 @@ def resolve_methylation_request(
         raise OncoTracerError(
             "native v2 methylation currently requires methylation_reference_build: hg38"
         )
-    gpu = (
-        _strict_bool(config.get("methylation_gpu"), key="methylation_gpu")
-        if gpu_override is None
-        else gpu_override
-    )
+    from .gpu_runtime import enabled
+    gpu = enabled(config, gpu_override)
     dorado = _configured_executable(
         config, "methylation_dorado_executable", "dorado", "Dorado"
     )
@@ -1209,7 +1204,7 @@ def _run_marlin(
         env=environment,
     )
     _nonempty(prepared, f"MARLIN prepared input for {sample}")
-    runner.run(
+    _run_accelerated(request, runner,
         f"methylation-marlin-predict-{sample}",
         [
             executable,
@@ -1238,7 +1233,8 @@ def _marlin_environment(
     request: MethylationRequest, output: Path
 ) -> dict[str, str | None]:
     cache = output / ".runtime-cache"
-    environment = _accelerator_environment(request.gpu)
+    # Preparation/preflight use CPU. The prediction stage grants a reserved GPU.
+    environment = _accelerator_environment(False)
     environment.update(
         {
             "TF_FORCE_GPU_ALLOW_GROWTH": "true",
@@ -1252,6 +1248,23 @@ def _marlin_environment(
         }
     )
     return environment
+
+
+def _run_accelerated(request, runner, stage, command, **kwargs):
+    """Share GPU admission with variant/report jobs and bound basecall batches."""
+    child_env = dict(kwargs.pop('env', {}) or {})
+    supports_gpu = stage == 'methylation-dorado-basecall' or stage.startswith('methylation-marlin-predict-')
+    if not request.gpu or not supports_gpu or getattr(runner, 'dry_run', False):
+        return runner.run(stage, command, env=child_env, **kwargs)
+    from .gpu_runtime import lease, environment
+    dorado = stage == 'methylation-dorado-basecall'
+    try:
+        with lease(stage, minimum_mb=8192 if dorado else 2048,
+                   cancel=getattr(runner, 'stop', None)) as device:
+            child_env.update(environment(device))
+            return runner.run(stage, command, env=child_env, **kwargs)
+    except RuntimeError as error:
+        raise OncoTracerError(str(error)) from error
 
 
 def _current_signal_files(request: MethylationRequest, kind: str) -> tuple[Path, ...]:
@@ -1279,7 +1292,7 @@ def _basecall_named_pod5(
                 argv[3] = source
                 argv[argv.index("--read-ids") + 1] = read_ids[group.sample]
                 with chunk.open("wb") as stream, (logs / f"dorado-{index}.stderr.log").open("w") as error:
-                    runner.run("methylation-dorado-basecall", argv,
+                    _run_accelerated(request, runner, "methylation-dorado-basecall", argv,
                                env=_accelerator_environment(request.gpu), stdout=stream, stderr=error)
                 _nonempty(chunk, "Dorado selected-library modified-base stream")
         runner.run("methylation-dorado-merge", [request.samtools, "merge", "-@", str(threads),
@@ -1401,6 +1414,9 @@ def run_methylation(
         "--device",
         request.dorado_device,
     ]
+    if request.gpu and request.pod5_dir:
+        # Avoid auto-batching against all free VRAM, including the desktop reserve.
+        dorado_command += ['--batchsize', '32']
     basecall_inputs = [
         *request.pod5_files,
         union_ids,
@@ -1456,7 +1472,8 @@ def run_methylation(
                 unsorted.open("wb") as output,
                 dorado_log.open("w", encoding="utf-8") as error_log,
             ):
-                runner.run(
+                _run_accelerated(
+                    request, runner,
                     basecall_stage,
                     dorado_command,
                     env=_accelerator_environment(

@@ -69,6 +69,17 @@ transformed[is.na(transformed)] <- 0
 covered <- sum(transformed != 0)
 if (covered == 0L) fail("No covered MARLIN model features are available")
 
+gpu_budget <- suppressWarnings(as.integer(Sys.getenv("ONCOTRACER_GPU_MEMORY_MB", unset = "0")))
+if (!is.na(gpu_budget) && gpu_budget > 0L) {
+  reticulate::py_run_string(paste0(
+    "import tensorflow as tf\n",
+    "gpus = tf.config.list_physical_devices('GPU')\n",
+    "assert len(gpus) == 1, 'MARLIN GPU inference requires one reserved CUDA GPU'\n",
+    "tf.config.experimental.enable_tensor_float_32_execution(False)\n",
+    "tf.config.set_logical_device_configuration(gpus[0], [tf.config.LogicalDeviceConfiguration(memory_limit=",
+    max(1024L, gpu_budget - 1024L), ")])\n"
+  ))
+}
 model <- load_model_hdf5(options$model)
 prediction <- model %>% predict(t(matrix(transformed)))
 if (!is.matrix(prediction) || nrow(prediction) != 1L) {

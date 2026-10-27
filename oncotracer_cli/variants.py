@@ -68,11 +68,15 @@ class VariantRequest:
     tool_prefix_diagnostics: tuple[str, ...] = ()
     parallel_samples: int | str = 'auto'
     memory: str = 'auto'
+    gpu_usage: bool = False
 
     def as_dict(self, *, include_runtime_diagnostics: bool = True):
         result = {k: str(v) if isinstance(v, Path) else list(v) if isinstance(v, tuple) else v
                 for k, v in asdict(self).items()}
         result["matched_normals"] = dict(self.matched_normals)
+        if not self.gpu_usage:
+            # Preserve CPU checkpoint identities from before GPU support.
+            result.pop('gpu_usage', None)
         if not include_runtime_diagnostics:
             result.pop("tool_prefix_source", None)
             result.pop("tool_prefix_diagnostics", None)
@@ -135,6 +139,9 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
     if targets:
         require_file(targets, 'Variant target BED')
     prefix = path('variant_tool_prefix') or (Path(os.environ['ONCOTRACER_VARIANTS_PREFIX']).resolve() if os.environ.get('ONCOTRACER_VARIANTS_PREFIX') else None)
+    from .gpu_runtime import enabled as gpu_enabled, native_prefix
+    if gpu_enabled(config) and mode == 'ont' and 'clair3' in callers and not config.get('_docker_skip_host_tools') and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') != 'docker':
+        prefix = native_prefix('gpu-clair3')
     if prefix and not config.get('_docker_skip_host_tools') and not (prefix / 'bin').is_dir():
         raise OncoTracerError('variant_tool_prefix must contain a bin directory')
     try:
@@ -197,7 +204,11 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
     parallel = parallel_value(config.get('variant_parallel_samples', config.get('parallel_samples', 'auto')))
     memory = config.get('variant_memory', config.get('analysis_memory', 'auto'))
     memory_gb(memory)
-    request = replace(request, parallel_samples=parallel, memory=memory)
+    from .gpu_runtime import enabled as gpu_enabled
+    try:
+        request = replace(request, parallel_samples=parallel, memory=memory, gpu_usage=gpu_enabled(config))
+    except ValueError as error:
+        raise OncoTracerError(str(error)) from error
     if mode == 'illumina':
         from .glimpse_pipeline import validate_options
         request=replace(request,engine='glimpse2',glimpse_config=validate_options(config))
@@ -499,7 +510,30 @@ def _clairsto_command_prefix(request, tools, directory: Path, bam: Path, ref: Pa
 def _call(request, caller, sample, bam, ref, directory, tools, runner, threads, env, targets, normal_bam=None):
     def run(label, argv, **kwargs):
         with (directory / f'{label}.stderr.log').open('w') as err:
-            runner.run(f'variant-{sample}-{caller}-{label}', argv, env=kwargs.pop('env', env), stderr=err, **kwargs)
+            child_env = dict(kwargs.pop('env', env) or {})
+            stage = f'variant-{sample}-{caller}-{label}'
+            if label == 'call' and caller in {'clair3', 'clairs_to'}:
+                # GNU nproc obeys OMP_NUM_THREADS. Give launcher discovery the
+                # sample budget; keep BLAS pools at their separate one-thread cap.
+                child_env['OMP_NUM_THREADS'] = str(threads)
+                child_env['ONCOTRACER_SAMPLE_THREADS'] = str(threads)
+            if label == 'call' and caller in {'clair3', 'clairs_to'} and request.gpu_usage:
+                from .gpu_runtime import lease, environment
+                if caller == 'clairs_to' and request.clairsto_sif:
+                    raise OncoTracerError('GPU ClairS-TO requires the current OncoTracer Docker image; the legacy ClairS-TO SIF is CPU only')
+                if runner.dry_run:
+                    runner.run(stage, [*argv, '--use_gpu'], env=child_env, stderr=err, **kwargs)
+                else:
+                    from .gpu_runtime import verify_caller
+                    verify_caller(tools[caller], caller)
+                    with lease(stage, minimum_mb=9216 if caller == 'clair3' else 8192, cancel=getattr(runner, 'stop', None)) as device:
+                        child_env.update(environment(device))
+                        child_env['ONCOTRACER_SAMPLE_THREADS'] = str(threads)
+                        runner.run(stage, [*argv, '--use_gpu'], env=child_env, stderr=err, **kwargs)
+            else:
+                if label == 'call' and caller in {'clair3', 'clairs_to'}:
+                    child_env['CUDA_VISIBLE_DEVICES'] = ''
+                runner.run(stage, argv, env=child_env, stderr=err, **kwargs)
     raw = directory / 'raw.vcf.gz'
     if caller == 'bcftools':
         bcf = directory / 'pileup.bcf'
