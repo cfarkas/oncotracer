@@ -13,7 +13,7 @@ async function demoLoad(platform){
   if(operationBusy)return;
   demoRestoreControls();setAnalysisEntry('new');choose(platform);show('demo-stage-controls',true);
   $('input-folder').value=demoPaths[platform];$('project-parent').value='/demo/projects';$('project-name').value='synthetic-'+platform;
-  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:2.2.0';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();
+  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:2.2.0-rc.1';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();
   $('variants').checked=true;variantSettings();
   const selected=platform==='illumina'?['mutect2','bcftools']:['clairs_to'];
   for(const field of document.querySelectorAll('[data-variant-caller]'))field.checked=selected.includes(field.value);

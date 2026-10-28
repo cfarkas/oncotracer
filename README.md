@@ -2,17 +2,17 @@
 
 [![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
-Analyze Illumina and Oxford Nanopore (ONT) reads for copy-number changes and small variants. Configure samples in your browser and review results. ONT methylation supports MARLIN leukemia and Sturgeon CNS-tumor classifiers. For research use.
+Analyze Illumina and Oxford Nanopore (ONT) copy-number changes and small variants. ONT methylation supports MARLIN leukemia and Sturgeon CNS-tumor classifiers. For research use.
 
 ## Quick start
 
 Use Linux and Python 3.10–3.13. Install the application in your Python environment:
 
 ```bash
-pip install oncotracer
+python3 -m pip install --upgrade "https://github.com/cfarkas/oncotracer/releases/download/v2.2.0-rc.1/oncotracer-2.2.0-py3-none-any.whl"
 ```
 
-No Git checkout is required for PyPI. New resource choices require the [current GitHub source](docs/installation_details.md#install-from-github); PyPI 2.1.0 predates them. Choose **one** backend:
+No Git checkout is required. This **GitHub preview** is not a stable scientific-parity release; frozen CNA parity remains unresolved. `pip install oncotracer` installs the separately published PyPI 2.1.0 without these updates. Choose **one** backend:
 
 ### Conda
 
@@ -29,7 +29,7 @@ oncotracer --interactive --backend conda
 With Docker running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0
+oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0-rc.1
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
@@ -123,7 +123,7 @@ oncotracer uninstall --conda --yes --purge
 **Docker image:** remove the selected image/tag:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:2.2.0
+docker image rm carlosfarkas/oncotracer:2.2.0-rc.1
 ```
 
 This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Image layers may remain.

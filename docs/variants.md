@@ -216,7 +216,7 @@ Select **Docker** and this image in browser settings, or prefill them:
 
 ```bash
 oncotracer setup --backend docker \
-  --image carlosfarkas/oncotracer:2.2.0 --variants
+  --image carlosfarkas/oncotracer:2.2.0-rc.1 --variants
 ```
 
 <details markdown="1">
@@ -228,7 +228,7 @@ image runs alignment, CNA and variants; no host Conda environment is needed.
 ```bash
 oncotracer setup --non-interactive --project "$PWD/docker-variant-study" \
   --mode illumina --analysis cna --backend docker --threads 4 \
-  --image carlosfarkas/oncotracer:2.2.0 \
+  --image carlosfarkas/oncotracer:2.2.0-rc.1 \
   --sample-name TUMOR01 --status tumor \
   --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
   --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
@@ -237,7 +237,7 @@ oncotracer setup --non-interactive --project "$PWD/docker-variant-study" \
   --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
 oncotracer check --config "$PWD/docker-variant-study/config/run.yml"
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:2.2.0 \
+  --image carlosfarkas/oncotracer:2.2.0-rc.1 \
   --config "$PWD/docker-variant-study/config/run.yml"
 ```
 

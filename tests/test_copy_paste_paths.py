@@ -60,8 +60,18 @@ def require_order(block: str, fragments: tuple[str, ...], label: str) -> None:
 
 
 def check_pip_install(relative_path: str) -> None:
-    block = find_block(relative_path, "pip install oncotracer")
-    require(first_command(block) == "pip install oncotracer", f"{relative_path} must start with the public PyPI installation")
+    # Preview features are distributed in a pinned public GitHub wheel until
+    # their independent stable-release gates permit a new PyPI publication.
+    version = re.search(r'^version = "([^"]+)"$', read("pyproject.toml"), re.M).group(1)
+    url = f"https://github.com/cfarkas/oncotracer/releases/download/v{version}-rc.1/oncotracer-{version}-py3-none-any.whl"
+    block = find_block(relative_path, url)
+    require(first_command(block) == f'python3 -m pip install --upgrade "{url}"',
+            f"{relative_path} must start with the pinned public preview wheel")
+    text = read(relative_path)
+    require("pip install oncotracer" in text and "separately published PyPI" in text,
+            f"{relative_path} must distinguish the preview from the PyPI version")
+    require("not a stable scientific-parity release" in text,
+            f"{relative_path} must identify the preview's scientific validation limits")
     require("git clone" not in block, f"{relative_path} pip installation must not need a checkout")
     require("sudo" not in block, f"{relative_path} launcher install must not need administrator access")
     require("nextflow" not in block.casefold(), f"{relative_path} install invoked Nextflow")

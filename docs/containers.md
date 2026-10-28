@@ -68,7 +68,7 @@ oncotracer install --conda \
 ### FASTQ to CNA and variants
 
 The current Linux x86-64 image is
-`carlosfarkas/oncotracer:2.2.0`. It includes the complete
+`carlosfarkas/oncotracer:2.2.0-rc.1`. It includes the complete
 Illumina GLIMPSE2 workflow, FFPE repairs, integrated ONT callers and concurrent
 project support. `oncotracer install --docker` selects this image by default.
 

@@ -27,7 +27,7 @@ Installation prepares alignment, QDNAseq, ichorCNA, classifier/reporting, GISTIC
 Docker must be running and accessible to your user. Host Conda is unnecessary:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0
+oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0-rc.1
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
@@ -76,7 +76,7 @@ For a dedicated application environment:
 ```bash
 python3 -m venv oncotracer-env
 source oncotracer-env/bin/activate
-python -m pip install oncotracer
+python -m pip install --upgrade "https://github.com/cfarkas/oncotracer/releases/download/v2.2.0-rc.1/oncotracer-2.2.0-py3-none-any.whl"
 ```
 
 Keep this environment. Backend installation creates an extra `~/.local/bin/oncotracer` command when needed and preserves a pip-owned command already there. Follow the installer’s PATH instruction if necessary; `--no-launcher` opts out. See [advanced installation](installation_details.md) for source, standalone, Poetry and Apptainer routes.
