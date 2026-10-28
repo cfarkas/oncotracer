@@ -2,13 +2,13 @@
 
 Use 64-bit Linux and Python 3.10–3.13. Install the application, then choose **Conda or Docker** for analysis tools.
 
-## Quick start
+## Quick start: current GitHub preview
 
 ```bash
-pip install oncotracer
+python3 -m pip install --upgrade "https://github.com/cfarkas/oncotracer/releases/download/v2.2.0-rc.1/oncotracer-2.2.0-py3-none-any.whl"
 ```
 
-No Git checkout is needed. If system Python requires a separate environment, use the [Python environment instructions](#python-environment) below.
+No Git checkout is needed. This preview contains the GPU and experimental haplotype features. It is not a stable scientific-parity release: the historical frozen CNA comparison remains unresolved. `pip install oncotracer` installs the separately published PyPI version, which does not yet contain these preview features. If system Python requires a separate environment, use the [Python environment instructions](#python-environment) below.
 
 ### Conda
 

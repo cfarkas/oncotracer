@@ -22,6 +22,7 @@ server or questions. Replace `/data` and `/resources` examples with your paths.
 | Existing aligned BAMs | [Use the standalone BAM route](#call-from-existing-bams-without-rerunning-cna). |
 | A tumor and its matched normal | [Strelka2 somatic example](variants_reference.md#fastqs-configure-a-somatic-pair). |
 | Completed VCFs to inspect | [Read the results](#read-the-results). |
+| Completed BAMs and VCFs | [Experimental haplotype evidence and optional VarSome annotation](haplotype_evidence.md). |
 
 Choose one route per project. Fresh/FFPE is the specimen's preservation;
 Normal/Cancer is the sample's biological role. These are separate settings.

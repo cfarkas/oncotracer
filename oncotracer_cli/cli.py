@@ -1738,6 +1738,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_reports_command(subparsers)
     add_paper_report_command(subparsers)
     add_variants_command(subparsers)
+    from .haplotype_command import add_haplotype_command
+    add_haplotype_command(subparsers)
     add_system_command(subparsers)
     add_uninstall_command(subparsers)
     add_reference_command(subparsers)
@@ -1833,6 +1835,7 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "reports",
             "paper-report",
             "variants",
+            "haplotype-evidence",
             "check",
             "system",
             "uninstall",

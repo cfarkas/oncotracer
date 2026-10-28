@@ -1,5 +1,7 @@
 # LLM-assisted reports
 
+For the optional post-calling [haplotype assessment](haplotype_evidence.md), the local model only selects existing online annotation fact IDs. Its report renders database values and computed Monte Carlo statistics directly; it does not use model-written prose or estimate germline probability.
+
 The report LLM can draft text from retrieved literature or the local CNA catalog.
 This page covers **literature drafts**; see [offline catalog drafts](models_pathology.md#optional-offline-catalog-drafts)
 for the other route. It does not assign tumor type, change CNA calls, or interpret

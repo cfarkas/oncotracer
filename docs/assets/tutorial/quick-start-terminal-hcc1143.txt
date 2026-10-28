@@ -9,7 +9,7 @@ $ oncotracer setup --terminal --backend conda \
   --input-folder "$PWD/oncotracer-quickstart2/input"
 OncoTracer setup: select FASTQs, assign sample types, choose settings, then save or run.
 
-Detected 6 FASTQ files in 3 samples under /tmp/oncotracer-gpu-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/input:
+Detected 6 FASTQ files in 3 samples under /tmp/oncotracer-haplotype-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/input:
   1. HCC1143_BEZ235: 2 FASTQs, paired-end
        HCC1143_BEZ235_R1.fastq.gz
        HCC1143_BEZ235_R2.fastq.gz
@@ -38,7 +38,7 @@ Analysis (--analysis; cna=copy-number) (cna) [cna]: cna
 
 Available CPU workers: 128
 RAM total: 995.5 GiB
-RAM available: 958.8 GiB
+RAM available: 967.9 GiB
 GPU devices reported: 1
   GPU 0: NVIDIA RTX A5000; 24.0 GiB VRAM (22.5 GiB free)
 NVIDIA driver inventory only; CUDA access and model compatibility are not tested. GPU processing core counts are not reported.
@@ -51,8 +51,8 @@ hg38 reference (download/reuse/build) [download]: download
 GPU stages share one queue per GPU across this user's projects. At least 4 GiB or 20% of VRAM is reserved in addition to current use. CPU alignment, CNA, GLIMPSE2 and FFPErase remain on CPU.
 GPU usage for supported stages (yes/no) [no]: no
 
-Configuration saved: /tmp/oncotracer-gpu-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/config/run.yml
-Inputs stay in their existing folders. Results will be written to: /tmp/oncotracer-gpu-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/results
+Configuration saved: /tmp/oncotracer-haplotype-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/config/run.yml
+Inputs stay in their existing folders. Results will be written to: /tmp/oncotracer-haplotype-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/results
 
 Review analysis
   HCC1143_BEZ235: cancer (study); 2 FASTQs
@@ -62,17 +62,17 @@ Platform: illumina; analysis: cna; threads: 4; tools: conda
 CNA method: qdnaseq; bin size: 100 kb
 CNA interpretation reports: disabled
 Reference: download prebuilt indexes when needed
-Reference folder: /tmp/oncotracer-gpu-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/reference
-Sample types: /tmp/oncotracer-gpu-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/config/sample_metadata.csv
+Reference folder: /tmp/oncotracer-haplotype-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/reference
+Sample types: /tmp/oncotracer-haplotype-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/config/sample_metadata.csv
 Analysis may download reference files and prepare missing tools when it starts.
 Configuration OK
-  Hardware: 958.8 GiB RAM available; 128 CPU workers
-  Capacity details: oncotracer system --config /tmp/oncotracer-gpu-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/config/run.yml
+  Hardware: 967.9 GiB RAM available; 128 CPU workers
+  Capacity details: oncotracer system --config /tmp/oncotracer-haplotype-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/config/run.yml
   Samples: HCC1143_BEZ235, HCC1143_DMSO, HCC1143_TRAMETINIB
-  Results: /tmp/oncotracer-gpu-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/results
+  Results: /tmp/oncotracer-haplotype-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/results
   CPU threads: 4
   Analysis: reference-validation -> illumina-alignment -> qdnaseq -> bam-refinement -> cna-codification -> cna-plots -> workflow-summary
 No analysis or downloads were started. Check the installed tools with oncotracer doctor before running.
 Final action (run/save) [save]: save
 Saved without starting analysis. Run later with:
-oncotracer run --backend conda --config /tmp/oncotracer-gpu-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/config/run.yml
+oncotracer run --backend conda --config /tmp/oncotracer-haplotype-terminal-recording-20261027/hcc1143/oncotracer-quickstart2/analysis/config/run.yml
