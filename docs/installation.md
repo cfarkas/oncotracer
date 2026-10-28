@@ -5,7 +5,7 @@ Use 64-bit Linux and Python 3.10–3.13. Install the application, then choose **
 ## Quick start: current GitHub preview
 
 ```bash
-python3 -m pip install --upgrade "https://github.com/cfarkas/oncotracer/releases/download/v2.2.0-rc.1/oncotracer-2.2.0-py3-none-any.whl"
+python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.2.0-rc.2/oncotracer-2.2.0-py3-none-any.whl"
 ```
 
 No Git checkout is needed. This preview contains the GPU and experimental haplotype features. It is not a stable scientific-parity release: the historical frozen CNA comparison remains unresolved. `pip install oncotracer` installs the separately published PyPI version, which does not yet contain these preview features. If system Python requires a separate environment, use the [Python environment instructions](#python-environment) below.
@@ -27,7 +27,7 @@ Installation prepares alignment, QDNAseq, ichorCNA, classifier/reporting, GISTIC
 Docker must be running and accessible to your user. Host Conda is unnecessary:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0-rc.1
+oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0-rc.2
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
@@ -76,7 +76,7 @@ For a dedicated application environment:
 ```bash
 python3 -m venv oncotracer-env
 source oncotracer-env/bin/activate
-python -m pip install --upgrade "https://github.com/cfarkas/oncotracer/releases/download/v2.2.0-rc.1/oncotracer-2.2.0-py3-none-any.whl"
+python -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.2.0-rc.2/oncotracer-2.2.0-py3-none-any.whl"
 ```
 
 Keep this environment. Backend installation creates an extra `~/.local/bin/oncotracer` command when needed and preserves a pip-owned command already there. Follow the installer’s PATH instruction if necessary; `--no-launcher` opts out. See [advanced installation](installation_details.md) for source, standalone, Poetry and Apptainer routes.

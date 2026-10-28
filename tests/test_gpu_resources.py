@@ -21,6 +21,32 @@ DEVICE = dict(index=0, uuid='GPU-test-123', name='Test GPU', total_mb=24576,
 
 
 class GPUResourcesTests(unittest.TestCase):
+    def test_gpu_run_dispatch_does_not_enable_methylation(self):
+        from oncotracer_cli import cli, docker_runtime
+        from oncotracer_cli.methylation import resolve_methylation_request
+        with tempfile.TemporaryDirectory() as directory:
+            config=Path(directory)/'run.yml'
+            for mode in ('ont','illumina'):
+                for flags,saved in ((['--gpu'],False),([],True),(['--cpu'],True)):
+                    with self.subTest(mode=mode,flags=flags,saved_gpu=saved):
+                        config.write_text(f'mode: {mode}\ngpu_usage: {str(saved).lower()}\n')
+                        args=cli.build_parser().parse_args(['run','--config',str(config),
+                            '--backend','docker','--dry-run',*flags])
+                        self.assertFalse(cli._methylation_requested(config,args))
+                        self.assertIsNone(resolve_methylation_request({'gpu_usage':saved},
+                            mode=mode,gpu_override=args.gpu))
+                        with patch.object(docker_runtime,'output_runtime_identity',return_value={}), \
+                             patch.object(docker_runtime,'validate_docker_variants'), \
+                             patch.object(cli,'_prepare_configured_hg38'), \
+                             patch.object(cli,'_run_host',return_value=Path(directory)/'results'), \
+                             patch.object(cli,'_run_docker') as launch:
+                            cli.execute_run(config,args)
+                            launch.assert_called_once_with(config,args)
+            args=cli.build_parser().parse_args(['run','--config',str(config),
+                '--backend','docker','--dry-run','--gpu','--methylation'])
+            with self.assertRaisesRegex(OncoTracerError,'optional methylation branch'):
+                cli.execute_run(config,args)
+
     def test_doctor_inside_docker_uses_image_prefixes_and_bounded_probes(self):
         def probe(command, **kwargs):
             self.assertEqual(command[1:4], ['-I', '-B', '-c'])

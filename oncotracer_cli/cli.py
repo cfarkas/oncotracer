@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:2.2.0-rc.1"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:2.2.0-rc.2"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -688,7 +688,6 @@ def _methylation_requested(config_path: Path, args: argparse.Namespace) -> bool:
             "modbam",
             "pod5_dir",
             "methylation_classifier",
-            "gpu",
         )
     ):
         return True

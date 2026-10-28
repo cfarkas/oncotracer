@@ -63,9 +63,9 @@ def check_pip_install(relative_path: str) -> None:
     # Preview features are distributed in a pinned public GitHub wheel until
     # their independent stable-release gates permit a new PyPI publication.
     version = re.search(r'^version = "([^"]+)"$', read("pyproject.toml"), re.M).group(1)
-    url = f"https://github.com/cfarkas/oncotracer/releases/download/v{version}-rc.1/oncotracer-{version}-py3-none-any.whl"
+    url = f"https://github.com/cfarkas/oncotracer/releases/download/v{version}-rc.2/oncotracer-{version}-py3-none-any.whl"
     block = find_block(relative_path, url)
-    require(first_command(block) == f'python3 -m pip install --upgrade "{url}"',
+    require(first_command(block) == f'python3 -m pip install --upgrade --force-reinstall "{url}"',
             f"{relative_path} must start with the pinned public preview wheel")
     text = read(relative_path)
     require("pip install oncotracer" in text and "separately published PyPI" in text,

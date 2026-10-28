@@ -9,7 +9,7 @@ $ oncotracer setup --terminal --backend conda \
   --input-folder "$PWD/oncotracer-quickstart1/input/fastq_pass"
 OncoTracer setup: select FASTQs, assign sample types, choose settings, then save or run.
 
-Detected 1 FASTQ files in 1 samples under /tmp/oncotracer-rc-terminal-recording-20261028/ont/oncotracer-quickstart1/input/fastq_pass:
+Detected 1 FASTQ files in 1 samples under /tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/input/fastq_pass:
   1. barcode01: 1 FASTQs, barcode batches
        barcode01/DRR165691_1.fastq.gz
 Samples to include (numbers, ranges, or all) [1]: all
@@ -23,9 +23,9 @@ Analysis (--analysis; cna=copy-number) (cna/methylation/both) [cna]: cna
 
 Available CPU workers: 128
 RAM total: 995.5 GiB
-RAM available: 968.9 GiB
+RAM available: 968.8 GiB
 GPU devices reported: 1
-  GPU 0: NVIDIA RTX A5000; 24.0 GiB VRAM (22.5 GiB free)
+  GPU 0: NVIDIA RTX A5000; 24.0 GiB VRAM (22.3 GiB free)
 NVIDIA driver inventory only; CUDA access and model compatibility are not tested. GPU processing core counts are not reported.
 Suggested CPU threads: 4. CNA analysis uses CPU.
 CPU threads (--threads) [4]: 4
@@ -36,11 +36,11 @@ Add small-variant calling? (yes/no) [no]: no
 hg38 reference (download/reuse/build) [download]: download
 GPU stages share one queue per GPU across this user's projects. At least 4 GiB or 20% of VRAM is reserved in addition to current use. CPU alignment, CNA, GLIMPSE2 and FFPErase remain on CPU.
 GPU usage for supported stages (yes/no) [no]: no
-FASTQ folder: /tmp/oncotracer-rc-terminal-recording-20261028/ont/oncotracer-quickstart1/input/fastq_pass
+FASTQ folder: /tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/input/fastq_pass
 Available folders: barcode01
 
-Configuration saved: /tmp/oncotracer-rc-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/config/run.yml
-Inputs stay in their existing folders. Results will be written to: /tmp/oncotracer-rc-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/results
+Configuration saved: /tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/config/run.yml
+Inputs stay in their existing folders. Results will be written to: /tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/results
 
 Review analysis
   DRR165691: cancer (study); 1 FASTQs
@@ -48,17 +48,17 @@ Platform: ont; analysis: cna; threads: 4; tools: conda
 CNA method: ichorcna; bin size: 500 kb
 CNA interpretation reports: disabled
 Reference: download prebuilt indexes when needed
-Reference folder: /tmp/oncotracer-rc-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/reference
-Sample types: /tmp/oncotracer-rc-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/config/sample_metadata.csv
+Reference folder: /tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/reference
+Sample types: /tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/config/sample_metadata.csv
 Analysis may download reference files and prepare missing tools when it starts.
 Configuration OK
-  Hardware: 968.9 GiB RAM available; 128 CPU workers
-  Capacity details: oncotracer system --config /tmp/oncotracer-rc-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/config/run.yml
+  Hardware: 968.7 GiB RAM available; 128 CPU workers
+  Capacity details: oncotracer system --config /tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/config/run.yml
   Samples: DRR165691
-  Results: /tmp/oncotracer-rc-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/results
+  Results: /tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/results
   CPU threads: 4
   Analysis: reference-validation -> ont-fastq-validation -> ont-alignment -> hmmcopy-ichorcna -> bam-refinement -> cna-codification -> cna-plots -> workflow-summary
 No analysis or downloads were started. Check the installed tools with oncotracer doctor before running.
 Final action (run/save) [save]: save
 Saved without starting analysis. Run later with:
-oncotracer run --backend conda --config /tmp/oncotracer-rc-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/config/run.yml
+oncotracer run --backend conda --config /tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/ont/config/run.yml

@@ -3,29 +3,29 @@ Silent browser walkthrough. Synthetic inventory and checks; no analysis or downl
 00:00:00.931  QuickStart 2 · HCC1143 cohort
 Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo.
 
-00:00:06.016  QuickStart 2 · HCC1143 cohort · new analysis
+00:00:06.021  QuickStart 2 · HCC1143 cohort · new analysis
 Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project.
 
-00:00:07.940  QuickStart 2 · HCC1143 cohort · preservation
+00:00:07.955  QuickStart 2 · HCC1143 cohort · preservation
 Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.
 
-00:00:14.745  QuickStart 2 · HCC1143 cohort · discover inputs
+00:00:14.748  QuickStart 2 · HCC1143 cohort · discover inputs
 Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together.
 
-00:00:29.325  QuickStart 2 · HCC1143 cohort · sample groups
+00:00:29.316  QuickStart 2 · HCC1143 cohort · sample groups
 Assign all three libraries to Cancer. DMSO is a treatment control, not a normal genome.
 
-00:00:44.967  QuickStart 2 · HCC1143 cohort · CNA settings
+00:00:44.944  QuickStart 2 · HCC1143 cohort · CNA settings
 Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins.
 
-00:00:53.492  QuickStart 2 · HCC1143 cohort · tools and reference
+00:00:53.467  QuickStart 2 · HCC1143 cohort · tools and reference
 Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis.
 
-00:01:00.012  QuickStart 2 · HCC1143 cohort · separate project
+00:00:59.974  QuickStart 2 · HCC1143 cohort · separate project
 Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart.
 
-00:01:06.786  QuickStart 2 · HCC1143 cohort · save and review
+00:01:06.745  QuickStart 2 · HCC1143 cohort · save and review
 Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated.
 
-00:01:13.615  QuickStart 2 · HCC1143 cohort · ready for your run
+00:01:13.553  QuickStart 2 · HCC1143 cohort · ready for your run
 In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run.

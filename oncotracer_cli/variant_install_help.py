@@ -9,7 +9,7 @@ import shlex
 from pathlib import Path
 from typing import Iterable
 
-IMAGE = "carlosfarkas/oncotracer:2.2.0-rc.1"
+IMAGE = "carlosfarkas/oncotracer:2.2.0-rc.2"
 SPEC_REVISION = "f378d5e28f629ab88be803460a44453df690cf69"
 FFPERASE_REVISION = "b0dd56cbd0a939896a966b9ce30c4d719b158170"
 FFPERASE_MODEL_REVISION = "dc4a9ab71bde34d084c4cc91d0ec291dc1f04258"

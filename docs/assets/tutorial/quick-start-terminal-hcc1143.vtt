@@ -5,65 +5,65 @@ WEBVTT
 A terminal is enough: Run setup --terminal on a headless server. These are real wizard prompts using tiny synthetic FASTQs.
 
 2
-00:00:07.004 --> 00:00:11.866
+00:00:07.004 --> 00:00:11.854
 Choose libraries: The wizard discovers the synthetic FASTQs. Enter all to include every listed library.
 
 3
-00:00:11.866 --> 00:00:17.081
+00:00:11.854 --> 00:00:17.066
 Keep the library identity: Press Enter to keep the discovered sample name and its existing FASTQ pair.
 
 4
-00:00:17.081 --> 00:00:22.279
+00:00:17.066 --> 00:00:22.262
 Assign the sample type: These tutorial libraries are cancer samples. Choose the type from your own sample records.
 
 5
-00:00:22.279 --> 00:00:27.491
+00:00:22.262 --> 00:00:27.476
 Keep the library identity: Press Enter to keep the discovered sample name and its existing FASTQ pair.
 
 6
-00:00:27.491 --> 00:00:32.687
+00:00:27.476 --> 00:00:32.665
 DMSO is still a cancer sample: DMSO is a treatment control, not a normal genome. Keep its sample type as cancer.
 
 7
-00:00:32.687 --> 00:00:37.898
+00:00:32.665 --> 00:00:37.875
 Keep the library identity: Press Enter to keep the discovered sample name and its existing FASTQ pair.
 
 8
-00:00:37.898 --> 00:00:43.089
+00:00:37.875 --> 00:00:43.067
 Assign the sample type: These tutorial libraries are cancer samples. Choose the type from your own sample records.
 
 9
-00:00:43.089 --> 00:00:47.942
+00:00:43.067 --> 00:00:47.920
 Choose copy-number analysis: Enter cna. This walkthrough configures copy-number analysis only.
 
 10
-00:00:47.942 --> 00:00:52.569
+00:00:47.920 --> 00:00:52.545
 Set the CPU budget: The wizard reports the current machine. Choose 4 threads here; budget resources for your own server.
 
 11
-00:00:52.569 --> 00:00:57.424
+00:00:52.545 --> 00:00:57.400
 Choose Illumina bins: Use QDNAseq at 100 kb for this tutorial. The wizard records the selected resolution.
 
 12
-00:00:57.424 --> 00:01:02.166
+00:00:57.400 --> 00:01:02.140
 Keep the example focused: Choose no for additional CNA interpretation reports.
 
 13
-00:01:02.166 --> 00:01:06.907
+00:01:02.140 --> 00:01:06.879
 Keep small variants off: Choose no. This CNA-only setup does not request variant or FFPE assessment.
 
 14
-00:01:06.907 --> 00:01:12.336
+00:01:06.879 --> 00:01:12.300
 Select reference handling: Choose download for prebuilt hg38 indexes when analysis runs. Saving does not download them.
 
 15
-00:01:12.336 --> 00:01:17.078
+00:01:12.300 --> 00:01:17.041
 Choose CPU or GPU: On an NVIDIA GPU server, choose Yes for supported stages or No to use CPU. This walkthrough keeps CPU.
 
 16
-00:01:17.078 --> 00:01:26.460
+00:01:17.041 --> 00:01:26.414
 Review and save only: Review the saved configuration and input checks, then explicitly enter save. No analysis starts.
 
 17
-00:01:26.460 --> 00:01:34.583
+00:01:26.414 --> 00:01:34.500
 Configuration saved: The wizard confirms: saved without starting analysis. Keep the project and launch the analysis separately when ready.

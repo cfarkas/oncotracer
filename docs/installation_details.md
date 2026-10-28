@@ -188,7 +188,7 @@ oncotracer install --docker
 oncotracer doctor --backend docker
 ```
 
-The default installer pulls `carlosfarkas/oncotracer:2.2.0-rc.1`, validates its tools and saves the image reference. The older `ghcr.io/cfarkas/oncotracer:2.1.0` remains available for earlier CNA workflows. It does not install Docker, alter daemon settings, or request administrator privileges silently.
+The default installer pulls `carlosfarkas/oncotracer:2.2.0-rc.2`, validates its tools and saves the image reference. The older `ghcr.io/cfarkas/oncotracer:2.1.0` remains available for earlier CNA workflows. It does not install Docker, alter daemon settings, or request administrator privileges silently.
 
 Run an analysis with:
 
@@ -207,7 +207,7 @@ Choose the current image explicitly when installing. Later doctor and run comman
 use the saved image selection:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0-rc.1
+oncotracer install --docker --image carlosfarkas/oncotracer:2.2.0-rc.2
 oncotracer doctor --backend docker
 oncotracer run --backend docker \
   --config /absolute/path/project/config/run.yml
