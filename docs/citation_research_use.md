@@ -6,7 +6,7 @@ OncoTracer does not yet have a formal article DOI. The repository's `CITATION.cf
 
 A current software citation is:
 
-> Farkas, Carlos. (2026). *OncoTracer: reproducible LP-WGS CNA analysis for ONT and Illumina data* (version 2.2.0) [Computer software]. https://github.com/cfarkas/oncotracer
+> Farkas, Carlos. (2026). *OncoTracer: reproducible LP-WGS CNA analysis for ONT and Illumina data* (version 2.2.1) [Computer software]. https://github.com/cfarkas/oncotracer
 
 Record the embedded source identity used in your analysis:
 
@@ -20,7 +20,7 @@ Suggested methods text:
 
 Replace every bold placeholder. Do not cite only `latest`, because that tag can change.
 A dated image is also a tag: record its digest and embedded source commit. Current
-integration builds can retain software version `2.2.0` while containing newer
+integration builds can retain software version `2.2.1` while containing newer
 code than the stable release; the version alone does not identify that code.
 
 If variants were enabled, also state the caller/version, tumor-only versus

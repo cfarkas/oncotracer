@@ -26,6 +26,27 @@ def _number(path: Path) -> int | None:
         return None
 
 
+def _reclaimable_file_cache(root: Path, *, legacy: bool) -> int:
+    """Estimate clean inactive file pages, never active memory or dirty pages.
+
+    memory.current includes read caches left by completed alignment tasks.
+    Docker uses inactive_file (v2) / total_inactive_file (v1) for working set
+    accounting. Excluding dirty/writeback pages makes our estimate conservative.
+    Missing or malformed statistics grant no additional memory.
+    """
+    try:
+        fields = dict(line.split() for line in (root / "memory.stat").read_text().splitlines())
+        prefix = "total_" if legacy else ""
+        inactive = int(fields[prefix + "inactive_file"])
+        dirty = int(fields.get(prefix + ("dirty" if legacy else "file_dirty"), "0"))
+        writeback = int(fields.get(prefix + ("writeback" if legacy else "file_writeback"), "0"))
+        if min(inactive, dirty, writeback) < 0:
+            return 0
+        return max(0, inactive - dirty - writeback)
+    except (OSError, ValueError, KeyError):
+        return 0
+
+
 def _cgroup_paths(proc: Path, cgroup: Path, controller: str) -> list[Path]:
     """Include visible ancestors and the mount root, including container remaps."""
     roots = [cgroup, cgroup / controller]
@@ -168,7 +189,11 @@ def inspect_hardware(
                 limits.append(limit)
                 total = min(total, limit) if total is not None else limit
                 if used is not None:
-                    headroom = max(0, limit - used)
+                    cache = _reclaimable_file_cache(root, legacy=maximum == "memory.limit_in_bytes")
+                    # Stats are not an atomic snapshot. Ignore inconsistent
+                    # cache readings rather than claiming all usage is free.
+                    working_set = used - (cache if cache <= used else 0)
+                    headroom = max(0, limit - working_set)
                     available = (
                         min(available, headroom) if available is not None else headroom
                     )
@@ -199,6 +224,7 @@ def inspect_hardware(
         "ram_total_bytes": total,
         "ram_available_bytes": available,
         "cgroup_memory_limits_bytes": sorted(set(limits)),
+        "ram_estimate_note": "Cgroup headroom excludes clean inactive file cache; host available RAM and all ancestor limits still apply. Dirty/writeback cache and swap are not added.",
         "swap_total_bytes": memory.get("SwapTotal"),
         "swap_note": "Host swap is informational; it is not counted as available RAM or guaranteed container memory.",
         **(_inspect_gpus() if include_gpus else {

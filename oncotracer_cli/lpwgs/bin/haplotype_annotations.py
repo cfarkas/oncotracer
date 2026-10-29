@@ -30,7 +30,7 @@ def query_variant(variant, build, *, token=None, opener=None):
     if not re.fullmatch(r'chr[0-9XYMT]+-[1-9][0-9]*-[ACGT]-[ACGT]', coordinate):
         raise ValueError('Invalid online SNV coordinates')
     url = API + '/lookup/' + coordinate + '/' + build + '?add-ACMG-annotation=1'
-    headers = {'Accept':'application/json', 'User-Agent':'OncoTracer/2.2.0 annotation'}
+    headers = {'Accept':'application/json', 'User-Agent':'OncoTracer/2.2.1 annotation'}
     if token:
         headers['Authorization'] = 'Token ' + token
     request = urllib.request.Request(url, headers=headers)

@@ -88,6 +88,38 @@ class BcftoolsRuntimeTests(unittest.TestCase):
             alignment.assert_not_called(); annotation.assert_not_called()
             self.assertFalse((root/'output/pipeline_info/runtime.json').exists())
 
+    def test_alignment_memory_floor_applies_only_to_tasks_that_align_reads(self):
+        for use_bam, build_panel in ((True, False), (False, False), (True, True)):
+            with self.subTest(bam=use_bam, panel=build_panel), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); args = self.workflow_fixture(root)
+                args.allow_test_reference = False; args.memory = 4; args.no_ancestry = True
+                (root/'genome.fa.fai').write_text('chr1\t248956422\t6\t4\t5\n')
+                (root/'sample.bam').write_bytes(b'fixture')
+                reads = root/'SAMPLE.fastq'; reads.write_text('@r\nAC\n+\nII\n')
+                if not use_bam:
+                    args.bam = None; args.fastq = [str(reads)]
+                def version(command, **kwargs):
+                    name = Path(command[0]).name
+                    text = (HELP if command[1:3] == ['call','--help'] else VERSION) if name == 'bcftools' else name+' fixture\n'
+                    return subprocess.CompletedProcess(command, 0, text)
+                panel = (None, {'mode':'build' if build_panel else 'none', 'normals':[{'sample':'N1'}, {'sample':'N2'}]}, [])
+                with patch.object(launch, 'find_tool', side_effect=lambda name,prefix: str(root/'bin'/name)), \
+                     patch.object(launch.subprocess, 'run', side_effect=version), \
+                     patch.object(patient_metadata, 'prepare'), \
+                     patch.object(import_alignment, 'validate_bam') as validation, \
+                     patch.object(launch, 'choose_annotation', return_value=None), \
+                     patch.object(launch, 'discover_fastqs', return_value=[('SAMPLE', [reads])]), \
+                     patch.object(launch, 'prepare_panel', return_value=panel), \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    with self.assertRaises(ValueError) as error:
+                        launch.prepare(args)
+                # Deliberately missing ClinVar keeps the fixture read-only; it
+                # must still exercise the complete accumulated preflight errors.
+                message = str(error.exception)
+                self.assertIn('Preflight failed', message)
+                self.assertEqual('8GB' in message, not use_bam or build_panel)
+                self.assertEqual(validation.call_count, int(use_bam))
+
     def test_bundled_preflight_records_linked_library_and_prints_selected_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); args = self.workflow_fixture(root); captured = []

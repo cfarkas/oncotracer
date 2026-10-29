@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import gzip
 import json
 import tempfile
 import unittest
@@ -20,6 +21,41 @@ spec.loader.exec_module(refine)
 
 
 class BoundaryGapTests(unittest.TestCase):
+    def test_exports_more_than_excel_limit_without_losing_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            frame = pd.DataFrame({"row_id": np.arange(1048577, dtype=np.int64)})
+            refine.write_boundary_table(frame, root)
+            plain = root / "refined_bins_boundary_bp_difference.csv"
+            compressed = root / "refined_bins_boundary_bp_difference.csv.gz"
+            self.assertEqual(gzip.decompress(compressed.read_bytes()), plain.read_bytes())
+            pd.testing.assert_frame_equal(pd.read_csv(plain), frame)
+            self.assertFalse(list(root.glob("*.xlsx")))
+            self.assertFalse(list(root.glob(".*")))
+
+    def test_export_preserves_quoted_fields_newlines_and_missing_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            frame = pd.DataFrame({"sample": ['A,1', 'B"2', 'C\n3'], "shift": [1.25, np.nan, -2.5]})
+            refine.write_boundary_table(frame, root)
+            pd.testing.assert_frame_equal(pd.read_csv(root / "refined_bins_boundary_bp_difference.csv.gz"), frame)
+
+    def test_failed_export_keeps_previous_table_and_removes_temporary_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plain = root / "refined_bins_boundary_bp_difference.csv"
+            plain.write_text("previous complete output\n")
+            with patch.object(refine.shutil, "copyfileobj", side_effect=OSError("disk full")):
+                with self.assertRaisesRegex(OSError, "disk full"):
+                    refine.write_boundary_table(pd.DataFrame({"row_id": [1, 2]}), root)
+            self.assertEqual(plain.read_text(), "previous complete output\n")
+            self.assertEqual(list(root.iterdir()), [plain])
+
+    def test_standalone_shell_embeds_the_same_export_implementation(self):
+        shell = (ROOT / "bin/scripts/bam_cnv_boundary_refine.sh").read_text()
+        embedded = shell.split('cat > "$PY_HELPER" <<\'PY\'\n', 1)[1].split('\nPY\n', 1)[0]
+        self.assertEqual(embedded, SOURCE.read_text().rstrip('\n'))
+
     def setUp(self):
         self.old_args = refine.args_global
         refine.args_global = SimpleNamespace(state_gain_threshold=.25, state_loss_threshold=-.25)

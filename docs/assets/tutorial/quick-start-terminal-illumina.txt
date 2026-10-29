@@ -9,7 +9,7 @@ $ oncotracer setup --terminal --backend conda \
   --input-folder "$PWD/oncotracer-quickstart1/input/illumina"
 OncoTracer setup: select FASTQs, assign sample types, choose settings, then save or run.
 
-Detected 2 FASTQ files in 1 samples under /tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/input/illumina:
+Detected 2 FASTQ files in 1 samples under /tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/input/illumina:
   1. ERR12341627: 2 FASTQs, paired-end
        ERR12341627_1.fastq.gz
        ERR12341627_2.fastq.gz
@@ -24,9 +24,9 @@ Analysis (--analysis; cna=copy-number) (cna) [cna]: cna
 
 Available CPU workers: 128
 RAM total: 995.5 GiB
-RAM available: 968.8 GiB
+RAM available: 968.0 GiB
 GPU devices reported: 1
-  GPU 0: NVIDIA RTX A5000; 24.0 GiB VRAM (22.3 GiB free)
+  GPU 0: NVIDIA RTX A5000; 24.0 GiB VRAM (22.4 GiB free)
 NVIDIA driver inventory only; CUDA access and model compatibility are not tested. GPU processing core counts are not reported.
 Suggested CPU threads: 4. CNA analysis uses CPU.
 CPU threads (--threads) [4]: 4
@@ -37,8 +37,8 @@ hg38 reference (download/reuse/build) [download]: download
 GPU stages share one queue per GPU across this user's projects. At least 4 GiB or 20% of VRAM is reserved in addition to current use. CPU alignment, CNA, GLIMPSE2 and FFPErase remain on CPU.
 GPU usage for supported stages (yes/no) [no]: no
 
-Configuration saved: /tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/illumina/config/run.yml
-Inputs stay in their existing folders. Results will be written to: /tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/illumina/results
+Configuration saved: /tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/illumina/config/run.yml
+Inputs stay in their existing folders. Results will be written to: /tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/illumina/results
 
 Review analysis
   ERR12341627: cancer (study); 2 FASTQs
@@ -46,17 +46,17 @@ Platform: illumina; analysis: cna; threads: 4; tools: conda
 CNA method: qdnaseq; bin size: 100 kb
 CNA interpretation reports: disabled
 Reference: download prebuilt indexes when needed
-Reference folder: /tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/illumina/reference
-Sample types: /tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/illumina/config/sample_metadata.csv
+Reference folder: /tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/illumina/reference
+Sample types: /tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/illumina/config/sample_metadata.csv
 Analysis may download reference files and prepare missing tools when it starts.
 Configuration OK
-  Hardware: 968.7 GiB RAM available; 128 CPU workers
-  Capacity details: oncotracer system --config /tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/illumina/config/run.yml
+  Hardware: 967.9 GiB RAM available; 128 CPU workers
+  Capacity details: oncotracer system --config /tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/illumina/config/run.yml
   Samples: ERR12341627
-  Results: /tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/illumina/results
+  Results: /tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/illumina/results
   CPU threads: 4
   Analysis: reference-validation -> illumina-alignment -> qdnaseq -> bam-refinement -> cna-codification -> cna-plots -> workflow-summary
 No analysis or downloads were started. Check the installed tools with oncotracer doctor before running.
 Final action (run/save) [save]: save
 Saved without starting analysis. Run later with:
-oncotracer run --backend conda --config /tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/illumina/config/run.yml
+oncotracer run --backend conda --config /tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/illumina/config/run.yml

@@ -195,6 +195,18 @@ Key files:
 | `01_tables/sample_refinement_summary.csv` | Per-sample refinement counts/status |
 | `critical_outputs_manifest.csv` | Inventory of required outputs |
 
+### Large CNA tables
+
+Boundary refinement exports the complete bin table as
+`refined_bins_boundary_bp_difference.csv` and
+`refined_bins_boundary_bp_difference.csv.gz` under `04_final_results/`.
+Both contain the same rows and columns. CSV formatting uses bounded chunks;
+the compressed file contains the exact CSV bytes. Files are published only
+after writing finishes, so an interrupted export cannot replace a valid file
+with a partial table. No Excel workbook is produced and no spreadsheet row
+limit is applied. Read large tables with Python, R or a database; spreadsheet
+applications may truncate their display even though the CSV remains complete.
+
 ## Stage 03: final CNA tables
 
 ```bash

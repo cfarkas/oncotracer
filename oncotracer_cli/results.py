@@ -33,7 +33,7 @@ def publish_refinement(stage: Path, dataset: str) -> Path:
     published = stage / dataset
     names = {
         "04_final_results": ("final_segments.tsv", "final_segments.bed",
-                             "refined_bins_boundary_bp_difference.csv", "refined_bins_boundary_bp_difference.xlsx"),
+                             "refined_bins_boundary_bp_difference.csv", "refined_bins_boundary_bp_difference.csv.gz", "refined_bins_boundary_bp_difference.xlsx"),
         "01_tables": ("refined_bins.tsv.gz", "sample_refinement_summary.csv",
                       "boundary_refinement_statistics.csv", "bam_preparation_report.csv"),
     }
@@ -122,7 +122,7 @@ def _diagnostic(stage: str, relative: Path) -> bool:
                 or name.startswith(("raw.", "caller_raw.", "unfiltered.", "normalized.", "review.", "f1r2.", "orientation-priors.", "before_assessment.", "strelka_original.")))
     if stage == "02_bam_refinement":
         return not (len(parts) == 3 and
-                    ((parts[1] == "04_final_results" and relative.name in {"final_segments.tsv", "final_segments.bed", "refined_bins_boundary_bp_difference.csv", "refined_bins_boundary_bp_difference.xlsx"})
+                    ((parts[1] == "04_final_results" and relative.name in {"final_segments.tsv", "final_segments.bed", "refined_bins_boundary_bp_difference.csv", "refined_bins_boundary_bp_difference.csv.gz", "refined_bins_boundary_bp_difference.xlsx"})
                      or (parts[1] == "01_tables" and relative.name in {"refined_bins.tsv.gz", "sample_refinement_summary.csv", "boundary_refinement_statistics.csv", "bam_preparation_report.csv"})))
     if stage == "01_samurai_ont" and len(parts) >= 4 and parts[:2] == ("results", "ichorcna"):
         return True
@@ -134,7 +134,7 @@ def _quality(stage: str, relative: Path) -> bool:
     return (name.endswith(("sample_status.json", "summary_mqc.txt", ".metrics.txt"))
             or name in {"sample_refinement_summary.csv", "boundary_refinement_statistics.csv",
                         "bam_preparation_report.csv", "refined_bins_boundary_bp_difference.csv",
-                        "refined_bins_boundary_bp_difference.xlsx", "knowledge_metrics.json",
+                        "refined_bins_boundary_bp_difference.csv.gz", "refined_bins_boundary_bp_difference.xlsx", "knowledge_metrics.json",
                         "methylation_status.json", "variant_status.json"})
 
 

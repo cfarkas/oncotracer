@@ -34,7 +34,7 @@ Use the path printed by setup. The command above uses Conda. For Docker, use:
 
 ```bash
 oncotracer run --backend docker --config "$PWD/my-study/config/run.yml" \
-  --image carlosfarkas/oncotracer:2.2.0-rc.2
+  --image carlosfarkas/oncotracer:2.2.1-rc.1
 ```
 
 ## Check progress and results
@@ -188,3 +188,16 @@ Use a new project folder for a different analysis.
 
 See the [execution reference](running_details.md) for backend internals,
 reference mounts, the stage graph and audit records.
+
+## Memory checks between stages
+
+Illumina variant calling can reuse validated, sorted and indexed BAMs without
+requiring memory for another alignment. The 8 GiB hg38 alignment minimum still
+applies when aligning FASTQs, including FASTQs used to build a panel of normals.
+The recommended variant budget remains 32 GiB per sample; an explicit parallel
+sample count can exceed that recommendation and may run out of memory.
+
+On Linux, resource detection distinguishes clean inactive file cache left by
+completed tasks from memory still in use. Host available RAM, all visible
+cgroup limits and the system reserve continue to cap the next stage's budget.
+Dirty/writeback pages and swap do not increase the estimate.

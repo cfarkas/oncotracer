@@ -70,6 +70,18 @@ class ResultsTests(unittest.TestCase):
         publish_refinement(stage,dataset)
         self.assertEqual(len(json.loads((result / "published_results.json").read_text())["files"]),4)
 
+    def test_complete_compressed_boundary_table_is_published_and_linked(self):
+        stage = self.root / "02_bam_refinement"
+        dataset = "illumina_qdnaseq_50kb"
+        for name in ("04_final_results/final_segments.tsv", "01_tables/refined_bins.tsv.gz",
+                     "04_final_results/refined_bins_boundary_bp_difference.csv.gz"):
+            self.put(str((stage / "diagnostics" / dataset / name).relative_to(self.root)))
+        published = publish_refinement(stage, dataset)
+        name = "refined_bins_boundary_bp_difference.csv.gz"
+        self.assertTrue((published / "04_final_results" / name).is_file())
+        write_results_index(self.root)
+        self.assertIn(name, (stage / "index.html").read_text())
+
     def test_organize_secondary_formats_preserves_primary_and_report_paths(self):
         names=("cna_per_sample_pages.pdf", "cna_log2_ratio_profiles_all_samples.pdf",
                "cna_genome_overview.pdf", "cna_genome_overview.png", "cna_genome_overview.svg",

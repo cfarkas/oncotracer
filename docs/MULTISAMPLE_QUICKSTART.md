@@ -7,7 +7,7 @@ Nextflow workflows; native stages use cancellable sample workers.
 
 ### Safe startup for parallel Illumina and FFPE jobs
 
-Version 2.2.0 prepares Nextflow once in the environment the sample workers will
+Version 2.2.1 prepares Nextflow once in the environment the sample workers will
 actually use, before starting their workflows. It checks the distribution,
 publishes it atomically, and gives each JVM a separate temporary directory.
 This covers an empty cache and installations where `/tmp` and the output folder

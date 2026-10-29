@@ -170,7 +170,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/outside-checkout"
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
-          ./oncotracer --version | grep -F 'OncoTracer 2.2.0'
+          ./oncotracer --version | grep -F 'OncoTracer 2.2.1'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA and variant analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
@@ -239,7 +239,7 @@ jobs:
           python3 -m pip install 'poetry>=2,<3'
           poetry check --lock
           poetry install --no-interaction
-          poetry run oncotracer --version | grep -F 'OncoTracer 2.2.0'
+          poetry run oncotracer --version | grep -F 'OncoTracer 2.2.1'
       - name: Verify GPU controls in Firefox without starting analysis
         run: |
           python3 -m pip install playwright
@@ -297,6 +297,14 @@ jobs:
         run: |
           conda config --set channel_priority strict
           conda config --set solver libmamba
+          # Use the same checksum-verified Bioconductor mirror as Docker for
+          # archived post-link downloads; transient upstream resets must not
+          # masquerade as a solver or recipe failure.
+          case '${{ matrix.environment }}' in
+            native-qdnaseq|native-ichorcna)
+              export BASH_ENV="$GITHUB_WORKSPACE/scripts/bioconductor_mirror.sh"
+              ;;
+          esac
           conda env create \
             --prefix "$RUNNER_TEMP/${{ matrix.environment }}" \
             --file "environments/${{ matrix.environment }}.yml"
@@ -551,7 +559,7 @@ jobs:
             "$RUNNER_TEMP/docker-installed-doctor.json"
       - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
-          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.2.0'
+          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.2.1'
           docker run --rm oncotracer:v2-ci provenance --json \
             | tee "$RUNNER_TEMP/docker-provenance.json"
           jq -e \

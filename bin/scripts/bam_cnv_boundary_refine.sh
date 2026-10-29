@@ -41,7 +41,7 @@ SCRIPT_SOURCE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 #   04_final_results/final_segments.tsv
 #   04_final_results/final_segments.bed
 #   04_final_results/refined_bins_boundary_bp_difference.csv
-#   04_final_results/refined_bins_boundary_bp_difference.xlsx
+#   04_final_results/refined_bins_boundary_bp_difference.csv.gz
 #   04_final_results/cna_cytogenomic_input/qdnaseq_bins/<sample>_markdup_bins.bed
 #   04_final_results/cna_cytogenomic_input/run_cna_codification.sh
 ###############################################################################
@@ -389,7 +389,7 @@ Critical outputs per dataset
   04_final_results/final_segments.tsv
   04_final_results/final_segments.bed
   04_final_results/refined_bins_boundary_bp_difference.csv
-  04_final_results/refined_bins_boundary_bp_difference.xlsx
+  04_final_results/refined_bins_boundary_bp_difference.csv.gz
       Final primary outputs for direct review, including refined-bin boundary_bp_difference reports.
 
   04_final_results/cna_cytogenomic_input/qdnaseq_bins/<sample>_markdup_bins.bed
@@ -809,6 +809,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -826,6 +827,31 @@ def log(msg: str):
 
 def mkdir(path: Path):
     path.mkdir(parents=True, exist_ok=True)
+
+
+def write_boundary_table(frame: pd.DataFrame, destination: Path):
+    """Publish complete CSV exports without spreadsheet limits or partial files.
+
+    Format bounded chunks, then compress the exact CSV bytes. Each destination
+    is replaced only after both temporary exports have been written and closed.
+    The input dataframe is already resident; export does not copy the cohort.
+    """
+    paths = [destination / "refined_bins_boundary_bp_difference.csv",
+             destination / "refined_bins_boundary_bp_difference.csv.gz"]
+    temporary = []
+    try:
+        for path in paths:
+            fd, name = tempfile.mkstemp(prefix="." + path.name + ".", dir=destination)
+            os.close(fd)
+            temporary.append(Path(name))
+        frame.to_csv(temporary[0], index=False, encoding="utf-8", chunksize=50000)
+        with temporary[0].open("rb") as source, gzip.open(temporary[1], "wb") as compressed:
+            shutil.copyfileobj(source, compressed, length=1024 * 1024)
+        for source, target in zip(temporary, paths):
+            os.replace(source, target)
+    finally:
+        for path in temporary:
+            path.unlink(missing_ok=True)
 
 
 def clean_token(x) -> str:
@@ -2025,8 +2051,7 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
                 refined_bins_bp.loc[mask, "refined_boundary_original_position"] = original_boundary
                 refined_bins_bp.loc[mask, "refined_boundary_final_position"] = final_boundary_int
                 refined_bins_bp.loc[mask, "boundary_refinement_note"] = "bin_touches_refined_final_boundary"
-    refined_bins_bp.to_csv(final_results / "refined_bins_boundary_bp_difference.csv", index=False)
-    refined_bins_bp.to_excel(final_results / "refined_bins_boundary_bp_difference.xlsx", index=False, engine="openpyxl")
+    write_boundary_table(refined_bins_bp, final_results)
 
     bstats.to_csv(tables / "boundary_refinement_statistics.csv", index=False)
 
@@ -2147,14 +2172,14 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
         "This folder collects the main final segment outputs and the refined-bin boundary-shift report.\n"
         "final_segments.tsv is the headered primary segment table.\n"
         "final_segments.bed is the BED-style companion: chrom, start, end, sample, seg_log2, cna_state, final_source, num_mark.\n"
-        "refined_bins_boundary_bp_difference.csv and .xlsx contain refined bins plus boundary_bp_difference.\n"
+        "refined_bins_boundary_bp_difference.csv and .csv.gz contain every refined bin plus boundary_bp_difference; chunked CSV exports have no spreadsheet row limit.\n"
         "boundary_bp_difference is 0 for bins not touching an accepted refined boundary, including samples with no accepted refinement.\n"        "cna_cytogenomic_input/qdnaseq_bins contains converter-ready BED bins for both ONT and Illumina; use run_cna_codification.sh to run cna_to_cytogenomic_notation.py with --qdnaseq.\n"
     )
     pd.DataFrame([
         {"dataset": args.dataset_name, "category": "final_segments", "path": "04_final_results/final_segments.tsv", "description": "Headered primary final segment table."},
         {"dataset": args.dataset_name, "category": "final_segments_bed", "path": "04_final_results/final_segments.bed", "description": "BED-style primary final segment table."},
         {"dataset": args.dataset_name, "category": "refined_bins_boundary_shift", "path": "04_final_results/refined_bins_boundary_bp_difference.csv", "description": "Refined bins with boundary_bp_difference in bp; zero when no accepted refined boundary touches the bin."},
-        {"dataset": args.dataset_name, "category": "refined_bins_boundary_shift", "path": "04_final_results/refined_bins_boundary_bp_difference.xlsx", "description": "Excel copy of refined bins with boundary_bp_difference in bp."},
+        {"dataset": args.dataset_name, "category": "refined_bins_boundary_shift", "path": "04_final_results/refined_bins_boundary_bp_difference.csv.gz", "description": "Compressed CSV containing the same complete table, without a spreadsheet row limit."},
         {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/qdnaseq_bins/", "description": "Per-sample qDNAseq-style BED bins with final_log2 in column 5 for cna_to_cytogenomic_notation.py --qdnaseq; valid for ONT and Illumina refined outputs."},
         {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/run_cna_codification.sh", "description": "Runnable command for CNA-to-cytogenomic-notation conversion using the converter-ready BED bins."},
         {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/resources/", "description": "Self-contained converter and hg38 cytoband resource used by run_cna_codification.sh."},
@@ -2170,7 +2195,7 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/final_segments.tsv", "description": "Copied primary final segment table for direct review."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/final_segments.bed", "description": "Copied BED-style primary final segment table for direct review."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/refined_bins_boundary_bp_difference.csv", "description": "Refined bins with boundary_bp_difference in bp; zero when no accepted refined boundary touches the bin."},
-        {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/refined_bins_boundary_bp_difference.xlsx", "description": "Excel copy of refined bins with boundary_bp_difference in bp."},
+        {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/refined_bins_boundary_bp_difference.csv.gz", "description": "Compressed CSV containing the same complete table, without a spreadsheet row limit."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/qdnaseq_bins/", "description": "Converter-ready qDNAseq-style BED bins with final_log2 in column 5 for cna_to_cytogenomic_notation.py --qdnaseq."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/run_cna_codification.sh", "description": "Runnable CNA-to-cytogenomic-notation command for the converter-ready BED bins."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/resources/", "description": "Self-contained converter and hg38 cytoband resource used by run_cna_codification.sh."},
@@ -2879,6 +2904,6 @@ echo "  <dataset>/03_consolidated/method_comparison_by_sample.csv"
 echo "  <dataset>/04_final_results/final_segments.tsv"
 echo "  <dataset>/04_final_results/final_segments.bed"
 echo "  <dataset>/04_final_results/refined_bins_boundary_bp_difference.csv"
-echo "  <dataset>/04_final_results/refined_bins_boundary_bp_difference.xlsx"
+echo "  <dataset>/04_final_results/refined_bins_boundary_bp_difference.csv.gz"
 echo "  <dataset>/04_final_results/cna_cytogenomic_input/qdnaseq_bins/"
 echo "  <dataset>/04_final_results/cna_cytogenomic_input/run_cna_codification.sh"

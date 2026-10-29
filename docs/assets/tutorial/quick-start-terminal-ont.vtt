@@ -1,53 +1,53 @@
 WEBVTT
 
 1
-00:00:00.000 --> 00:00:07.004
+00:00:00.000 --> 00:00:07.005
 A terminal is enough: Run setup --terminal on a headless server. These are real wizard prompts using tiny synthetic FASTQs.
 
 2
-00:00:07.004 --> 00:00:11.862
+00:00:07.005 --> 00:00:11.856
 Choose libraries: The wizard discovers the synthetic FASTQs. Enter all to include every listed library.
 
 3
-00:00:11.862 --> 00:00:17.404
+00:00:11.856 --> 00:00:17.386
 Name the ONT library: Rename barcode01 to DRR165691. The barcode folder remains the input location.
 
 4
-00:00:17.404 --> 00:00:22.604
+00:00:17.386 --> 00:00:22.577
 Assign the sample type: These tutorial libraries are cancer samples. Choose the type from your own sample records.
 
 5
-00:00:22.604 --> 00:00:27.460
+00:00:22.577 --> 00:00:27.436
 Choose copy-number analysis: Enter cna. This walkthrough configures copy-number analysis only.
 
 6
-00:00:27.460 --> 00:00:32.086
+00:00:27.436 --> 00:00:32.064
 Set the CPU budget: The wizard reports the current machine. Choose 4 threads here; budget resources for your own server.
 
 7
-00:00:32.086 --> 00:00:37.507
+00:00:32.064 --> 00:00:37.481
 Choose the ONT caller: Select ichorcna. The ONT ichorCNA route uses 500 kb bins automatically.
 
 8
-00:00:37.507 --> 00:00:42.246
+00:00:37.481 --> 00:00:42.215
 Keep the example focused: Choose no for additional CNA interpretation reports.
 
 9
-00:00:42.246 --> 00:00:46.986
+00:00:42.215 --> 00:00:46.953
 Keep small variants off: Choose no. This CNA-only setup does not request variant or FFPE assessment.
 
 10
-00:00:46.986 --> 00:00:52.415
+00:00:46.953 --> 00:00:52.378
 Select reference handling: Choose download for prebuilt hg38 indexes when analysis runs. Saving does not download them.
 
 11
-00:00:52.415 --> 00:00:57.155
+00:00:52.378 --> 00:00:57.121
 Choose CPU or GPU: On an NVIDIA GPU server, choose Yes for supported stages or No to use CPU. This walkthrough keeps CPU.
 
 12
-00:00:57.155 --> 00:01:06.532
+00:00:57.121 --> 00:01:06.497
 Review and save only: Review the saved configuration and input checks, then explicitly enter save. No analysis starts.
 
 13
-00:01:06.532 --> 00:01:14.625
+00:01:06.497 --> 00:01:14.625
 Configuration saved: The wizard confirms: saved without starting analysis. Keep the project and launch the analysis separately when ready.

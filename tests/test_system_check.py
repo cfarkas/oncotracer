@@ -133,6 +133,29 @@ class SystemCheckTests(unittest.TestCase):
             self.assertEqual(observed["ram_available_bytes"], 3 * GIB)
             self.assertEqual(observed["cpu_workers_available"], 1)
 
+    def test_reclaimable_cache_does_not_shrink_next_stage_budget(self):
+        for legacy in (False, True):
+            with self.subTest(legacy=legacy), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); proc = root / "proc"; cg = root / "cgroup"
+                (proc / "self").mkdir(parents=True); cg.mkdir()
+                (proc / "meminfo").write_text(f"MemTotal: {100 * 1024**2} kB\nMemAvailable: {90 * 1024**2} kB\n")
+                (proc / "self/cgroup").write_text("2:memory:/\n" if legacy else "0::/\n")
+                memory = cg / "memory" if legacy else cg
+                memory.mkdir(exist_ok=True)
+                (memory / ("memory.limit_in_bytes" if legacy else "memory.max")).write_text(str(32 * GIB))
+                (memory / ("memory.usage_in_bytes" if legacy else "memory.current")).write_text(str(30 * GIB))
+                stat = memory / "memory.stat"
+                fields = ("total_inactive_file", "total_dirty", "total_writeback") if legacy else ("inactive_file", "file_dirty", "file_writeback")
+                for values, expected in (((20, 2, 1), 19), ((100, 0, 0), 2), ((1, 2, 1), 2)):
+                    stat.write_text(''.join(f"{k} {v * GIB}\n" for k, v in zip(fields, values)))
+                    self.assertEqual(inspect_hardware(proc=proc, cgroup=cg)["ram_available_bytes"], expected * GIB)
+                for text in ("", "inactive_file broken\n", f"{fields[0]} -1\n"):
+                    stat.write_text(text)
+                    self.assertEqual(inspect_hardware(proc=proc, cgroup=cg)["ram_available_bytes"], 2 * GIB)
+                stat.write_text(f"{fields[0]} {20 * GIB}\n")
+                (proc / "meminfo").write_text(f"MemTotal: {100 * 1024**2} kB\nMemAvailable: {1024**2} kB\n")
+                self.assertEqual(inspect_hardware(proc=proc, cgroup=cg)["ram_available_bytes"], GIB)
+
     def test_public_system_command_is_read_only_and_json_parseable(self):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "not-created"

@@ -400,7 +400,8 @@ def prepare(a):
         if runtime.get(key):runtime[key]=str(Path(runtime[key]).expanduser().resolve())
     patient_metadata.prepare(runtime)
     warnings=[]; errors=[]
-    if not a.allow_test_reference and a.memory<8: errors.append('The hg38 alignment requires a memory budget of at least 8GB.')
+    if not a.bam and not a.allow_test_reference and a.memory<8:
+        errors.append('The hg38 alignment requires a memory budget of at least 8GB.')
     def check(fn):
         try: return fn()
         except (ValueError,OSError,subprocess.TimeoutExpired) as e: errors.append(str(e)); return None
@@ -473,6 +474,8 @@ def prepare(a):
     if panel_result:
         runtime['panel_of_normals'],runtime['pon'],normal_rows=panel_result
         if runtime['pon']['mode']=='build':
+            if a.bam and not a.allow_test_reference and a.memory<8:
+                errors.append('Building a panel of normals from FASTQs requires at least 8GB for hg38 alignment.')
             count=len(runtime['pon']['normals'])
             print(f'Panel of normals: build from {count} samples: '+', '.join(n['sample'] for n in runtime['pon']['normals']),flush=True)
             if count<40: warnings.append(f'Small somatic panel of normals: {count} samples; sites must recur in at least 2. GATK recommends aiming for at least 40; artifact filtering is limited, especially at low coverage.')

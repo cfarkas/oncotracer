@@ -8,7 +8,7 @@
   "source_files": {
     "oncotracer_cli/wizard.py": "cc16ffbfb547ec1137e3fc1a0cdb8ba932768cd1924efaa504f97e1a6c4c6766",
     "oncotracer_cli/setup.py": "550cc3d57fffcaa56a4e67f25fcf98799a7290f589080a35d19f7a803cd5b492",
-    "oncotracer_cli/cli.py": "f36f65ba00e6b171d83076e469f8cd5bb052a27cd0fae4176bc6373f19f21030",
+    "oncotracer_cli/cli.py": "71358049ca4de515f3352a88af32726bb22b8cfe7f97969603057889d72e81db",
     "oncotracer_cli/discovery.py": "c510a2a052c8dfc8e2bcb88adaea43ec5eeb410770919058a202b8874f0ee59e",
     "scripts/record_terminal_quickstarts.py": "011ea083bd0447f0057bd92de45a7487fd189e8c620d3c1d948f69449438256e"
   },
@@ -16,7 +16,7 @@
   "videos": [
     {
       "name": "quick-start-terminal-illumina",
-      "duration_seconds": 74.208333,
+      "duration_seconds": 74.166667,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -27,79 +27,79 @@
       "cues": [
         {
           "start": 0.0,
-          "end": 7.013,
+          "end": 7.012,
           "title": "A terminal is enough",
           "text": "Run setup --terminal on a headless server. These are real wizard prompts using tiny synthetic FASTQs."
         },
         {
-          "start": 7.013,
+          "start": 7.012,
           "end": 11.873,
           "title": "Choose libraries",
           "text": "The wizard discovers the synthetic FASTQs. Enter all to include every listed library."
         },
         {
           "start": 11.873,
-          "end": 17.089,
+          "end": 17.087,
           "title": "Keep the library identity",
           "text": "Press Enter to keep the discovered sample name and its existing FASTQ pair."
         },
         {
-          "start": 17.089,
+          "start": 17.087,
           "end": 22.282,
           "title": "Assign the sample type",
           "text": "These tutorial libraries are cancer samples. Choose the type from your own sample records."
         },
         {
           "start": 22.282,
-          "end": 27.13,
+          "end": 27.132,
           "title": "Choose copy-number analysis",
           "text": "Enter cna. This walkthrough configures copy-number analysis only."
         },
         {
-          "start": 27.13,
-          "end": 31.754,
+          "start": 27.132,
+          "end": 31.757,
           "title": "Set the CPU budget",
           "text": "The wizard reports the current machine. Choose 4 threads here; budget resources for your own server."
         },
         {
-          "start": 31.754,
-          "end": 36.61,
+          "start": 31.757,
+          "end": 36.607,
           "title": "Choose Illumina bins",
           "text": "Use QDNAseq at 100 kb for this tutorial. The wizard records the selected resolution."
         },
         {
-          "start": 36.61,
-          "end": 41.35,
+          "start": 36.607,
+          "end": 41.347,
           "title": "Keep the example focused",
           "text": "Choose no for additional CNA interpretation reports."
         },
         {
-          "start": 41.35,
-          "end": 46.091,
+          "start": 41.347,
+          "end": 46.083,
           "title": "Keep small variants off",
           "text": "Choose no. This CNA-only setup does not request variant or FFPE assessment."
         },
         {
-          "start": 46.091,
-          "end": 51.518,
+          "start": 46.083,
+          "end": 51.506,
           "title": "Select reference handling",
           "text": "Choose download for prebuilt hg38 indexes when analysis runs. Saving does not download them."
         },
         {
-          "start": 51.518,
-          "end": 56.259,
+          "start": 51.506,
+          "end": 56.247,
           "title": "Choose CPU or GPU",
           "text": "On an NVIDIA GPU server, choose Yes for supported stages or No to use CPU. This walkthrough keeps CPU."
         },
         {
-          "start": 56.259,
-          "end": 65.638,
+          "start": 56.247,
+          "end": 65.633,
           "title": "Review and save only",
           "text": "Review the saved configuration and input checks, then explicitly enter save. No analysis starts."
         },
         {
-          "start": 65.638,
-          "end": 74.208,
+          "start": 65.633,
+          "end": 74.167,
           "title": "Configuration saved",
           "text": "The wizard confirms: saved without starting analysis. Keep the project and launch the analysis separately when ready."
         }
@@ -171,7 +171,7 @@
             "sample": "ERR12341627",
             "sample_type": "cancer",
             "analysis_role": "tumor",
-            "fastq_files": "[\"/tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz\", \"/tmp/oncotracer-rc2-terminal-recording-20261028/illumina/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz\"]"
+            "fastq_files": "[\"/tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz\", \"/tmp/oncotracer-recovery-terminal-r2-20261029/illumina/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz\"]"
           }
         ]
       },
@@ -182,28 +182,28 @@
       "files": {
         ".mp4": {
           "name": "quick-start-terminal-illumina.mp4",
-          "sha256": "24aaf3e72e4cd2029310fab4b6308c2cc5d34d9c0e69dc795908a8458568a5a6",
-          "bytes": 1779614
+          "sha256": "5912ee9335a0e18ba2a7e1d3a955e062cd89e7feed92a9e1f98e53acc189a90d",
+          "bytes": 1824288
         },
         ".jpg": {
           "name": "quick-start-terminal-illumina.jpg",
-          "sha256": "9d95869cebdebfeb79ba35a7df96f1313945876ea7ad4f5fcda206fde0bc6bc5",
-          "bytes": 118905
+          "sha256": "245d37ccefaf5bb5c757c037e17ca1be945b01dd81f8a656fc3a19472ac6b344",
+          "bytes": 118439
         },
         ".vtt": {
           "name": "quick-start-terminal-illumina.vtt",
-          "sha256": "e565dcbf87c7114caa469cef2fc88d83d326aa1f42f2e7cdedcbc46e99bc1f90",
+          "sha256": "fb63739e3991adb07dc44bb50f184e981b8aa59eaffcda47d5218944eb8fdbe8",
           "bytes": 1889
         },
         ".txt": {
           "name": "quick-start-terminal-illumina.txt",
-          "sha256": "c2bfe8c0b2bbea10ee222bb39dcc17f421ab89ebd1b8ed5175964c38f5f53ed2",
-          "bytes": 3523
+          "sha256": "8bfc08e0ff4b11d299c7bac0d734d947638f8669966fc9ce024a72bb98719d1c",
+          "bytes": 3507
         },
         ".cast": {
           "name": "quick-start-terminal-illumina.cast",
-          "sha256": "6bcfaf316f9b6f2deb89c44baa3be0eef8eacf0489e20d2f0a830f3306ffa514",
-          "bytes": 4538
+          "sha256": "4050ad9503f20f62eb5514f70bc8c7d36b08a87d893ffa30b88d0602a24f7df3",
+          "bytes": 4619
         }
       },
       "capture": "Unmodified PTY output in asciicast v2; video normalizes CRLF and replays at a readable pace."
@@ -221,78 +221,78 @@
       "cues": [
         {
           "start": 0.0,
-          "end": 7.004,
+          "end": 7.005,
           "title": "A terminal is enough",
           "text": "Run setup --terminal on a headless server. These are real wizard prompts using tiny synthetic FASTQs."
         },
         {
-          "start": 7.004,
-          "end": 11.862,
+          "start": 7.005,
+          "end": 11.856,
           "title": "Choose libraries",
           "text": "The wizard discovers the synthetic FASTQs. Enter all to include every listed library."
         },
         {
-          "start": 11.862,
-          "end": 17.404,
+          "start": 11.856,
+          "end": 17.386,
           "title": "Name the ONT library",
           "text": "Rename barcode01 to DRR165691. The barcode folder remains the input location."
         },
         {
-          "start": 17.404,
-          "end": 22.604,
+          "start": 17.386,
+          "end": 22.577,
           "title": "Assign the sample type",
           "text": "These tutorial libraries are cancer samples. Choose the type from your own sample records."
         },
         {
-          "start": 22.604,
-          "end": 27.46,
+          "start": 22.577,
+          "end": 27.436,
           "title": "Choose copy-number analysis",
           "text": "Enter cna. This walkthrough configures copy-number analysis only."
         },
         {
-          "start": 27.46,
-          "end": 32.086,
+          "start": 27.436,
+          "end": 32.064,
           "title": "Set the CPU budget",
           "text": "The wizard reports the current machine. Choose 4 threads here; budget resources for your own server."
         },
         {
-          "start": 32.086,
-          "end": 37.507,
+          "start": 32.064,
+          "end": 37.481,
           "title": "Choose the ONT caller",
           "text": "Select ichorcna. The ONT ichorCNA route uses 500 kb bins automatically."
         },
         {
-          "start": 37.507,
-          "end": 42.246,
+          "start": 37.481,
+          "end": 42.215,
           "title": "Keep the example focused",
           "text": "Choose no for additional CNA interpretation reports."
         },
         {
-          "start": 42.246,
-          "end": 46.986,
+          "start": 42.215,
+          "end": 46.953,
           "title": "Keep small variants off",
           "text": "Choose no. This CNA-only setup does not request variant or FFPE assessment."
         },
         {
-          "start": 46.986,
-          "end": 52.415,
+          "start": 46.953,
+          "end": 52.378,
           "title": "Select reference handling",
           "text": "Choose download for prebuilt hg38 indexes when analysis runs. Saving does not download them."
         },
         {
-          "start": 52.415,
-          "end": 57.155,
+          "start": 52.378,
+          "end": 57.121,
           "title": "Choose CPU or GPU",
           "text": "On an NVIDIA GPU server, choose Yes for supported stages or No to use CPU. This walkthrough keeps CPU."
         },
         {
-          "start": 57.155,
-          "end": 66.532,
+          "start": 57.121,
+          "end": 66.497,
           "title": "Review and save only",
           "text": "Review the saved configuration and input checks, then explicitly enter save. No analysis starts."
         },
         {
-          "start": 66.532,
+          "start": 66.497,
           "end": 74.625,
           "title": "Configuration saved",
           "text": "The wizard confirms: saved without starting analysis. Keep the project and launch the analysis separately when ready."
@@ -365,7 +365,7 @@
             "sample": "DRR165691",
             "sample_type": "cancer",
             "analysis_role": "tumor",
-            "fastq_files": "[\"/tmp/oncotracer-rc2-terminal-recording-20261028/ont/oncotracer-quickstart1/input/fastq_pass/barcode01/DRR165691_1.fastq.gz\"]"
+            "fastq_files": "[\"/tmp/oncotracer-recovery-terminal-r2-20261029/ont/oncotracer-quickstart1/input/fastq_pass/barcode01/DRR165691_1.fastq.gz\"]"
           }
         ]
       },
@@ -375,35 +375,35 @@
       "files": {
         ".mp4": {
           "name": "quick-start-terminal-ont.mp4",
-          "sha256": "810ea6bef81bbbf7b74b0ee55b144e1878b99d6da236075cebf18335c2938ff5",
-          "bytes": 1890067
+          "sha256": "e6515f7ae0edda921f2b9be5175f69c1e45048f1eb009b21890ed3a090c0bdaa",
+          "bytes": 1987273
         },
         ".jpg": {
           "name": "quick-start-terminal-ont.jpg",
-          "sha256": "4926ddd076d38183caca565ae4e3f451faf06f9350405e4de48d1d494b3f26da",
-          "bytes": 117571
+          "sha256": "495ee08d20dfd3852585de1176cf8ac3df7a09e2702c86c6a85133c72fee116c",
+          "bytes": 117028
         },
         ".vtt": {
           "name": "quick-start-terminal-ont.vtt",
-          "sha256": "8ce7bc8dc528476bc650f00861c02fd30a8a910bf50047aa4d285c27d1424773",
+          "sha256": "a8b078c29e8436e5cd6eb6884d69857c1868b849cadadadbeae71813def6d905",
           "bytes": 1874
         },
         ".txt": {
           "name": "quick-start-terminal-ont.txt",
-          "sha256": "736f9eb1926850d81899b68534bf02baa5f9b4b4f9c7a69b06c6550ea1459cc6",
-          "bytes": 3675
+          "sha256": "97affa632587548b87f011fea966ed7c86434ee1fa110f694a766da902aaa802",
+          "bytes": 3657
         },
         ".cast": {
           "name": "quick-start-terminal-ont.cast",
-          "sha256": "134d7186b667037874af16718d2c5daa3a6d27063304598a13d6eadfef30d2c9",
-          "bytes": 4769
+          "sha256": "8dc06e322437209bcadf9120a3f35489c5aad8cc6f361d9fb28428d644f11c43",
+          "bytes": 4751
         }
       },
       "capture": "Unmodified PTY output in asciicast v2; video normalizes CRLF and replays at a readable pace."
     },
     {
       "name": "quick-start-terminal-hcc1143",
-      "duration_seconds": 94.5,
+      "duration_seconds": 94.541667,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -420,97 +420,97 @@
         },
         {
           "start": 7.004,
-          "end": 11.854,
+          "end": 11.864,
           "title": "Choose libraries",
           "text": "The wizard discovers the synthetic FASTQs. Enter all to include every listed library."
         },
         {
-          "start": 11.854,
-          "end": 17.066,
+          "start": 11.864,
+          "end": 17.077,
           "title": "Keep the library identity",
           "text": "Press Enter to keep the discovered sample name and its existing FASTQ pair."
         },
         {
-          "start": 17.066,
-          "end": 22.262,
+          "start": 17.077,
+          "end": 22.278,
           "title": "Assign the sample type",
           "text": "These tutorial libraries are cancer samples. Choose the type from your own sample records."
         },
         {
-          "start": 22.262,
-          "end": 27.476,
+          "start": 22.278,
+          "end": 27.489,
           "title": "Keep the library identity",
           "text": "Press Enter to keep the discovered sample name and its existing FASTQ pair."
         },
         {
-          "start": 27.476,
-          "end": 32.665,
+          "start": 27.489,
+          "end": 32.686,
           "title": "DMSO is still a cancer sample",
           "text": "DMSO is a treatment control, not a normal genome. Keep its sample type as cancer."
         },
         {
-          "start": 32.665,
-          "end": 37.875,
+          "start": 32.686,
+          "end": 37.901,
           "title": "Keep the library identity",
           "text": "Press Enter to keep the discovered sample name and its existing FASTQ pair."
         },
         {
-          "start": 37.875,
-          "end": 43.067,
+          "start": 37.901,
+          "end": 43.098,
           "title": "Assign the sample type",
           "text": "These tutorial libraries are cancer samples. Choose the type from your own sample records."
         },
         {
-          "start": 43.067,
-          "end": 47.92,
+          "start": 43.098,
+          "end": 47.956,
           "title": "Choose copy-number analysis",
           "text": "Enter cna. This walkthrough configures copy-number analysis only."
         },
         {
-          "start": 47.92,
-          "end": 52.545,
+          "start": 47.956,
+          "end": 52.582,
           "title": "Set the CPU budget",
           "text": "The wizard reports the current machine. Choose 4 threads here; budget resources for your own server."
         },
         {
-          "start": 52.545,
-          "end": 57.4,
+          "start": 52.582,
+          "end": 57.439,
           "title": "Choose Illumina bins",
           "text": "Use QDNAseq at 100 kb for this tutorial. The wizard records the selected resolution."
         },
         {
-          "start": 57.4,
-          "end": 62.14,
+          "start": 57.439,
+          "end": 62.18,
           "title": "Keep the example focused",
           "text": "Choose no for additional CNA interpretation reports."
         },
         {
-          "start": 62.14,
-          "end": 66.879,
+          "start": 62.18,
+          "end": 66.918,
           "title": "Keep small variants off",
           "text": "Choose no. This CNA-only setup does not request variant or FFPE assessment."
         },
         {
-          "start": 66.879,
-          "end": 72.3,
+          "start": 66.918,
+          "end": 72.339,
           "title": "Select reference handling",
           "text": "Choose download for prebuilt hg38 indexes when analysis runs. Saving does not download them."
         },
         {
-          "start": 72.3,
-          "end": 77.041,
+          "start": 72.339,
+          "end": 77.079,
           "title": "Choose CPU or GPU",
           "text": "On an NVIDIA GPU server, choose Yes for supported stages or No to use CPU. This walkthrough keeps CPU."
         },
         {
-          "start": 77.041,
-          "end": 86.414,
+          "start": 77.079,
+          "end": 86.449,
           "title": "Review and save only",
           "text": "Review the saved configuration and input checks, then explicitly enter save. No analysis starts."
         },
         {
-          "start": 86.414,
-          "end": 94.5,
+          "start": 86.449,
+          "end": 94.542,
           "title": "Configuration saved",
           "text": "The wizard confirms: saved without starting analysis. Keep the project and launch the analysis separately when ready."
         }
@@ -600,19 +600,19 @@
             "sample": "HCC1143_BEZ235",
             "sample_type": "cancer",
             "analysis_role": "tumor",
-            "fastq_files": "[\"/tmp/oncotracer-rc2-terminal-recording-20261028/hcc1143/oncotracer-quickstart2/input/HCC1143_BEZ235_R1.fastq.gz\", \"/tmp/oncotracer-rc2-terminal-recording-20261028/hcc1143/oncotracer-quickstart2/input/HCC1143_BEZ235_R2.fastq.gz\"]"
+            "fastq_files": "[\"/tmp/oncotracer-recovery-terminal-r2-20261029/hcc1143/oncotracer-quickstart2/input/HCC1143_BEZ235_R1.fastq.gz\", \"/tmp/oncotracer-recovery-terminal-r2-20261029/hcc1143/oncotracer-quickstart2/input/HCC1143_BEZ235_R2.fastq.gz\"]"
           },
           {
             "sample": "HCC1143_DMSO",
             "sample_type": "cancer",
             "analysis_role": "tumor",
-            "fastq_files": "[\"/tmp/oncotracer-rc2-terminal-recording-20261028/hcc1143/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz\", \"/tmp/oncotracer-rc2-terminal-recording-20261028/hcc1143/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz\"]"
+            "fastq_files": "[\"/tmp/oncotracer-recovery-terminal-r2-20261029/hcc1143/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz\", \"/tmp/oncotracer-recovery-terminal-r2-20261029/hcc1143/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz\"]"
           },
           {
             "sample": "HCC1143_TRAMETINIB",
             "sample_type": "cancer",
             "analysis_role": "tumor",
-            "fastq_files": "[\"/tmp/oncotracer-rc2-terminal-recording-20261028/hcc1143/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fastq.gz\", \"/tmp/oncotracer-rc2-terminal-recording-20261028/hcc1143/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R2.fastq.gz\"]"
+            "fastq_files": "[\"/tmp/oncotracer-recovery-terminal-r2-20261029/hcc1143/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fastq.gz\", \"/tmp/oncotracer-recovery-terminal-r2-20261029/hcc1143/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R2.fastq.gz\"]"
           }
         ]
       },
@@ -627,28 +627,28 @@
       "files": {
         ".mp4": {
           "name": "quick-start-terminal-hcc1143.mp4",
-          "sha256": "50ecf0a0facc0bc48a9d8825aaef514a86180661864e8498c708a3ad3ef90c44",
-          "bytes": 2605948
+          "sha256": "4b61262bb6c1ad75f7881f007dad4df3c2d3e7529ed15b240a21d276de13cefd",
+          "bytes": 2710599
         },
         ".jpg": {
           "name": "quick-start-terminal-hcc1143.jpg",
-          "sha256": "9d1d27612becf40d36c27fc6cd29837be60d43c682c84ac3ceca4722ad5df33c",
-          "bytes": 145530
+          "sha256": "3d10151e7b07c8ab373473fffeccb02504241a7e5c294ea7d8a9b46a8b4c28f9",
+          "bytes": 145734
         },
         ".vtt": {
           "name": "quick-start-terminal-hcc1143.vtt",
-          "sha256": "bdcc4fd9c4df1c1f5707e7c0ffafb387a00bd321e1f104c24a56c6ce8a93b821",
+          "sha256": "5df073a9bc329cb118ecd943cd34ed1b59228cc2bc3c68e966d1982566caf8b0",
           "bytes": 2459
         },
         ".txt": {
           "name": "quick-start-terminal-hcc1143.txt",
-          "sha256": "b8be154cbf80114d67ccf5321af40c8792cfa22f3bb9741957b3cefc986c896f",
-          "bytes": 4140
+          "sha256": "3863ee348f0416a50a2dfdbf1d852b294e256d299e346a6c7eb898914230b8ed",
+          "bytes": 4124
         },
         ".cast": {
           "name": "quick-start-terminal-hcc1143.cast",
-          "sha256": "7f89399bd816238543c98262081e4ac351e1fbbc3b39127dd1cdfed229de5ffb",
-          "bytes": 5600
+          "sha256": "1bcac5e100ef54e2dc397bc2e0b03bc2ad76391cacfe8cac5ea69cc55bac3526",
+          "bytes": 5683
         }
       },
       "capture": "Unmodified PTY output in asciicast v2; video normalizes CRLF and replays at a readable pace."
