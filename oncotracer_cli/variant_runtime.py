@@ -95,7 +95,7 @@ def managed_variant_runtime(config: Mapping[str, object], *, mode: str,
     if not enabled:
         yield
         return
-    selection = select_variant_runtime(config, mode=mode, **selection_options)
+    selection = select_variant_runtime(config, mode='illumina' if mode=='ont' and config.get('variant_ont_imputation')=='quilt2' else mode, **selection_options)
     if not selection.managed:
         yield
         return

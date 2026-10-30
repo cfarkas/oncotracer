@@ -258,6 +258,7 @@ def command_wizard(original_args) -> int:
         print(f"Methylation classifier: {config['methylation_classifier']}; GPU allowed: {config['methylation_gpu']}")
     if config.get("run_variants"):
         print(f"Small variants: {config.get('variant_engine', 'legacy')} / {config['variant_callers']}; preservation: {config['variant_specimen_type']}; ANNOVAR: {config['variant_annovar']}")
+        print(f"ONT imputation: {config.get('variant_ont_imputation','off')}; Monte Carlo read linkage: {config.get('variant_monte_carlo_linkage',False)}")
     reference = "download prebuilt indexes when needed" if config["hg38_auto_download"] else ("build missing indexes locally" if args.build_reference else "reuse prepared reference")
     print(f"Reference: {reference}\nReference folder: {config['lpwgs_root']}\nSample types: {config['sample_metadata']}")
     print("Analysis may download reference files and prepare missing tools when it starts.")

@@ -69,6 +69,10 @@ class VariantRequest:
     parallel_samples: int | str = 'auto'
     memory: str = 'auto'
     gpu_usage: bool = False
+    monte_carlo_linkage: bool = False
+    ont_imputation: str = "off"
+    quilt2_reference_dir: Path | None = None
+    quilt2_cache: Path | None = None
 
     def as_dict(self, *, include_runtime_diagnostics: bool = True):
         result = {k: str(v) if isinstance(v, Path) else list(v) if isinstance(v, tuple) else v
@@ -82,6 +86,10 @@ class VariantRequest:
             result.pop("tool_prefix_diagnostics", None)
             result.pop("parallel_samples", None)
             result.pop("memory", None)
+        if not self.monte_carlo_linkage:result.pop('monte_carlo_linkage',None)
+        if self.ont_imputation=='off':result.pop('ont_imputation',None)
+        for field in ('quilt2_reference_dir','quilt2_cache'):
+            if result.get(field) is None:result.pop(field,None)
         return result
 
 
@@ -209,6 +217,14 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
         request = replace(request, parallel_samples=parallel, memory=memory, gpu_usage=gpu_enabled(config))
     except ValueError as error:
         raise OncoTracerError(str(error)) from error
+    mc=config.get('variant_monte_carlo_linkage',False)
+    imputation=str(config.get('variant_ont_imputation') or 'off').lower()
+    if type(mc) is not bool:raise OncoTracerError('variant_monte_carlo_linkage must be true or false')
+    if imputation not in {'off','quilt2'}:raise OncoTracerError('variant_ont_imputation must be off or quilt2')
+    if imputation=='quilt2' and (mode!='ont' or build!='hg38'):
+        raise OncoTracerError('QUILT2 integration requires ONT aligned to GRCh38; Illumina retains GLIMPSE2')
+    request=replace(request,monte_carlo_linkage=mc,ont_imputation=imputation,
+                    quilt2_reference_dir=path('variant_quilt2_reference_dir'),quilt2_cache=path('variant_quilt2_cache'))
     if mode == 'illumina':
         from .glimpse_pipeline import validate_options
         request=replace(request,engine='glimpse2',glimpse_config=validate_options(config))
@@ -226,7 +242,7 @@ def variant_plan(request: VariantRequest) -> dict:
     from .variant_model_assets import resource_download_plan
     return {**request.as_dict(), 'engine': 'native', 'nextflow_used': False,
             'resource_downloads': resource_download_plan(request),
-            'stages': ['variant-bam-validation', *[f'variant-{c}' for c in request.callers],
+            'stages': [*(['quilt2-diploid-snp-imputation'] if request.ont_imputation=='quilt2' else []), *(['monte-carlo-read-linkage'] if request.monte_carlo_linkage else []), 'variant-bam-validation', *[f'variant-{c}' for c in request.callers],
                        'variant-normalization', *(['ffperase-assessment'] if request.ffperase != 'off' else []), *(['varlociraptor-local-fdr'] if request.varlociraptor != 'off' else []), 'variant-evidence', 'annovar-autodetect' if request.annovar == 'auto' else 'annotation-off'],
             'ffpe_handling': (('Mutect2 orientation model; ' if 'mutect2' in request.callers else '') + 'C>T/G>A review flag without automatic exclusion' + ('; independent FFPErase artifact assessment required' if request.ffperase != 'off' else '')) if request.specimen_type == 'ffpe' else 'caller-native filtering',
             'genotypes': 'caller GT preserved; missing remains missing; no AF-derived consensus',
@@ -237,6 +253,8 @@ def preflight_variant_tools(request: VariantRequest, toolchain=None) -> dict[str
     if request.engine == 'glimpse2':
         from .glimpse_pipeline import preflight
         return preflight(request,toolchain)
+    from .variant_postcalling import preflight as preflight_postcalling
+    preflight_postcalling(request,toolchain)
     def find(name, alternatives=()):
         for candidate in (name, *alternatives):
             if request.tool_prefix:
@@ -650,6 +668,8 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
     env = {}
     if request.tool_prefix:
         env = {'PATH': str(request.tool_prefix/'bin')+os.pathsep+os.environ.get('PATH',''), 'CONDA_PREFIX':str(request.tool_prefix)}
+    from .variant_postcalling import prepare_quilt, impute_quilt, linkage
+    quilt_manifest=prepare_quilt(request,bams,fasta,root,runner,threads,toolchain)
     from . import ffperase, varlociraptor
     detection = ffperase.discover(request.ffperase_root, request.ffperase_models, request.ffperase_sif,
                                  request.ffperase_prefix) if request.ffperase != 'off' else None
@@ -724,7 +744,9 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                         signature_inputs.append(Path(bams[dict(request.matched_normals)[sample]]))
                     if request.clair3_model and caller == 'clair3':
                         signature_inputs += sorted(p for p in request.clair3_model.rglob('*') if p.is_file())
-                    signature_command = [json.dumps(request.as_dict(include_runtime_diagnostics=False),sort_keys=True),_module_digest(),json.dumps(status['annovar_detection'],sort_keys=True),_module_digest('annovar.py'),_module_digest('ffperase.py'),_module_digest('varlociraptor.py'),_module_digest('variant_filters.py'),_module_digest('strelka2.py'),json.dumps(detection,sort_keys=True)]
+                    caller_settings=request.as_dict(include_runtime_diagnostics=False)
+                    for field in ('monte_carlo_linkage','ont_imputation','quilt2_reference_dir','quilt2_cache'):caller_settings.pop(field,None)
+                    signature_command = [json.dumps(caller_settings,sort_keys=True),_module_digest(),json.dumps(status['annovar_detection'],sort_keys=True),_module_digest('annovar.py'),_module_digest('ffperase.py'),_module_digest('varlociraptor.py'),_module_digest('variant_filters.py'),_module_digest('strelka2.py'),json.dumps(detection,sort_keys=True)]
                     signature_inputs += [request.varlociraptor_scenario] if request.varlociraptor_scenario else []
                     signature = ledger.signature(f'variants-{sample}-{caller}', signature_command, signature_inputs)
                     compatible_signatures = {signature}
@@ -832,6 +854,13 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                         for p in scratch.glob('*.log'):
                             shutil.copy2(p,logs/f'{sample}.{caller}.{p.name}')
                 states = [r['status'] for r in sample_result['callers'] if r['status']!='not_applicable']
+                if request.monte_carlo_linkage:
+                    sample_result['monte_carlo_linkage']=linkage(request,sample,bam,
+                        {r['caller']:Path(r['vcf']) for r in sample_result['callers'] if r['status']=='complete'},
+                        fasta,root/'linkage',runner,threads,toolchain,force=force)
+                if quilt_manifest is not None:
+                    sample_result['quilt2']=impute_quilt(request,sample,bam,quilt_manifest,root,runner,threads,toolchain,force=force)
+                    states.append(sample_result['quilt2']['status'])
                 sample_result['status'] = ('not_applicable' if not states else 'complete' if all(s=='complete' for s in states)
                                           else 'partial_failure' if any(s in {'complete','partial_failure'} for s in states) else 'failed')
         except (OSError,OncoTracerError,ValueError) as error:

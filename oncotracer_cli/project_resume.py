@@ -171,7 +171,7 @@ def audit_summary(audit):
             f"{audit['needs_recompute']} need recomputation. Run rechecks inputs and settings before reuse.")
 
 
-def resume_project(value, *, backend=None, image=None, resources=None):
+def resume_project(value, *, backend=None, image=None, resources=None, variant_options=None):
     """Back up configuration, rebase owned paths, and authorize the selected runtime.
 
     Never start tools, delete results, bless a stage, or accept a classifier license.
@@ -228,6 +228,17 @@ def resume_project(value, *, backend=None, image=None, resources=None):
             from .sample_resources import selected_config
             _, samples = sample_snapshot(updated)
             updated.update(selected_config(updated, len(samples), resources))
+        if variant_options is not None:
+            if not isinstance(variant_options,dict) or set(variant_options)-{'variant_monte_carlo_linkage','variant_ont_imputation'}:
+                raise OncoTracerError('Unknown continuation variant options')
+            if not updated.get('run_variants'):
+                raise OncoTracerError('Post-calling options require an existing small-variant configuration')
+            if 'variant_monte_carlo_linkage' in variant_options and type(variant_options['variant_monte_carlo_linkage']) is not bool:
+                raise OncoTracerError('Monte Carlo linkage must be true or false')
+            imputation=variant_options.get('variant_ont_imputation',updated.get('variant_ont_imputation','off'))
+            if imputation not in ('off','quilt2') or (imputation=='quilt2' and (updated.get('mode')!='ont' or updated.get('variant_reference_build','hg38')!='hg38')):
+                raise OncoTracerError('QUILT2 continuation requires ONT / GRCh38')
+            updated.update(variant_options)
         changes = {"run.yml": _render_config(updated)}
         for name in ("samplesheet.csv", "sample_metadata.csv"):
             file = project / "config" / name

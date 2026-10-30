@@ -45,6 +45,7 @@ nav:
       - Mock cohort — six tumors + four independent normals: six_tumor_four_normal.md
   - Analyses and Results:
       - Small-Variant Calling: variants.md
+      - ONT Imputation with QUILT2: ont_imputation.md
       - Read-backed Haplotype Evidence: haplotype_evidence.md
       - ANNOVAR Annotation: annovar.md
       - ONT Methylation: configuration/methylation.md

@@ -4,6 +4,11 @@
 def _controls(prefix, *, resume=False):
     cpu = (f'<label for="{prefix}-threads">Total CPU thread budget (shared by sample jobs)</label>'
            f'<input id="{prefix}-threads" type="number" min="1" step="1">') if resume else ''
+    postcalling = ('<section id="resume-postcalling" hidden><h3>Additional variant evidence</h3>'
+        '<label class="check"><input id="resume-monte-carlo" type="checkbox"> Add Monte Carlo read linkage (experimental)</label>'
+        '<div id="resume-quilt2-field" hidden><label for="resume-quilt2">ONT population imputation</label>'
+        '<select id="resume-quilt2"><option value="off">Off</option><option value="quilt2">QUILT2 · research diploid SNP imputation</option></select></div>'
+        '<p class="hint">Uses observed reads for linkage. QUILT2 imputed SNPs remain separate. Neither establishes germline origin; tumor admixture and CNA can invalidate diploid assumptions. Completed stages are checked before reuse.</p></section>') if resume else ''
     return f'''<section id="{prefix}-resources" {'hidden' if resume else ''}>
 <h3>Choose parallel sample jobs</h3>
 <p class="hint">Each job processes one sample. Choose the number of samples running at once and see the cores and RAM allocated to each. Completed outputs are validated before reuse.</p>
@@ -14,6 +19,7 @@ def _controls(prefix, *, resume=False):
 <p id="{prefix}-resource-note" class="hint" role="status">Detect resources to compare sample-job combinations. Cores here mean CPU threads available to this process; other analyses share this server.</p>
 <div id="{prefix}-gpu-field" hidden><label for="{prefix}-gpu">GPU usage</label><select id="{prefix}-gpu"><option value="false">No · CPU</option><option value="true">Yes · accelerate supported stages</option></select><p id="{prefix}-gpu-note" class="hint"></p></div>
 <div id="{prefix}-gpu-unavailable" class="notice" hidden>Saved settings request a GPU, but no NVIDIA GPU is visible. Restore GPU access or <button id="{prefix}-use-cpu" type="button">Use CPU for this analysis</button>.</div>
+{postcalling}
 <button id="{prefix}-detect-resources" type="button">Detect sample-job options</button>
 {('<button id="resume-apply-resources" type="button">Apply resources and check</button><p class="hint">Run analysis also applies and checks these choices before starting.</p>') if resume else ''}
 </section>'''
@@ -110,8 +116,10 @@ async function applyResumeResources(){
   const project=$('resume-project').value;
   const resources=resourceSelection('resume');
   await loadResume(project,{backend:$('resume-backend').value,
-    image:$('resume-backend').value==='conda'?'':$('resume-image').value.trim(),resources});
+    image:$('resume-backend').value==='conda'?'':$('resume-image').value.trim(),resources,
+    variant_options:prepared?.reviewed_summary?.config?.run_variants?{variant_monte_carlo_linkage:$('resume-monte-carlo').checked,variant_ont_imputation:prepared.reviewed_summary.config.mode==='ont'?$('resume-quilt2').value:'off'}:null});
 }
+for(const id of ['resume-monte-carlo','resume-quilt2'])$(id).addEventListener('change',()=>{$('check-badge').textContent='Settings changed · checked again at Run';});
 $('resume-apply-resources').onclick=()=>busy($('resume-apply-resources'),applyResumeResources);
 '''
     page = page.replace("(async()=>{try{if(!token)", script + "\n(async()=>{try{if(!token)", 1)
@@ -120,6 +128,9 @@ $('resume-apply-resources').onclick=()=>busy($('resume-apply-resources'),applyRe
     page = page.replace("$('run').disabled=!prepared.valid;$('run').hidden=false;", """const choices=prepared.resource_choices;
   $('resume-threads').value=choices?.threads||prepared.reviewed_summary.config.threads||1;
   $('resume-memory').value=choices?.memory||'auto';
+  const savedVariants=prepared.reviewed_summary.config;
+  show('resume-postcalling',Boolean(savedVariants.run_variants));show('resume-quilt2-field',savedVariants.mode==='ont');
+  $('resume-monte-carlo').checked=Boolean(savedVariants.variant_monte_carlo_linkage);$('resume-quilt2').value=savedVariants.variant_ont_imputation||'off';
   showResourceChoices('resume',choices,true);
   $('run').disabled=!prepared.valid||Boolean(choices&&!resumeResourcesReady);$('run').hidden=false;""", 1)
     page = page.replace("await api('/api/run',{project_id:prepared.id});", """if(prepared.kind==='existing_project'&&prepared.resource_choices){

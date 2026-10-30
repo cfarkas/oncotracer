@@ -16,11 +16,11 @@ from .runtime import OncoTracerError, load_flat_yaml
 from .fastq_inputs import fastq_paths, fastq_field_values
 from .variant_model_assets import is_auto_resource
 
-GLIMPSE_INPUTS = ('variant_workflow_source', 'variant_glimpse_reference_dir', 'variant_glimpse_bin',
+GLIMPSE_INPUTS = ('variant_quilt2_reference_dir', 'variant_workflow_source', 'variant_glimpse_reference_dir', 'variant_glimpse_bin',
                   'variant_analysis_reuse_from', 'variant_reuse_from', 'variant_reference_reuse_from',
                   'variant_patients', 'variant_patient_database', 'variant_clinvar',
                   'variant_germline_resource', 'variant_panel_of_normals', 'variant_contamination_sites')
-GLIMPSE_CACHES = ('variant_resource_dir', 'variant_pgs_cache', 'variant_ancestry_explorer_cache', 'variant_literature_cache')
+GLIMPSE_CACHES = ('variant_quilt2_cache', 'variant_resource_dir', 'variant_pgs_cache', 'variant_ancestry_explorer_cache', 'variant_literature_cache')
 
 
 _HOST_PREVIEW = ContextVar("oncotracer_docker_host_preview", default=False)

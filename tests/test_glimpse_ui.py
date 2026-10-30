@@ -58,7 +58,8 @@ class GlimpseUiTests(unittest.TestCase):
 const assert=require('node:assert/strict');let mode='illumina';
 const nodes={variant_parallel_samples:{value:'4'},variant_memory:{value:'128GB'},variant_confidence_gwas:{value:'medium'},'variant-clair3-source':{value:'auto'},
 variant_ont_profile:{value:'r1041_e82_400bps_sup_v500'},variant_download_resources:{checked:true},
-variant_accept_ffperase_license:{checked:true},'variant-scenario-mode':{value:'standard'}};
+variant_accept_ffperase_license:{checked:true},variant_monte_carlo_linkage:{checked:true},variant_ont_imputation:{value:'quilt2'},
+variant_quilt2_reference_dir:{value:''},variant_quilt2_cache:{value:''},'variant-scenario-mode':{value:'standard'}};
 for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])nodes[key]={value:'/fixture/'+key};
 const document={getElementById:id=>nodes[id]};function variantPairPayload(){return {};}
 ''' + 'function guidedVariantPayload(data){' + function + r'''
@@ -67,7 +68,7 @@ assert.equal(value.variant_engine,'glimpse2');assert.equal(value.variant_callers
 assert.equal(value.variant_ffperase,'required');assert.equal(value.variant_annovar,'auto');assert.equal(value.variant_varlociraptor,'off');
 assert.equal(value.variant_confidence_gwas,'medium');assert.equal(value.variant_download_resources,true);
 assert.equal(value.variant_patients,'/fixture/variant_patients');
-assert.equal(value.variant_parallel_samples,4);assert.equal(value.variant_memory,'128GB');
+assert.equal(value.variant_parallel_samples,4);assert.equal(value.variant_memory,'128GB');assert.equal(value.variant_monte_carlo_linkage,true);
 for(const bad of ['0','-1','1.5','', 'true']){nodes.variant_parallel_samples.value=bad;assert.throws(()=>guidedVariantPayload({}),/positive integer/);}
 nodes.variant_parallel_samples.value='4';
 value=guidedVariantPayload({variant_specimen_type:'fresh',variant_callers:'bcftools'});
@@ -112,7 +113,9 @@ syncVariantChoices('illumina',null);assert.equal(nodes['variant-glimpse-settings
         self.assertEqual(values['variant_annovar'], 'auto')
         self.assertEqual(values['variant_parallel_samples'], 'auto')
         self.assertEqual(values['variant_memory'], 'auto')
-        self.assertEqual(len(prompts), 3)
+        self.assertEqual(len(prompts), 4)
+        self.assertFalse(values['variant_monte_carlo_linkage'])
+        self.assertTrue(any('Monte Carlo' in prompt for prompt in prompts))
         self.assertFalse(any('callers' in p or 'Varlociraptor' in p for p in prompts))
         self.assertNotIn('variant_patients', values)
         validate.assert_called_once_with(values, mode='illumina')

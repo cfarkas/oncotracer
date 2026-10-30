@@ -33,7 +33,8 @@ def verify_variant_environment(prefix: Path, *, runner: Callable | None = None) 
         scratch = Path(temporary)
         environment = os.environ.copy()
         for key in ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV", "JAVA_HOME", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS",
-                    "LD_LIBRARY_PATH", "LD_PRELOAD", "LD_LIBRARY_PATH_MCR", "PYTHONPYCACHEPREFIX"):
+                    "LD_LIBRARY_PATH", "LD_PRELOAD", "LD_LIBRARY_PATH_MCR", "PYTHONPYCACHEPREFIX",
+                    "R_HOME", "R_LIBS", "R_LIBS_USER", "R_LIBS_SITE"):
             environment.pop(key, None)
         environment.update(PATH=str(prefix / "bin") + os.pathsep + os.defpath,
                            CONDA_PREFIX=str(prefix), PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1",
@@ -75,6 +76,19 @@ def verify_variant_environment(prefix: Path, *, runner: Callable | None = None) 
                 raise OncoTracerError(f"variant tool version differs from environments/native-variants.yml: {prefix / 'bin' / name}: {output.strip()[:1000]}")
             probes[name] = {"success": True, "executable": str(prefix / "bin" / name),
                             "version_output": output.strip()[:1000]}
+        output = invoke("Rscript", ["--vanilla", "-e",
+            'suppressPackageStartupMessages(library(QUILT));library(optparse);library(R.utils);'
+            'stopifnot(as.character(packageVersion("QUILT")) == "2.0.4");'
+            'stopifnot(normalizePath(R.home())==normalizePath(file.path(Sys.getenv("CONDA_PREFIX"),"lib/R")));'
+            'stopifnot(startsWith(normalizePath(find.package("QUILT")),paste0(normalizePath(Sys.getenv("CONDA_PREFIX")),"/")));'
+            'stopifnot(is.function(QUILT::quilt_chunk_map));cat("QUILT2_OK\\n")'])
+        if "QUILT2_OK" not in output:
+            raise OncoTracerError("QUILT2 R library probe failed")
+        for name in ("QUILT2.R", "QUILT2_prepare_reference.R"):
+            help_output = invoke(name, ["--help"])
+            if "--regionStart" not in help_output:
+                raise OncoTracerError(f"QUILT2 interface probe failed: {name}")
+        probes["quilt2"] = {"success": True, "version": "2.0.4", "method": "diploid"}
         help_text = invoke("bcftools", ["call", "--help"], accepted=(0, 1, 255))
         for option in ("--multiallelic-caller", "--keep-alts", "--keep-unseen-allele", "--ploidy"):
             if option not in help_text:

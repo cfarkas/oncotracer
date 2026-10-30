@@ -40,6 +40,17 @@ def variant_form(*, existing_bam=False):
 <div id="variant-caller-settings" hidden><h4>Variant callers</h4><div id="{callers}" class="variant-caller-list" role="group" aria-label="Variant callers"></div>
 <div id="variant-strelka-pairing" hidden><h4>Matched normals for Strelka2 somatic</h4><p class="hint">Select the normal specimen from the same patient for each tumor. Normal/control group membership alone does not establish a match. The matched normal does not inherit the tumor’s FFPE setting.</p><div id="variant-pair-rows"></div><p id="variant-pair-note" class="hint" role="status"></p></div><details class="variant-explainer"><summary>How caller results are used</summary><p class="hint">Mutect2 and ClairS-TO produce tumor-only candidates. Strelka2 somatic uses your explicitly matched tumor–normal pairs. Strelka2 germline, FreeBayes, bcftools and Clair3 run independently per sample. Group assignments never create matched pairs automatically.</p></details></div>
 </section>
+<section class="variant-section" id="variant-linkage-settings">
+<h4>Read-backed linkage</h4><label class="check"><input id="variant_monte_carlo_linkage" type="checkbox"> Add Monte Carlo linkage testing (experimental)</label>
+<p class="hint">Checks whether nearby observed SNVs share independent read fragments. Reports linkage p-values and corrected q-values, never a probability of germline origin. Sparse evidence is reported as unassessable. Whole-genome tables use compressed TSV files.</p>
+</section>
+<section class="variant-section" id="variant-quilt2-settings" hidden>
+<h4>ONT population imputation</h4><label for="variant_ont_imputation">Imputation method</label><select id="variant_ont_imputation"><option value="off">Off</option><option value="quilt2">QUILT2 · research diploid SNP imputation</option></select>
+<p class="hint">Uses ONT reads and a public GRCh38 haplotype panel. Imputed SNPs remain separate from caller results. Tumor admixture, CNA and ancestry mismatch can violate the diploid model. This does not establish germline origin. The first run prepares a large, reusable reference cache on CPU.</p>
+<details><summary>Existing QUILT2 resources (optional)</summary>
+{path_field('variant_quilt2_reference_dir', 'Public phased VCF folder', detect=False, placeholder='Download verified 1000 Genomes panels when needed', hint='Optional existing public 3202-sample GRCh38 phased VCFs; publisher checksums are required.')}
+{path_field('variant_quilt2_cache', 'Prepared reference cache', detect=False, placeholder='Automatic project cache', hint='Use a shared writable folder to reuse prepared references across projects.')}
+</details></section>
 <details id="variant-advanced-settings" open><summary>Resources and advanced settings</summary>
 <section class="variant-section" hidden id="variant-tools-section" aria-labelledby="variant-tools-title">
 <div class="variant-section-heading"><span class="variant-step">2</span><div><h3 id="variant-tools-title">Caller tools and models</h3><p class="hint">Start with detect_tools. Open paths only to review or change them.</p></div></div>

@@ -9,10 +9,10 @@ Analyze Illumina and Oxford Nanopore (ONT) copy-number changes and small variant
 Use Linux and Python 3.10–3.13. Install the application in your Python environment:
 
 ```bash
-python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.2.1-rc.1/oncotracer-2.2.1-py3-none-any.whl"
+python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.3.0-rc.1/oncotracer-2.3.0-py3-none-any.whl"
 ```
 
-No Git checkout is required. This **GitHub preview** is not a stable scientific-parity release; frozen CNA parity remains unresolved. `pip install oncotracer` installs the separately published PyPI 2.1.0 without these updates. Choose **one** backend:
+This **GitHub preview** is not a stable scientific-parity release; frozen CNA parity remains unresolved. `pip install oncotracer` installs the separately published PyPI 2.1.0 without these updates. Choose **one** backend:
 
 ### Conda
 
@@ -29,7 +29,7 @@ oncotracer --interactive --backend conda
 With Docker running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.2.1-rc.1
+oncotracer install --docker --image carlosfarkas/oncotracer:2.3.0-rc.1
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
@@ -37,6 +37,8 @@ oncotracer --interactive --backend docker
 The image is saved for later commands. See [installation](docs/installation.md) and [FFPE/ONT resources](docs/variants.md). Use Conda for ONT methylation.
 
 Before setup, `oncotracer --detect-resources` (also `--detect_resources`) suggests [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) from this machine's CPU/RAM; choose the combination in new setup or **Review and run** for continuation.
+
+Optional [QUILT2 imputation for ONT](docs/ont_imputation.md) and [Monte Carlo linkage](docs/haplotype_evidence.md) provide research evidence alongside observed calls.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 
@@ -73,7 +75,6 @@ Use `oncotracer --interactive --project /path/to/existing-project`. Load saved s
 ### ONT input layout
 
 With the [current GitHub source](docs/installation_details.md#install-from-github), select `ONT/` with **one named folder per intended library**. Folder names become sample names; keep multiple libraries separate even when they share a patient.
-PyPI 2.1.0 retains the legacy layouts described below.
 
 ```text
 ONT/
@@ -92,11 +93,10 @@ ONT/
 ```
 
 Methylation automatically links each named library's `pod5_pass`. The browser
-lists its ONCO-style name; drag samples to MARLIN or Sturgeon using clinical
-records. Saved or explicitly selected modified-base BAMs remain valid alternatives.
+lists its library name; assign MARLIN or Sturgeon using clinical records.
+Matching modified-base BAMs are alternatives.
 
-Only `fastq_pass` supplies CNA/variant reads. The other folders are optional;
-retain original signal for methylation. FASTQs have no methylation marks: use
+Only `fastq_pass` supplies CNA/variant reads. Other folders are optional. Retain original signal for methylation: use
 matching modified-base BAMs with `MM`/`ML` tags, or POD5 with compatible Dorado
 models. Legacy single MinKNOW runs, barcode folders and single ligation libraries
 remain supported. See [ONT settings](docs/configuration/ont.md) and the
@@ -123,7 +123,7 @@ oncotracer uninstall --conda --yes --purge
 **Docker image:** remove the selected image/tag:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:2.2.1-rc.1
+docker image rm carlosfarkas/oncotracer:2.3.0-rc.1
 ```
 
 This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Image layers may remain.
@@ -134,7 +134,7 @@ This Docker command removes only the image/tag. It does not remove the pip appli
 python -m pip uninstall oncotracer
 ```
 
-If an extra OncoTracer-owned global launcher remains, [remove it before the Python application](docs/uninstall.md#global-command). Pip removes its own console entry. See [component-by-component removal](docs/uninstall.md) for custom prefixes, separately installed tools and retained settings. User data and results remain.
+If an extra OncoTracer-owned global launcher remains, [remove it before the Python application](docs/uninstall.md#global-command). Pip removes its own console entry. See [component removal](docs/uninstall.md) for custom installations. User data and results remain.
 
 ## Guides and examples
 

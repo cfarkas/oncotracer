@@ -523,6 +523,15 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
                     vcf=Path(vote['all_vcf']);result['ffpe_review']=vote
                     from .glimpse_ffpe_report import render_ffpe_review
                     result['ffpe_report']=render_ffpe_review(sample_root,sample,vote)
+                if request.monte_carlo_linkage:
+                    from .variant_postcalling import linkage
+                    called=sample_root/('variants/imported' if params.get('germline_vcf') else 'variants/germline')/f'{sample}.germline.vcf.gz'
+                    require_file(called,'Observed germline VCF for read-backed linkage (imputed VCFs are not used)')
+                    observed={'germline':called}
+                    somatic=sample_root/('variants/imported' if params.get('somatic_vcf') else 'variants/somatic_candidates')/f'{sample}.somatic.vcf.gz'
+                    if somatic.is_file():observed['somatic']=somatic
+                    result['monte_carlo_linkage']=linkage(request,sample,bam,observed,
+                        Path(params['reference']),root/'linkage',sample_runner,allocation['threads_per_sample'],toolchain,force=force)
                 return {**result,'status':'complete','annotated_vcf':str(vcf)},vcf,paths
             except _SampleCancelled as error:
                 return {**result,'status':'interrupted','error':str(error)},None,None

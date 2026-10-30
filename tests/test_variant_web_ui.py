@@ -118,6 +118,10 @@ assert.equal(variantResourceField({id:'annovar_db',field:'variant_annovar_db'}),
                 script = r"""
 const assert=require('node:assert/strict');
 const nodes={
+  variant_monte_carlo_linkage:{checked:true},
+  variant_ont_imputation:{value:'quilt2'},
+  variant_quilt2_reference_dir:{value:''},
+  variant_quilt2_cache:{value:'/cache/quilt2'},
   variant_parallel_samples:{value:'auto'},
   variant_memory:{value:'auto'},
   'variant-clair3-source':{value:'auto'},
@@ -133,6 +137,7 @@ function variantPairPayload(){return {};}
 let value=guidedVariantPayload({variant_callers:'clair3',variant_clair3_model:'/previous/model',
   variant_varlociraptor:'required',variant_varlociraptor_scenario:'/previous/scenario.yml',
   variant_varlociraptor_events:'SOMATIC',variant_varlociraptor_sample:'tumor'});
+assert.equal(value.variant_monte_carlo_linkage,true);
 assert.equal(value.variant_clair3_model,'auto');
 assert.equal(value.variant_parallel_samples,'auto');
 assert.equal(value.variant_memory,'auto');

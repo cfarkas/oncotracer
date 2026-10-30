@@ -14,7 +14,7 @@ ARG SOURCE_COMMIT
 ARG SOURCE_SHA256
 
 LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="2.2.1" \
+      org.opencontainers.image.version="2.3.0" \
       org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
       org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
@@ -74,6 +74,7 @@ RUN conda env create --prefix "${ONCOTRACER_CLASSIFIER_PREFIX}" --file environme
     && conda clean -afy
 RUN conda env create --prefix "${ONCOTRACER_GISTIC_PREFIX}" --file environments/native-gistic2.yml \
     && conda clean -afy
+# Includes pinned QUILT2 + R dependencies; reference panels stay in a mounted cache.
 RUN conda env create --prefix "${ONCOTRACER_VARIANTS_PREFIX}" --file environments/native-variants.yml \
     && conda clean -afy
 RUN conda env create --prefix "${ONCOTRACER_FFPERASE_PREFIX}" --file environments/native-ffperase.yml \
@@ -110,6 +111,9 @@ RUN echo 'a73e0d796932b9455cbef207dda4937b98b06b687b049acda46c152d1d25f2c9  /usr
     && echo 'a0fc1d8cadedd6c8aae0532da04da06a3b642d910bc9a15718ba263ac9013a2b  /opt/nextflow/framework/26.04.2/nextflow-26.04.2-one.jar' | sha256sum -c -
 
 COPY . ${ONCOTRACER_HOME}/
+
+# Run the same isolated tool and synthetic-call probes used by Conda installation.
+RUN python -B -c "from pathlib import Path; from oncotracer_cli.variant_install_checks import verify_variant_environment; verify_variant_environment(Path('/opt/oncotracer-envs/variants'))"
 
 RUN if [[ -z "${SOURCE_COMMIT}" && -z "${SOURCE_SHA256}" ]]; then \
         python scripts/build_native_binary.py \

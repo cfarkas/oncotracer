@@ -143,6 +143,25 @@ class BamTests(unittest.TestCase):
         repeated=subprocess.run(command,env=env,capture_output=True,text=True)
         self.assertNotEqual(repeated.returncode,0)
 
+    def test_whole_genome_and_regional_statistics_match(self):
+        import csv, gzip
+        bam=self.bam([self.read(f'r{i}',i%2==1,16 if i%4>=2 else 0) for i in range(20)])
+        results=[]
+        for genome in (False,True):
+            out=self.root/('genome' if genome else 'region')
+            command=[sys.executable,'-B',str(ROOT/'oncotracer_cli/lpwgs/bin/haplotype_evidence.py'),
+                     '--bam',str(bam),'--vcf',str(self.vcf),'--reference',str(self.ref),'--sample','S1',
+                     '--outdir',str(out),'--simulations','1000',*(['--genome-wide'] if genome else [])]
+            p=subprocess.run(command,capture_output=True,text=True)
+            self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+            path=out/('S1.haplotype_pairs.tsv.gz' if genome else 'S1.haplotype_pairs.tsv')
+            with (gzip.open(path,'rt') if genome else path.open()) as stream:
+                results.append(list(csv.DictReader(stream,delimiter='\t')))
+        for k in results[0][0]:
+            if k=='linkage_q_by':
+                self.assertAlmostEqual(float(results[0][0][k]),float(results[1][0][k]),places=12)
+            else:self.assertEqual(results[0][0][k],results[1][0][k],k)
+
     def test_non_pass_and_indels_remain_explicitly_unassessed(self):
         self.vcf.write_text(self.vcf.read_text().replace('##FORMAT=','##FILTER=<ID=LowQual,Description="Low quality">\n##FORMAT=').replace('\tA\tC\t60\tPASS','\tA\tC\t60\tLowQual').replace('\tA\tG\t','\tA\tAG\t'))
         with pysam.FastaFile(str(self.ref)) as fasta:

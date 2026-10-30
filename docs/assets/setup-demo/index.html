@@ -89,6 +89,7 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 <p id="sample-resource-note" class="hint" role="status">Detect resources to compare sample-job combinations. Cores here mean CPU threads available to this process; other analyses share this server.</p>
 <div id="sample-gpu-field" hidden><label for="sample-gpu">GPU usage</label><select id="sample-gpu"><option value="false">No · CPU</option><option value="true">Yes · accelerate supported stages</option></select><p id="sample-gpu-note" class="hint"></p></div>
 <div id="sample-gpu-unavailable" class="notice" hidden>Saved settings request a GPU, but no NVIDIA GPU is visible. Restore GPU access or <button id="sample-use-cpu" type="button">Use CPU for this analysis</button>.</div>
+
 <button id="sample-detect-resources" type="button">Detect sample-job options</button>
 
 </section><label class="check" id="reports-field"><input id="reports" type="checkbox">Add CNA interpretation reports</label><div id="report-context-field" hidden><label for="report-context">Study context for reports</label><input id="report-context" value="broad_cancer" aria-describedby="report-context-help"><p id="report-context-help" class="hint"><a href="https://cfarkas.github.io/oncotracer/models_pathology/#study-contexts" target="_blank" rel="noopener noreferrer">View all study contexts and when to use them (opens in a new tab)</a></p><div class="field"><label for="report-detail">Report detail</label><select id="report-detail"><option value="catalog">Local evidence catalog</option><option value="models">Local catalog and language-model drafts</option><option value="literature">Online literature and local language models</option></select></div><p id="report-detail-note" class="hint">Uses the included evidence catalog. No publication searches or language-model downloads.</p><label class="check"><input id="gistic" type="checkbox">Find recurrent CNAs across samples with GISTIC (at least two samples)</label><p id="gistic-note" class="hint" role="status"></p></div>
@@ -117,6 +118,23 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 <div id="variant-caller-settings" hidden><h4>Variant callers</h4><div id="variant-callers" class="variant-caller-list" role="group" aria-label="Variant callers"></div>
 <div id="variant-strelka-pairing" hidden><h4>Matched normals for Strelka2 somatic</h4><p class="hint">Select the normal specimen from the same patient for each tumor. Normal/control group membership alone does not establish a match. The matched normal does not inherit the tumor’s FFPE setting.</p><div id="variant-pair-rows"></div><p id="variant-pair-note" class="hint" role="status"></p></div><details class="variant-explainer"><summary>How caller results are used</summary><p class="hint">Mutect2 and ClairS-TO produce tumor-only candidates. Strelka2 somatic uses your explicitly matched tumor–normal pairs. Strelka2 germline, FreeBayes, bcftools and Clair3 run independently per sample. Group assignments never create matched pairs automatically.</p></details></div>
 </section>
+<section class="variant-section" id="variant-linkage-settings">
+<h4>Read-backed linkage</h4><label class="check"><input id="variant_monte_carlo_linkage" type="checkbox"> Add Monte Carlo linkage testing (experimental)</label>
+<p class="hint">Checks whether nearby observed SNVs share independent read fragments. Reports linkage p-values and corrected q-values, never a probability of germline origin. Sparse evidence is reported as unassessable. Whole-genome tables use compressed TSV files.</p>
+</section>
+<section class="variant-section" id="variant-quilt2-settings" hidden>
+<h4>ONT population imputation</h4><label for="variant_ont_imputation">Imputation method</label><select id="variant_ont_imputation"><option value="off">Off</option><option value="quilt2">QUILT2 · research diploid SNP imputation</option></select>
+<p class="hint">Uses ONT reads and a public GRCh38 haplotype panel. Imputed SNPs remain separate from caller results. Tumor admixture, CNA and ancestry mismatch can violate the diploid model. This does not establish germline origin. The first run prepares a large, reusable reference cache on CPU.</p>
+<details><summary>Existing QUILT2 resources (optional)</summary>
+<div class="variant-path"><label for="variant_quilt2_reference_dir">Public phased VCF folder</label>
+<div class="variant-path-row"><input id="variant_quilt2_reference_dir" spellcheck="false" autocomplete="off" placeholder="Download verified 1000 Genomes panels when needed">
+<div class="variant-path-actions"><button type="button" data-browse="variant_quilt2_reference_dir" data-kind="folder">Browse</button></div></div>
+<p id="variant_quilt2_reference_dir-status" class="variant-path-status hint" aria-live="polite"></p><p class="hint">Optional existing public 3202-sample GRCh38 phased VCFs; publisher checksums are required.</p></div>
+<div class="variant-path"><label for="variant_quilt2_cache">Prepared reference cache</label>
+<div class="variant-path-row"><input id="variant_quilt2_cache" spellcheck="false" autocomplete="off" placeholder="Automatic project cache">
+<div class="variant-path-actions"><button type="button" data-browse="variant_quilt2_cache" data-kind="folder">Browse</button></div></div>
+<p id="variant_quilt2_cache-status" class="variant-path-status hint" aria-live="polite"></p><p class="hint">Use a shared writable folder to reuse prepared references across projects.</p></div>
+</details></section>
 <details id="variant-advanced-settings" open><summary>Resources and advanced settings</summary>
 <section class="variant-section" hidden id="variant-tools-section" aria-labelledby="variant-tools-title">
 <div class="variant-section-heading"><span class="variant-step">2</span><div><h3 id="variant-tools-title">Caller tools and models</h3><p class="hint">Start with detect_tools. Open paths only to review or change them.</p></div></div>
@@ -218,10 +236,11 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 <p id="resume-resource-note" class="hint" role="status">Detect resources to compare sample-job combinations. Cores here mean CPU threads available to this process; other analyses share this server.</p>
 <div id="resume-gpu-field" hidden><label for="resume-gpu">GPU usage</label><select id="resume-gpu"><option value="false">No · CPU</option><option value="true">Yes · accelerate supported stages</option></select><p id="resume-gpu-note" class="hint"></p></div>
 <div id="resume-gpu-unavailable" class="notice" hidden>Saved settings request a GPU, but no NVIDIA GPU is visible. Restore GPU access or <button id="resume-use-cpu" type="button">Use CPU for this analysis</button>.</div>
+<section id="resume-postcalling" hidden><h3>Additional variant evidence</h3><label class="check"><input id="resume-monte-carlo" type="checkbox"> Add Monte Carlo read linkage (experimental)</label><div id="resume-quilt2-field" hidden><label for="resume-quilt2">ONT population imputation</label><select id="resume-quilt2"><option value="off">Off</option><option value="quilt2">QUILT2 · research diploid SNP imputation</option></select></div><p class="hint">Uses observed reads for linkage. QUILT2 imputed SNPs remain separate. Neither establishes germline origin; tumor admixture and CNA can invalidate diploid assumptions. Completed stages are checked before reuse.</p></section>
 <button id="resume-detect-resources" type="button">Detect sample-job options</button>
 <button id="resume-apply-resources" type="button">Apply resources and check</button><p class="hint">Run analysis also applies and checks these choices before starting.</p>
 </section><div class="actions"><button id="run" class="primary">Simulate Run</button><button id="stop" hidden>Stop simulation</button><span id="job-status" role="status"></span><a id="open-results" class="result-link" target="_blank" rel="noopener noreferrer" hidden>Open simulated results</a><button id="new-analysis" hidden>Set up another analysis</button></div><div id="run-progress" hidden><div class="hardware"><div><strong id="run-elapsed">0s</strong><span>Elapsed</span></div><div><strong id="run-step-eta">Waiting for progress</strong><span>Current step ETA</span></div><div><strong id="run-overall-eta">Not yet known</strong><span>Overall analysis ETA</span></div></div><p id="run-stage"></p><p id="run-eta-note" class="hint"></p></div><p id="log-path" class="folderpath"></p><pre id="logs" class="logs" hidden></pre></section>
-</div><section id="demo-results" class="card demo-result-card" hidden><span class="demo-chip">Illustrative results</span><h2 id="demo-results-heading" tabindex="-1">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id="demo-result-summary"></dl><p class="notice">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href="../../installation/">Install OncoTracer →</a></section><footer class="demo-footer">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>aaecfd0a2570</code>.</footer></main>
+</div><section id="demo-results" class="card demo-result-card" hidden><span class="demo-chip">Illustrative results</span><h2 id="demo-results-heading" tabindex="-1">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id="demo-result-summary"></dl><p class="notice">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href="../../installation/">Install OncoTracer →</a></section><footer class="demo-footer">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>3f2cc41b5ed6</code>.</footer></main>
 <dialog id="variant-resource-dialog" aria-labelledby="variant-resource-title">
 <div class="variant-dialog-heading"><div><span class="eyebrow">Tools, models and annotation</span><h2 id="variant-resource-title">Detected resources</h2></div><button id="variant-resource-close" type="button" autofocus>Close</button></div>
 <p id="variant-resource-dialog-status" class="hint" role="status" aria-live="polite"></p><section id="variant-install-panel" class="variant-install-panel" hidden>
@@ -411,7 +430,7 @@ function demoResourceOptions(payload={}){
 function demoApi(path,payload){
   const url=new URL(path,location.href);
   switch(url.pathname){
-    case '/api/system':return {gpu:demoGpu,default_docker_image:'carlosfarkas/oncotracer:2.2.1-rc.1',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[{name:'Demo NVIDIA GPU',memory_total_bytes:24*demoGiB}],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:2.2.1-rc.1'}};
+    case '/api/system':return {gpu:demoGpu,default_docker_image:'carlosfarkas/oncotracer:2.3.0-rc.1',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[{name:'Demo NVIDIA GPU',memory_total_bytes:24*demoGiB}],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:2.3.0-rc.1'}};
     case '/api/resource-options':return demoResourceOptions(payload);
     case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');
     case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');
@@ -971,6 +990,9 @@ function showResumedProject(){
   const choices=prepared.resource_choices;
   $('resume-threads').value=choices?.threads||prepared.reviewed_summary.config.threads||1;
   $('resume-memory').value=choices?.memory||'auto';
+  const savedVariants=prepared.reviewed_summary.config;
+  show('resume-postcalling',Boolean(savedVariants.run_variants));show('resume-quilt2-field',savedVariants.mode==='ont');
+  $('resume-monte-carlo').checked=Boolean(savedVariants.variant_monte_carlo_linkage);$('resume-quilt2').value=savedVariants.variant_ont_imputation||'off';
   showResourceChoices('resume',choices,true);
   $('run').disabled=!prepared.valid||Boolean(choices&&!resumeResourcesReady);$('run').hidden=false;
   show('workflow',true);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});
@@ -1074,8 +1096,10 @@ async function applyResumeResources(){
   const project=$('resume-project').value;
   const resources=resourceSelection('resume');
   await loadResume(project,{backend:$('resume-backend').value,
-    image:$('resume-backend').value==='conda'?'':$('resume-image').value.trim(),resources});
+    image:$('resume-backend').value==='conda'?'':$('resume-image').value.trim(),resources,
+    variant_options:prepared?.reviewed_summary?.config?.run_variants?{variant_monte_carlo_linkage:$('resume-monte-carlo').checked,variant_ont_imputation:prepared.reviewed_summary.config.mode==='ont'?$('resume-quilt2').value:'off'}:null});
 }
+for(const id of ['resume-monte-carlo','resume-quilt2'])$(id).addEventListener('change',()=>{$('check-badge').textContent='Settings changed · checked again at Run';});
 $('resume-apply-resources').onclick=()=>busy($('resume-apply-resources'),applyResumeResources);
 
 (async()=>{try{if(!token)throw Error('Open the complete URL printed by oncotracer web, including the session code after #.');const system=await api('/api/system');hardware=system.hardware;binsizes=system.qdnaseq_binsizes;for(const place of system.locations||[]){const button=node('button',place.name);button.title=place.path;button.onclick=()=>browse(place.path);$('browser-shortcuts').append(button);}$('input-folder').value=system.start_dir;$('project-parent').value=system.start_dir;$('project-name').value=system.suggested_project_name||'oncotracer-analysis';$('threads').value=system.suggested_threads;$('threads').max=hardware.cpu_workers_available;const ram=bytes=>bytes===null||bytes===undefined?'Unknown':(bytes/1073741824).toFixed(1)+' GiB';for(const [value,label]of[[hardware.cpu_workers_available,'CPU workers available'],[ram(hardware.ram_available_bytes),'RAM available'],[ram(hardware.ram_total_bytes),'RAM total'],[String((hardware.gpus||[]).length),'GPUs detected']]){const item=node('div');item.append(node('strong',String(value)),node('span',label));$('hardware').append(item);}$('gpu-note').textContent=(hardware.gpus||[]).map(gpu=>gpu.name+(gpu.memory_total_bytes?' · '+ram(gpu.memory_total_bytes)+' VRAM':'')).join('; ')+' '+(hardware.gpu_note||'CNA analysis uses CPU.');const defaults=system.defaults||{};entryDefaults=defaults;for(const key of ['variant_parallel_samples','variant_memory','variant_patients','variant_confidence_gwas','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])if(defaults[key])$(key).value=defaults[key];
@@ -1165,17 +1189,19 @@ function variantPairPayload(){
 function configureVariantModelControls(config={}){
   const get=id=>document.getElementById(id);
   if(config.variant_matched_normals)variantPairDefaults={...config.variant_matched_normals};
+  for(const key of ['variant_ont_imputation','variant_quilt2_reference_dir','variant_quilt2_cache'])if(config[key]!==undefined)get(key).value=config[key];
   const model=String(config.variant_clair3_model??get('variant_clair3_model').value??'');
   get('variant_clair3_model').value=model||'auto';
   if(config.variant_ont_profile)get('variant_ont_profile').value=config.variant_ont_profile;
   if(config.variant_clairsto_platform)get('variant_clairsto_platform').value=config.variant_clairsto_platform;
   get('variant-scenario-mode').value=config.variant_varlociraptor_scenario?'custom':'standard';
-  for(const key of ['variant_download_resources','variant_accept_ffperase_license']){
+  for(const key of ['variant_download_resources','variant_accept_ffperase_license','variant_monte_carlo_linkage']){
     if(config[key]!==undefined)get(key).checked=config[key]===true||String(config[key]).toLowerCase()==='true';
   }
 }
 function syncVariantChoices(platform,preservation){
   const ready=Boolean(preservation),glimpse=platform==='illumina';
+  show('variant-quilt2-settings',ready&&!glimpse);show('variant-linkage-settings',ready);
   show('variant-caller-settings',ready&&!glimpse);show('variant-glimpse-settings',ready&&glimpse);show('variant-glimpse-resources',ready&&glimpse);show('variant-parallel-controls',ready);
   show('variant-target-settings',!glimpse);show('variant-extra-filter-settings',!glimpse);
   for(const nav of document.querySelectorAll('.variant-nav'))nav.hidden=glimpse;
@@ -1215,6 +1241,9 @@ function guidedVariantPayload(data){
     data.variant_confidence_gwas=get('variant_confidence_gwas').value||'medium';
     for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])data[key]=get(key).value.trim();
   }else data.variant_engine='legacy';
+  data.variant_monte_carlo_linkage=get('variant_monte_carlo_linkage').checked;
+  data.variant_ont_imputation=typeof mode!=='undefined'&&mode==='ont'?get('variant_ont_imputation').value:'off';
+  for(const key of ['variant_quilt2_reference_dir','variant_quilt2_cache'])data[key]=data.variant_ont_imputation==='quilt2'?get(key).value.trim():'';
   const parallel=get('variant_parallel_samples').value.trim();
   if(parallel!=='auto'&&(!/^\d+$/.test(parallel)||Number(parallel)<1))throw Error('Samples running at once must be auto or a positive integer.');
   data.variant_parallel_samples=parallel==='auto'?'auto':Number(parallel);data.variant_memory=get('variant_memory').value.trim()||'auto';
@@ -1232,7 +1261,7 @@ function guidedVariantPayload(data){
   }
   return data;
 }
-for(const id of ['variant-clair3-source','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile']){
+for(const id of ['variant-clair3-source','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile','variant_ont_imputation','variant_monte_carlo_linkage','variant_quilt2_reference_dir','variant_quilt2_cache']){
   for(const event of ['input','change'])document.getElementById(id).addEventListener(event,()=>{
     const get=key=>document.getElementById(key);
     if(id==='variant-clair3-source'){
@@ -1279,6 +1308,9 @@ function variantResourceValues(){
   const keys=[...variantPathKeys,'variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_patients','variant_reuse_from','variant_clairsto_platform','variant_ffperase','variant_varlociraptor','variant_annovar','variant_ont_profile'];
   const values=Object.fromEntries(keys.map(key=>[key,document.getElementById(key).value.trim()]));
   values.variant_engine=typeof mode!=='undefined'&&mode==='illumina'?'glimpse2':'legacy';
+  values.variant_monte_carlo_linkage=document.getElementById('variant_monte_carlo_linkage').checked;
+  values.variant_ont_imputation=typeof mode!=='undefined'&&mode==='ont'?document.getElementById('variant_ont_imputation').value:'off';
+  for(const key of ['variant_quilt2_reference_dir','variant_quilt2_cache'])values[key]=document.getElementById(key).value.trim();
   values.variant_download_resources=document.getElementById('variant_download_resources').checked;
   values.variant_accept_ffperase_license=document.getElementById('variant_accept_ffperase_license').checked;
   // Keep inactive alternative paths in the form, but don't use them for this check.
@@ -1634,7 +1666,7 @@ async function demoLoad(platform){
   if(operationBusy)return;
   demoRestoreControls();setAnalysisEntry('new');choose(platform);show('demo-stage-controls',true);
   $('input-folder').value=demoPaths[platform];$('project-parent').value='/demo/projects';$('project-name').value='synthetic-'+platform;
-  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:2.2.1-rc.1';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();
+  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:2.3.0-rc.1';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();
   $('variants').checked=true;variantSettings();
   const selected=platform==='illumina'?['mutect2','bcftools']:['clairs_to'];
   for(const field of document.querySelectorAll('[data-variant-caller]'))field.checked=selected.includes(field.value);

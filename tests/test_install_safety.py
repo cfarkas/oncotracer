@@ -32,7 +32,7 @@ ORIGINAL_ACTIVE_PROCESSES = install_safety._active_processes
 
 
 SOURCE = {
-    "oncotracer_version": "2.2.1",
+    "oncotracer_version": "2.3.0",
     "source_commit": "a" * 40,
     "source_sha256": "b" * 64,
 }
@@ -66,6 +66,9 @@ else:
         "freebayes": "version: v1.3.10",
         "gatk": "The Genome Analysis Toolkit (GATK) v4.6.2.0",
         "varlociraptor": "varlociraptor 8.9.5",
+        "Rscript": "QUILT2_OK",
+        "QUILT2.R": "--regionStart --prepared_reference_filename",
+        "QUILT2_prepare_reference.R": "--regionStart --reference_vcf_file",
     }[name])
 """
 
@@ -168,7 +171,7 @@ class VariantSemanticProbeTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.prefix = Path(temporary.name) / "variants"
         (self.prefix / "bin").mkdir(parents=True)
-        for name in ("bcftools", "samtools", "freebayes", "gatk", "varlociraptor"):
+        for name in ("bcftools", "samtools", "freebayes", "gatk", "varlociraptor", "Rscript", "QUILT2.R", "QUILT2_prepare_reference.R"):
             _write_executable(self.prefix / "bin" / name, _FAKE_VARIANT_PROGRAM)
 
     def test_exact_versions_and_actual_synthetic_subprocess_are_required(self) -> None:
@@ -229,7 +232,7 @@ python = prefix / "bin" / "python"
 python.write_text("#!/usr/bin/env python3\\nprint('CORE_OK CLASSIFIER_OK')\\n", encoding="utf-8")
 python.chmod(0o755)
 rscript = prefix / "bin" / "Rscript"
-rscript.write_text("#!/bin/sh\\necho QDNASEQ_OK ICHORCNA_OK\\n", encoding="utf-8")
+rscript.write_text("#!/bin/sh\\necho QDNASEQ_OK ICHORCNA_OK QUILT2_OK\\n", encoding="utf-8")
 rscript.chmod(0o755)
 gistic = prefix / "bin" / "gistic2"
 libraries = [
@@ -264,7 +267,7 @@ probe.chmod(0o755)
         )
         # Real subprocesses exercise the mandatory variants probes without downloads.
         self.conda.write_text(self.conda.read_text() + "\n" +
-            "for name in ('bcftools', 'samtools', 'freebayes', 'gatk', 'varlociraptor'):\n"
+            "for name in ('bcftools', 'samtools', 'freebayes', 'gatk', 'varlociraptor', 'QUILT2.R', 'QUILT2_prepare_reference.R'):\n"
             "    executable = prefix / 'bin' / name\n"
             f"    executable.write_text({_FAKE_VARIANT_PROGRAM!r}, encoding='utf-8')\n"
             "    executable.chmod(0o755)\n")
@@ -290,7 +293,7 @@ if not args or args[0] != "build":
     raise SystemExit(93)
 out = pathlib.Path(args[args.index("--output") + 1])
 out.mkdir(parents=True, exist_ok=True)
-wheel = out / "oncotracer-2.2.1-py3-none-any.whl"
+wheel = out / "oncotracer-2.3.0-py3-none-any.whl"
 record = {
     "oncotracer_version": os.environ["FAKE_SOURCE_VERSION"],
     "source_commit": os.environ["FAKE_SOURCE_COMMIT"],
@@ -298,22 +301,22 @@ record = {
     "source_tree_dirty": False,
 }
 files = {
-    "oncotracer_cli/__init__.py": b'__version__ = "2.2.1"\n',
+    "oncotracer_cli/__init__.py": b'__version__ = "2.3.0"\n',
     "oncotracer_cli/cli.py": (
         "import json,sys\n"
         f"record={record!r}\n"
         "def main():\n"
         " a=sys.argv[1:]\n"
-        " if a==['--version']: print('OncoTracer 2.2.1'); return 0\n"
+        " if a==['--version']: print('OncoTracer 2.3.0'); return 0\n"
         " if a==['provenance','--json']: print(json.dumps(record)); return 0\n"
         " return 2\n"
     ).encode(),
     "bin/scripts/native_qdnaseq.R": b"cat('native')\n",
     "environments/native-core.yml": b"name: core\n",
     "provenance/native-v2-sources.json": b"{}\n",
-    "oncotracer-2.2.1.dist-info/METADATA": b"Metadata-Version: 2.1\nName: oncotracer\nVersion: 2.2.1\n",
-    "oncotracer-2.2.1.dist-info/WHEEL": b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
-    "oncotracer-2.2.1.dist-info/entry_points.txt": b"[console_scripts]\noncotracer = oncotracer_cli.cli:main\n",
+    "oncotracer-2.3.0.dist-info/METADATA": b"Metadata-Version: 2.1\nName: oncotracer\nVersion: 2.3.0\n",
+    "oncotracer-2.3.0.dist-info/WHEEL": b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+    "oncotracer-2.3.0.dist-info/entry_points.txt": b"[console_scripts]\noncotracer = oncotracer_cli.cli:main\n",
 }
 rows=[]
 with zipfile.ZipFile(wheel, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -321,7 +324,7 @@ with zipfile.ZipFile(wheel, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(name,data)
         digest=hashlib.sha256(data).digest()
         rows.append((name,"sha256="+base64.urlsafe_b64encode(digest).rstrip(b"=").decode(),str(len(data))))
-    record_name="oncotracer-2.2.1.dist-info/RECORD"
+    record_name="oncotracer-2.3.0.dist-info/RECORD"
     rows.append((record_name,"",""))
     output=io.StringIO(newline="")
     csv.writer(output).writerows(rows)
@@ -524,7 +527,7 @@ else:
         return install_safety.install_sif_managed(
             destination,
             executable=str(self.apptainer),
-            image="ghcr.io/cfarkas/oncotracer:2.2.1",
+            image="ghcr.io/cfarkas/oncotracer:2.3.0",
             force=force,
             dry_run=dry_run,
         )
@@ -1322,7 +1325,7 @@ else:
                 elif name in {"qdnaseq", "ichorcna"}:
                     _write_executable(
                         binaries / "R",
-                        "#!/bin/sh\necho QDNASEQ_OK ICHORCNA_OK\n",
+                        "#!/bin/sh\necho QDNASEQ_OK ICHORCNA_OK QUILT2_OK\n",
                     )
                     (binaries / "Rscript").symlink_to("R")
                 else:
@@ -1356,7 +1359,7 @@ else:
         destination = self.scratch / "packaged-variant-tools"
         binaries = destination / "bin"
         binaries.mkdir(parents=True)
-        for name in ("bcftools", "samtools", "freebayes", "varlociraptor"):
+        for name in ("bcftools", "samtools", "freebayes", "varlociraptor", "Rscript", "QUILT2.R", "QUILT2_prepare_reference.R"):
             _write_executable(binaries / name, _FAKE_VARIANT_PROGRAM)
         share = destination / "share/gatk4-4.6.2.0-1"
         share.mkdir(parents=True)
@@ -2414,7 +2417,7 @@ import pathlib, shutil, sys
 from unittest import mock
 from oncotracer_cli import cli, install_safety
 source = {
-    "oncotracer_version": "2.2.1",
+    "oncotracer_version": "2.3.0",
     "source_commit": "a" * 40,
     "source_sha256": "b" * 64,
 }
@@ -3094,7 +3097,7 @@ class PoetryAuthenticatedSnapshotTests(unittest.TestCase):
             root = Path(directory) / "repository"
             root.mkdir()
             files = {
-                "pyproject.toml": b"[tool.poetry]\nname='oncotracer'\nversion='2.2.1'\n",
+                "pyproject.toml": b"[tool.poetry]\nname='oncotracer'\nversion='2.3.0'\n",
                 "poetry.lock": b"lock-version = '2.1'\n",
                 "README.md": b"readme\n",
                 "oncotracer_cli/cli.py": b"ORIGINAL = True\n",

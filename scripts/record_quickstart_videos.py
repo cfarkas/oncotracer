@@ -125,7 +125,7 @@ demoApi=function(path,payload){
    backend:'conda',valid:true,resources_confirmed:Boolean(payload.resources),resource_choices:{...demoResourceOptions({threads:8}),selected_parallel_samples:payload.resources?.parallel_samples??1},
    config:'mode: ont\nexecution_backend: conda\nont_caller: ichorcna\nont_binsize_kb: 500\nthreads: 4\n',
    check:{errors:[],warnings:['DEMO: 2 recorded stages verified; 1 incomplete stage needs recomputation. Real projects check completion records and outputs before reuse.']},
-   reviewed_summary:{samples:[{name:'ONCO-001',sample_type:'cancer'},{name:'CTRL-001',sample_type:'normal'}]}};
+   reviewed_summary:{config:{mode:'ont',threads:8,run_variants:false,variant_ont_imputation:'off',variant_monte_carlo_linkage:false},samples:[{name:'ONCO-001',sample_type:'cancer'},{name:'CTRL-001',sample_type:'normal'}]}};
   return demoState.prepared;
  }
  if(name==='/api/scan'){

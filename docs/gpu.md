@@ -2,6 +2,8 @@
 
 OncoTracer can use an NVIDIA GPU for supported inference stages. **GPU usage → Yes** appears in new setup and in **Review and run** for an existing project when an NVIDIA GPU is visible. **No** keeps processing on CPU. CPU sample jobs still run in parallel with the GPU queue.
 
+QUILT2, GLIMPSE2 and Monte Carlo linkage use CPU. Enabling GPU does not move these statistical algorithms to the GPU. They share the configured CPU budget across samples.
+
 ## Install and check
 
 With the current GitHub application installed, choose your backend:

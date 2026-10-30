@@ -11,7 +11,7 @@ from .runtime import OncoTracerError, require_file, runtime_root
 VALUE_OPTIONS = ('bam','vcf','reference','sample','outdir','threads','simulations','seed',
                  'max_distance','max_pairs','min_fragments','min_mapq','min_baseq',
                  'build','max_online_variants','llm_model')
-BOOL_OPTIONS = ('ffpe','varsome','llm_report','gpu')
+BOOL_OPTIONS = ('genome_wide','ffpe','varsome','llm_report','gpu')
 
 
 def worker_arguments(args):
@@ -113,6 +113,7 @@ def add_haplotype_command(subparsers):
     p.add_argument('--min-fragments',type=int,default=6)
     p.add_argument('--min-mapq',type=int,default=30)
     p.add_argument('--min-baseq',type=int,default=20)
+    p.add_argument('--genome-wide', action='store_true', help='Disk-backed whole-genome assessment with global multiple-testing correction')
     p.add_argument('--ffpe',action='store_true',help='Retain explicit deamination-context warnings')
     p.add_argument('--build',choices=('hg38','hg19'),default='hg38')
     p.add_argument('--varsome',action='store_true',help='Opt in to online coordinate/allele queries; never sends names or reads')

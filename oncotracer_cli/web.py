@@ -591,7 +591,7 @@ class WebState:
             if backend and backend != "docker":
                 image = None
             result = resume_project(_text(data, "project"), backend=backend, image=image,
-                                    resources=data.get('resources'))
+                                    resources=data.get('resources'),variant_options=data.get('variant_options'))
             project, config_path = Path(result["project"]), Path(result["config_path"])
             config = load_flat_yaml(config_path)
             snapshot, samples = sample_snapshot(config)
@@ -627,6 +627,8 @@ class WebState:
                             "config": {"mode": config["mode"], "backend": result["backend"], "analysis": analysis,
                                 "threads": config.get("threads"), "caller": config.get("ont_caller", "qdnaseq"),
                                 "run_variants": config.get("run_variants", False),
+                                "variant_monte_carlo_linkage": config.get("variant_monte_carlo_linkage",False),
+                                "variant_ont_imputation": config.get("variant_ont_imputation","off"),
                                 "methylation_classifier": config.get("methylation_classifier")}}}
             self.projects[project_id] = prepared
             return {key: value for key, value in prepared.items() if key not in

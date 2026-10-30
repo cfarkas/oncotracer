@@ -319,15 +319,29 @@ VARIANT_RESOURCE_FIELDS = (
     "variant_targets_bed", "variant_clair3_model", "variant_clairsto_platform", "variant_clairsto_sif",
     "variant_tool_prefix", "variant_strelka_prefix", "variant_annovar_dir", "variant_annovar_db",
     "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_sif", "variant_ffperase_prefix",
-    "variant_varlociraptor_scenario",
+    "variant_varlociraptor_scenario", "variant_quilt2_reference_dir", "variant_quilt2_cache",
 )
 VARIANT_ASSESSMENT_FIELDS = ("variant_ffperase", "variant_varlociraptor", "variant_varlociraptor_fdr", "variant_varlociraptor_events", "variant_varlociraptor_sample")
-VARIANT_BOOLEAN_FIELDS = ("variant_download_resources", "variant_accept_ffperase_license")
+VARIANT_BOOLEAN_FIELDS = ("variant_download_resources", "variant_accept_ffperase_license", "variant_monte_carlo_linkage")
 VARIANT_GLIMPSE_FIELDS = (
     "variant_engine", "variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir",
     "variant_parallel_samples", "variant_memory", "variant_confidence_gwas", "variant_patients", "variant_reuse_from", "variant_nextflow", "variant_workflow_source",
 )
-VARIANT_FIELDS = (*VARIANT_GLIMPSE_FIELDS, "variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", "variant_matched_normals", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
+VARIANT_FIELDS = ("variant_ont_imputation", *VARIANT_GLIMPSE_FIELDS, "variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", "variant_matched_normals", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
+
+
+def _postcalling_values(args, mode, *, interactive):
+    mc=getattr(args,'variant_monte_carlo_linkage',None)
+    if mc is None and interactive:
+        mc=_ask(None,'Add experimental read-backed Monte Carlo linkage (not germline probability)?',
+                default='no',choices=('yes','no'),interactive=True)=='yes'
+    values={'variant_monte_carlo_linkage':bool(mc)}
+    imputation=getattr(args,'variant_ont_imputation',None)
+    if mode=='ont':
+        imputation=_ask(imputation,'ONT population imputation (QUILT2: research-only diploid SNP hypotheses)',
+                        default='off',choices=('off','quilt2'),interactive=interactive)
+    if imputation:values['variant_ont_imputation']=imputation
+    return values
 
 
 def _glimpse_variant_values(args, specimen: str, *, interactive: bool) -> dict[str, object]:
@@ -389,6 +403,7 @@ def _glimpse_variant_values(args, specimen: str, *, interactive: bool) -> dict[s
             print("FFPERASE requires its upstream resource license: " + FFPERASE_LICENSE)
             values["variant_accept_ffperase_license"] = _ask(None, "Accept the FFPERASE resource license?",
                 default="no", choices=("yes", "no"), interactive=True) == "yes"
+    values.update(_postcalling_values(args,"illumina",interactive=interactive))
     from .variant_runtime import apply_variant_runtime
     values["execution_backend"] = args.backend or "host"
     values, selection = apply_variant_runtime(values, mode="illumina", backend=args.backend, emit=True)
@@ -476,6 +491,7 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
         if value:
             from .variant_model_assets import is_auto_resource
             values[key] = str(value) if key == "variant_clairsto_platform" or is_auto_resource(key, value) else str(Path(value).expanduser().resolve())
+    values.update(_postcalling_values(args,mode,interactive=interactive))
     if args.backend == 'docker':
         from .docker_runtime import validate_docker_variants
         validate_docker_variants(dict(values, mode=mode))
@@ -1308,6 +1324,11 @@ def add_setup_commands(subparsers) -> None:
     variant = parser.add_argument_group("Optional native small-variant calling")
     variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=parallel_argument, help="simultaneous alignment/variant samples: auto recommends a fit; a positive integer overrides resource recommendations (may exhaust memory)")
     variant.add_argument("--variant-memory", help="total memory budget across concurrent samples, or auto (detected at Run)")
+    variant.add_argument('--variant-monte-carlo-linkage','--monte-carlo-linkage',action='store_true',default=None,
+                         help='Add offline, disk-backed read-linkage testing; does not estimate germline probability')
+    variant.add_argument('--variant-ont-imputation',choices=('off','quilt2'),help='Optional ONT diploid SNP imputation with QUILT2')
+    variant.add_argument('--variant-quilt2-reference-dir',help='Existing checksum-matching public 1000 Genomes phased VCF folder')
+    variant.add_argument('--variant-quilt2-cache',help='Shared writable cache for prepared QUILT2 references')
     variant.add_argument("--variants", action="store_true", help="add native small-variant calling to the selected analysis")
     variant.add_argument('--variant-engine', choices=('glimpse2',), help='Complete Illumina short-variant workflow (required)')
     variant.add_argument('--variant-confidence-gwas', choices=('strict','medium','exploratory'), help='Trait evidence preset; default medium')

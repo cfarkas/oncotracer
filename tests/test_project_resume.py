@@ -45,6 +45,18 @@ class ResumeTests(unittest.TestCase):
         self.project.rename(target)
         return target
 
+    def test_continue_can_add_linkage_without_changing_assignments(self):
+        path=self.project/'config/run.yml'
+        path.write_text(_render_config({**self.config,'run_variants':True}))
+        before=(self.project/'config/samplesheet.csv').read_bytes()
+        resume_project(self.project,variant_options={'variant_monte_carlo_linkage':True})
+        self.assertTrue(load_flat_yaml(path)['variant_monte_carlo_linkage'])
+        self.assertEqual(before,(self.project/'config/samplesheet.csv').read_bytes())
+        unchanged=path.read_bytes()
+        with self.assertRaisesRegex(OncoTracerError,'ONT / GRCh38'):
+            resume_project(self.project,variant_options={'variant_ont_imputation':'quilt2'})
+        self.assertEqual(unchanged,path.read_bytes())
+
     def test_selected_resource_budget_keeps_samples_and_stage_records(self):
         stage = self.output / 'existing.bam'
         stage.write_bytes(b'completed fixture')

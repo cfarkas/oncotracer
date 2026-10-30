@@ -117,7 +117,7 @@ def _diagnostic(stage: str, relative: Path) -> bool:
             prefix = f"{parts[1]}.{parts[2]}."
             if name.startswith(prefix):
                 name = name[len(prefix):]
-        return ("failed_logs" in parts or any(part.startswith(".") for part in parts)
+        return ("failed_logs" in parts or any(part in {"quilt2_resources", "quilt2_launch", "chunks"} for part in parts) or any(part.startswith(".") for part in parts)
                 or relative.suffix == ".log" or relative.name in {"owner.json", "complete.json"}
                 or name.startswith(("raw.", "caller_raw.", "unfiltered.", "normalized.", "review.", "f1r2.", "orientation-priors.", "before_assessment.", "strelka_original.")))
     if stage == "02_bam_refinement":
@@ -156,7 +156,7 @@ def _important(stage: str, relative: Path) -> bool:
     if stage == "07_methylation":
         return name in {"methylation_status.json", "methylation_provenance.json"} or (relative.suffix in {".tsv", ".csv", ".json", ".pdf", ".html"} and any(word in name.lower() for word in ("score", "prediction", "probabilit", "summary", "qc")))
     if stage == "08_variants":
-        return (name.endswith((".vcf.gz", ".vcf", "_multianno.txt", ".evidence.tsv")) or name == "evidence.tsv")
+        return (name.endswith((".vcf.gz", ".vcf", "_multianno.txt", ".evidence.tsv", ".haplotype_evidence.html", ".haplotype_pairs.tsv.gz", ".variant_assessability.tsv.gz", ".quilt2.summary.json")) or name == "evidence.tsv")
     return name.endswith("sample_status.json") or name.endswith("summary_mqc.txt")
 
 

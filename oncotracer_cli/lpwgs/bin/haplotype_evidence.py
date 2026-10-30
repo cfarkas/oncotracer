@@ -113,9 +113,8 @@ def adjust_by(rows):
         row['linkage_q_by'] = min(1., bound)
 
 
-def load_variants(path, sample, bam_lengths, fasta):
+def iter_variant_records(path, sample, bam_lengths, fasta):
     import pysam
-    variants, audit, seen = [], [], set()
     with pysam.VariantFile(str(path)) as source:
         names = list(source.header.samples)
         if sample not in names:
@@ -133,11 +132,8 @@ def load_variants(path, sample, bam_lengths, fasta):
                 row['status'] = 'not_assessed_filter_not_pass'
             elif record.samples[sample].get('GT') not in ((0, 1), (1, 0)):
                 row['status'] = 'not_assessed_non_heterozygous_or_missing_gt'
-            if row['variant'] in seen:
-                raise ValueError('Duplicate variant record: ' + row['variant'])
-            seen.add(row['variant'])
-            audit.append(row)
             if row['status'] != 'eligible':
+                yield row
                 continue
             chrom = record.contig
             if chrom not in bam_lengths or chrom not in fasta.references:
@@ -150,6 +146,17 @@ def load_variants(path, sample, bam_lengths, fasta):
             row['gt'] = list(call['GT'])
             row['phase_set'] = str(call.get('PS', '')) if call.phased else ''
             row['phased'] = bool(call.phased)
+            yield row
+
+
+def load_variants(path, sample, bam_lengths, fasta):
+    variants, audit, seen = [], [], set()
+    for row in iter_variant_records(path, sample, bam_lengths, fasta):
+        if row['variant'] in seen:
+            raise ValueError('Duplicate variant record: ' + row['variant'])
+        seen.add(row['variant'])
+        audit.append(row)
+        if row['status'] == 'eligible':
             variants.append(row)
     variants.sort(key=lambda r: (r['chrom'], r['pos'], r['ref'], r['alt']))
     return variants, audit
@@ -214,18 +221,26 @@ def fragment_tables(bam, variants, pairs, min_mapq, min_baseq):
                 if idx in observations and observations[idx] != allele:
                     allele = None
                 observations[idx] = allele
-        for i, j in group:
-            strata = defaultdict(lambda: [0, 0, 0, 0])
-            for observations, stratum in fragments.values():
-                a, b = observations.get(i), observations.get(j)
-                if a is not None and b is not None and stratum != ('inconsistent', 'discard'):
-                    strata[stratum][2*a+b] += 1
-            tables[(i, j)] = [strata[k] for k in sorted(strata)]
+        # Accumulate observed pairs per fragment instead of scanning every
+        # fragment once for every candidate pair (quadratic in a dense window).
+        from itertools import combinations
+        wanted = set(group)
+        accumulated = defaultdict(lambda: defaultdict(lambda: [0, 0, 0, 0]))
+        for observations, stratum in fragments.values():
+            if stratum == ('inconsistent', 'discard'):
+                continue
+            usable = sorted(i for i, allele in observations.items() if allele is not None)
+            for i, j in combinations(usable, 2):
+                if (i, j) in wanted:
+                    accumulated[(i, j)][stratum][2*observations[i]+observations[j]] += 1
+        for pair in group:
+            strata = accumulated[pair]
+            tables[pair] = [strata[k] for k in sorted(strata)]
         print(f'Haplotype evidence: {chrom} window {window+1}, {len(group)} pairs checked', file=sys.stderr, flush=True)
     return tables
 
 
-def evaluate(variants, pairs, tables, *, simulations, seed, min_fragments, ffpe):
+def evaluate(variants, pairs, tables, *, simulations, seed, min_fragments, ffpe, adjust=True):
     rows = []
     for i, j in pairs:
         a, b = variants[i], variants[j]
@@ -246,9 +261,10 @@ def evaluate(variants, pairs, tables, *, simulations, seed, min_fragments, ffpe)
             derived = int.from_bytes(hashlib.sha256(f'{seed}:{a["variant"]}:{b["variant"]}'.encode()).digest()[:8], 'little')
             row.update(linkage_test(strata, simulations, derived), status='tested')
         rows.append(row)
-    adjust_by(rows)
+    if adjust:
+        adjust_by(rows)
     for row in rows:
-        if row['status'] == 'tested':
+        if adjust and row['status'] == 'tested':
             row['status'] = ('cis_linkage_supported_under_null' if row['linkage_q_by'] <= .05 and row['alt_alt'] >= 2
                              else 'no_significant_cis_linkage')
     return rows
@@ -273,6 +289,7 @@ def parser():
     p.add_argument('--min-fragments', type=int, default=6)
     p.add_argument('--min-mapq', type=int, default=30)
     p.add_argument('--min-baseq', type=int, default=20)
+    p.add_argument('--genome-wide', action='store_true', help='Stream all pairs through a disk-backed table; max-pairs applies per 100 kb window')
     p.add_argument('--ffpe', action='store_true')
     p.add_argument('--build', choices=('hg38','hg19'), default='hg38')
     p.add_argument('--varsome', action='store_true', help='Explicitly allow bounded online coordinate/allele queries')
@@ -307,6 +324,9 @@ def main(argv=None):
     if not Path(str(inputs[2])+'.fai').is_file():
         raise ValueError('A pre-indexed reference FASTA (.fai) is required')
     before = [fingerprint(p, digest=p == inputs[1]) for p in inputs]
+    if a.genome_wide:
+        from haplotype_genome import run_genome
+        return run_genome(a, inputs, before, out)
     with pysam.AlignmentFile(str(inputs[0]), 'rb', threads=a.threads) as bam, pysam.FastaFile(str(inputs[2])) as fasta:
         if not bam.has_index() or bam.header.to_dict().get('HD',{}).get('SO') != 'coordinate':
             raise ValueError('A coordinate-sorted BAM with a completed index is required')
