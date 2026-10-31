@@ -24,6 +24,10 @@ from glimpse_download import download, validate_file, PANEL_EXPECTATIONS, PANEL_
 VERSION = '2.0.4'
 MAP_COMMIT = '7feea70daefbe6903d98b074762cf339f8903350'
 SCHEMA = 'oncotracer-quilt2-v1'
+# This exact worker differs only in output-path handling. Its committed chunks
+# remain scientifically identical; require the old input signature, SHA-256s,
+# sample identity and VCF validation before reusing them after this repair.
+PATH_COMPATIBLE_WORKERS = ('693ce20838931fa8b2c8cb1e100a54ef8351609a28e1eb77088fbb9b6319dffc',)
 STOP = threading.Event()
 LIMITATION = ('Research-only diploid population-panel SNP imputation. These are germline-style '
               'hypotheses, not observed calls or evidence of inherited origin. Tumor admixture, '
@@ -51,11 +55,11 @@ def identity(path):
     return dict(path=str(p),bytes=s.st_size,mtime_ns=s.st_mtime_ns,device=s.st_dev,inode=s.st_ino)
 
 
-def call(argv, *, capture=False):
+def call(argv, *, capture=False, cwd=None):
     command=list(map(str,argv))
-    print('QUILT2: '+' '.join(command),flush=True)
+    print('QUILT2'+(f' [cwd={cwd}]' if cwd else '')+': '+' '.join(command),flush=True)
     if STOP.is_set():raise RuntimeError('QUILT2 stopped after another reference task failed')
-    with subprocess.Popen(command,text=True,stdout=subprocess.PIPE if capture else None) as child:
+    with subprocess.Popen(command,text=True,stdout=subprocess.PIPE if capture else None,cwd=cwd) as child:
         while True:
             try:
                 output,_=child.communicate(timeout=.5)
@@ -244,11 +248,43 @@ def standardize_probability_header(path,bc):
         os.replace(updated,path)
 
 
+def imputation_signature(bam,chunk,min_base_quality,code):
+    return signature(dict(bam=bam,chunk=chunk,seed=17,bqFilter=min_base_quality,version=VERSION,code=code))
+
+
+def reusable_imputation_chunk(receipt,final,bam,chunk,min_base_quality,sample,code):
+    try:
+        previous=json.loads(Path(receipt).read_text())
+        if set(previous['files'])!={final.name,final.name+'.tbi'}:return False
+        for worker in (code,*PATH_COMPATIBLE_WORKERS):
+            sig=imputation_signature(bam,chunk,min_base_quality,worker)
+            if valid_receipt(receipt,sig):
+                validate_vcf(final,sample)
+                return True
+    except (OSError,ValueError,KeyError,TypeError):pass
+    return False
+
+
+def run_imputation_chunk(tools,chunk,bamlist,names,temporary,threads,min_base_quality):
+    # QUILT 2.0.4 uses gsub(".gz", "", output_filename), removing matches
+    # anywhere in an absolute path (including tempfile suffixes and sample names).
+    # Keep all R output paths relative and fixed, with only subprocess-local cwd.
+    # External, sample-prefixed filenames are assigned after output validation.
+    temporary=Path(temporary).absolute()
+    args=[tools['QUILT2.R'],f'--prepared_reference_filename={Path(chunk["prepared_reference"]).absolute()}',
+          f'--bamlist={Path(bamlist).absolute()}',f'--sampleNames_file={Path(names).absolute()}',
+          '--method=diploid','--outputdir=.','--output_filename=imputed.vcf.gz','--tempdir=.',
+          f'--nCores={threads}',f'--bqFilter={min_base_quality}','--seed=17',
+          *[f'--{k}={chunk[k]}' for k in ('chr','regionStart','regionEnd','buffer','nGen')]]
+    call(args,cwd=temporary)
+    return temporary/'imputed.vcf.gz'
+
+
 def impute(config):
     import pysam
     sample=config['sample']
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*',sample):raise ValueError('Unsafe sample identifier')
-    root=owned_directory(config['output']);tools=config['tools'];bc=tools['bcftools']
+    root=owned_directory(config['output']).absolute();tools=config['tools'];bc=tools['bcftools']
     bam=Path(config['bam']).resolve();before=identity(bam);pysam.quickcheck(str(bam))
     with pysam.AlignmentFile(str(bam),'rb') as source:
         if not source.has_index() or source.header.to_dict().get('HD',{}).get('SO')!='coordinate':
@@ -264,25 +300,23 @@ def impute(config):
         raise ValueError('QUILT2 BAM and reference contig lengths differ')
     bamlist=root/f'{sample}.bamlist.txt';bamlist.write_text(str(bam)+'\n')
     names=root/f'{sample}.sample_names.txt';names.write_text(sample+'\n')
-    chromosomes={};counts={}
+    chromosomes={};counts={};reused_chunks=computed_chunks=0;code=sha(__file__)
     for chunk in manifest['chunks']:
         chrom=chunk['chr'];label=f'{sample}.quilt2.{chrom}.{chunk["regionStart"]}.{chunk["regionEnd"]}'
         dest=root/'chunks'/label;dest.mkdir(parents=True,exist_ok=True)
         final=dest/(label+'.vcf.gz');receipt=dest/(label+'.complete.json')
         if sha(chunk['prepared_reference'])!=chunk['sha256']:raise ValueError('Prepared QUILT2 reference checksum mismatch')
-        sig=signature(dict(bam=before,chunk=chunk,seed=17,bqFilter=config['min_base_quality'],version=VERSION,code=sha(__file__)))
-        if config.get('force') or not valid_receipt(receipt,sig):
+        sig=imputation_signature(before,chunk,config['min_base_quality'],code)
+        if config.get('force') or not reusable_imputation_chunk(receipt,final,before,chunk,config['min_base_quality'],sample,code):
             with tempfile.TemporaryDirectory(dir=dest,prefix='.impute-') as tmp:
                 tmp=Path(tmp)
-                args=[tools['QUILT2.R'],f'--prepared_reference_filename={chunk["prepared_reference"]}',
-                      f'--bamlist={bamlist}',f'--sampleNames_file={names}','--method=diploid',
-                      f'--outputdir={tmp}',f'--output_filename={tmp/final.name}',f'--tempdir={tmp}',
-                      f'--nCores={config["threads"]}',f'--bqFilter={config["min_base_quality"]}','--seed=17',
-                      *[f'--{k}={chunk[k]}' for k in ('chr','regionStart','regionEnd','buffer','nGen')]]
-                call(args);standardize_probability_header(tmp/final.name,bc);validate_vcf(tmp/final.name,sample)
-                call([bc,'index','-t','-f',tmp/final.name])
-                for suffix in ('','.tbi'):os.replace(tmp/(final.name+suffix),Path(str(final)+suffix))
-            atomic(receipt,dict(signature=sig,files={p.name:sha(p) for p in (final,Path(str(final)+'.tbi'))}))
+                raw=run_imputation_chunk(tools,chunk,bamlist,names,tmp,config['threads'],config['min_base_quality'])
+                standardize_probability_header(raw,bc);validate_vcf(raw,sample)
+                call([bc,'index','-t','-f',raw])
+                for suffix in ('','.tbi'):os.replace(Path(str(raw)+suffix),Path(str(final)+suffix))
+            atomic(receipt,dict(signature=sig,producer_worker_sha256=code,files={p.name:sha(p) for p in (final,Path(str(final)+'.tbi'))}))
+            computed_chunks+=1
+        else:reused_chunks+=1
         chromosomes.setdefault(chrom,[]).append(final)
     outputs=[]
     for chrom,paths in chromosomes.items():
@@ -308,6 +342,7 @@ def impute(config):
     summary=dict(schema=SCHEMA,status='complete',sample=sample,version=VERSION,method='diploid',
                  vcf=str(final),chromosomes=counts,panel_manifest_sha256=sha(config['manifest']),
                  inputs=dict(bam=identity(bam)),limitation=LIMITATION,
+                 reused_chunks=reused_chunks,computed_chunks=computed_chunks,
                  hd_removed_after_ligation=True,observed_calls_modified=False,germline_probability=None,
                  assessment_status='not_assessable' if not sum(c['imputed_genotypes'] for c in counts.values()) else 'research_diploid_hypotheses')
     atomic(root/f'{sample}.quilt2.summary.json',summary)

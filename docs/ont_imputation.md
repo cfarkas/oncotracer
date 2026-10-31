@@ -70,6 +70,19 @@ read-only and the preparation cache writable. Completed chunks have input
 signatures and output checksums; interrupted or changed chunks are recomputed.
 An existing file alone is never proof of completion.
 
+If a run stops, select **Continue an existing analysis** and load the complete
+project folder. Completed alignment stages and compatible QUILT2 chunks are
+validated before reuse; unfinished chunks run again. The QUILT2 summary records
+`reused_chunks` and `computed_chunks` for that attempt. Keep the project and its
+reference cache; do not erase them to recover from an interrupted analysis.
+
+The current launcher also handles QUILT2 2.0.4's output-path substitution bug,
+which could fail when a project or temporary directory contained `gz`. It writes
+inside an isolated working directory, validates the VCF, and then gives the
+published files their sample prefixes. This repair does not change imputation
+parameters or probabilities. Verified chunks from the preceding local candidate
+remain reusable when their inputs and output checksums match.
+
 ## Outputs and interpretation
 
 Each sample has `08_variants/samples/SAMPLE/quilt2/`, including:
