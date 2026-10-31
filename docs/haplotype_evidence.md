@@ -51,6 +51,17 @@ Use `--backend docker` for the same command with the current image. Add `--ffpe`
 
 The first implementation assesses **PASS, heterozygous, biallelic SNVs**. Indels, multiallelic sites, failed filters and missing/nonheterozygous genotypes receive explicit unassessed statuses. Read-level indel validation needs a separate local-realignment method and is not approximated by this SNV test.
 
+Multiple records at the same chromosome and position are also unassessable by
+this biallelic model. For example, a caller may represent `A→C` and `A→T` as two
+separate records. OncoTracer retains both in the assessability table with
+`not_assessed_multiallelic_site`, excludes that position from linkage testing,
+and continues with other eligible sites. Repeated records for the same allele
+receive `not_assessed_duplicate_record`. No allele is chosen or silently
+deduplicated, and the original caller VCF stays unchanged. These cases do not
+fail an analysis. Summary counts report every input record, including sites
+excluded from testing; an assessment with no eligible pairs still reports that
+absence explicitly. Reference mismatches and damaged input files remain errors.
+
 ## What the numbers mean
 
 For each candidate pair within `--max-distance` (default 5,000 bases), OncoTracer counts REF/REF, REF/ALT, ALT/REF and ALT/ALT fragments. It excludes unmapped, secondary, supplementary, duplicate and QC-failed alignments, unknown mapping quality, and bases/alignments below the selected thresholds. Overlapping mates count once; conflicting observations are discarded. Unmarked PCR duplicates can still violate independence.

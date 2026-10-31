@@ -169,6 +169,64 @@ class BamTests(unittest.TestCase):
         self.assertEqual(variants,[])
         self.assertEqual([r['status'] for r in audit],['not_assessed_filter_not_pass','not_assessed_non_snv'])
 
+    def test_split_multiallelic_and_duplicate_records_are_audited_without_changing_other_pairs(self):
+        import csv, gzip
+        from collections import Counter
+        bam=self.bam([self.read(f'r{i}',i%2==1,16 if i%4>=2 else 0) for i in range(20)])
+        original=self.vcf.read_text()
+        extra=('chr1\t111\t.\tA\tC\t60\tPASS\t.\tGT\t1/0\n'
+               'chr1\t111\t.\tA\tT\t60\tPASS\t.\tGT\t0/1\n'
+               'chr1\t131\t.\tA\tC\t60\tPASS\t.\tGT\t0/1\n'
+               'chr1\t141\t.\tA\tC\t60\tPASS\t.\tGT\t0/1\n'
+               'chr1\t141\t.\tA\tAG\t60\tPASS\t.\tGT\t0/1\n'
+               'chr1\t151\t.\tA\tC,T\t60\tPASS\t.\tGT\t1/2\n'
+               'chr1\t131\t.\tA\tC\t60\tPASS\t.\tGT\t0/1\n')
+        baseline=None
+        for augmented in (False,True):
+            self.vcf.write_text(original+(extra if augmented else ''))
+            before=[h.fingerprint(p,True) for p in (bam,self.vcf,self.ref)]
+            for genome in (False,True):
+                out=self.root/f'assessment-{augmented}-{genome}'
+                command=[sys.executable,'-B',str(ROOT/'oncotracer_cli/lpwgs/bin/haplotype_evidence.py'),
+                         '--bam',str(bam),'--vcf',str(self.vcf),'--reference',str(self.ref),'--sample','S1',
+                         '--outdir',str(out),'--simulations','1000',*(['--genome-wide'] if genome else [])]
+                result=subprocess.run(command,capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                def table(name):
+                    path=out/('S1.'+name+'.tsv'+('.gz' if genome else ''))
+                    with (gzip.open(path,'rt') if genome else path.open()) as stream:
+                        return list(csv.DictReader(stream,delimiter='\t'))
+                pairs=table('haplotype_pairs');audit=table('variant_assessability')
+                self.assertEqual(len(pairs),1)
+                if baseline is None:baseline=pairs[0]
+                for field in ('variant_a','variant_b','fragments','alt_alt','mc_linkage_p','exact_linkage_p','status'):
+                    self.assertEqual(pairs[0][field],baseline[field])
+                summary=json.loads((out/'S1.haplotype_evidence.json').read_text())
+                self.assertEqual(summary['eligible_snvs'],2)
+                self.assertEqual(summary['input_records'],9 if augmented else 2)
+                self.assertEqual(summary['variant_status_counts'],dict(Counter(row['status'] for row in audit)))
+                if augmented:
+                    counts=Counter(row['status'] for row in audit)
+                    self.assertEqual(counts['not_assessed_multiallelic_site'],4)
+                    self.assertEqual(counts['not_assessed_duplicate_record'],2)
+                    self.assertEqual(counts['not_assessed_multiallelic'],1)
+                self.assertEqual(before,[h.fingerprint(p,True) for p in (bam,self.vcf,self.ref)])
+
+    def test_only_ambiguous_sites_finish_with_explicitly_unassessed_records(self):
+        import csv,gzip
+        bam=self.bam([self.read('one')])
+        self.vcf.write_text(self.vcf.read_text().replace('chr1\t121\t.\tA\tG','chr1\t101\t.\tA\tG'))
+        for genome in (False,True):
+            out=self.root/f'unsupported-{genome}'
+            result=subprocess.run([sys.executable,'-B',str(ROOT/'oncotracer_cli/lpwgs/bin/haplotype_evidence.py'),
+                '--bam',str(bam),'--vcf',str(self.vcf),'--reference',str(self.ref),'--sample','S1',
+                '--outdir',str(out),'--simulations','1000',*(['--genome-wide'] if genome else [])],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            summary=json.loads((out/'S1.haplotype_evidence.json').read_text())
+            self.assertEqual((summary['input_records'],summary['eligible_snvs'],summary['pairs']),(2,0,0))
+            self.assertEqual(summary['variant_status_counts'],{'not_assessed_multiallelic_site':2})
+            self.assertIsNone(summary['germline_probability'])
+
 
 class AnnotationTests(unittest.TestCase):
     variant=dict(variant='chr7:140453136:A:T',chrom='chr7',pos=140453136,ref='A',alt='T')

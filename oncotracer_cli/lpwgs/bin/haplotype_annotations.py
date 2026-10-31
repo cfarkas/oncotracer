@@ -179,6 +179,9 @@ def render_report(summary,rows,annotations,selection):
              '<p>Monte Carlo p estimates the tail probability under conditional random allele pairing. '
              'Its 95% interval measures simulation uncertainty. Exact p cross-checks that same null; '
              'BY q adjusts for multiple, potentially dependent pairs. None is a germline probability.</p>')
+    if summary.get('site_policy'):
+        stats += ('<p>'+esc(summary['site_policy'])+'</p><h2>Variant assessability</h2><pre>'
+                  +esc(json.dumps(summary.get('variant_status_counts',{}),indent=2))+'</pre>')
     header = '<tr><th>Variant A</th><th>Variant B</th><th>Fragments</th><th>ALT/ALT</th><th>MC p [95% CI]</th><th>Exact p</th><th>BY q</th><th>Status</th></tr>'
     table = []
     for r in sorted(rows,key=lambda r:r.get('exact_linkage_p') if r.get('exact_linkage_p') is not None else 2.)[:200]:

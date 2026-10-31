@@ -27,6 +27,15 @@ LIMITATION = ('Exploratory linkage evidence, not a probability that a variant is
               'haplotype. Correlated errors, unmarked duplicates, FFPE damage, mapping '
               'artifacts and copy-number changes can violate the model. Sparse evidence '
               'is unassessable. Input calls, filters and genotypes are never changed.')
+SITE_POLICY = ('Sites with multiple VCF records are excluded from the biallelic linkage '
+               'test, including split alternate alleles and duplicate records. Every '
+               'input record remains in the variant-assessability table; no allele is '
+               'selected or counted twice, and the caller VCF is unchanged.')
+
+
+def site_exclusion_status(distinct_variants):
+    return ('not_assessed_multiallelic_site' if distinct_variants > 1
+            else 'not_assessed_duplicate_record')
 
 
 @contextmanager
@@ -150,14 +159,19 @@ def iter_variant_records(path, sample, bam_lengths, fasta):
 
 
 def load_variants(path, sample, bam_lengths, fasta):
-    variants, audit, seen = [], [], set()
+    audit, sites = [], defaultdict(list)
     for row in iter_variant_records(path, sample, bam_lengths, fasta):
-        if row['variant'] in seen:
-            raise ValueError('Duplicate variant record: ' + row['variant'])
-        seen.add(row['variant'])
         audit.append(row)
-        if row['status'] == 'eligible':
-            variants.append(row)
+        sites[(row['chrom'], row['pos'])].append(row)
+    # Inspect the entire site before choosing eligible SNVs. A split 1/2 call
+    # can contain two individually biallelic 0/1 records at the same position;
+    # neither is a valid independent biallelic test under this model.
+    for rows in sites.values():
+        if len(rows) > 1:
+            status = site_exclusion_status(len({row['variant'] for row in rows}))
+            for row in rows:
+                row['status'] = status
+    variants = [row for row in audit if row['status'] == 'eligible']
     variants.sort(key=lambda r: (r['chrom'], r['pos'], r['ref'], r['alt']))
     return variants, audit
 
@@ -363,6 +377,7 @@ def main(argv=None):
                        code_sha256={name:hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
                                     for name in ('haplotype_evidence.py','haplotype_annotations.py','haplotype_annotation_selector.py')},
                        eligible_snvs=len(variants), input_records=len(audit), pairs=len(pairs),
+                       variant_status_counts=dict(Counter(row['status'] for row in audit)), site_policy=SITE_POLICY,
                        pair_status_counts=dict(counts), parameters=vars(a), limitation=LIMITATION,
                        multiple_testing='Benjamini-Yekutieli across all assessable candidate pairs in this invocation',
                        missing_linkage_is_not_evidence_against_variant=True,

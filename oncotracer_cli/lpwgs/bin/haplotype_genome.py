@@ -24,6 +24,26 @@ PAIR_FIELDS = ['variant_a','variant_b','chrom','distance_bp','fragments','ref_re
 AUDIT_FIELDS = ['variant','chrom','pos','ref','alt','filter','status']
 
 
+def exclude_ambiguous_sites(db):
+    """Audit all records, including nonadjacent duplicates, before pairing sites."""
+    db.execute('CREATE TABLE ambiguous_sites AS SELECT chrom,pos,count(DISTINCT variant) AS alleles '
+               'FROM variants GROUP BY chrom,pos HAVING count(*)>1')
+    db.execute('CREATE UNIQUE INDEX ambiguous_positions ON ambiguous_sites(chrom,pos)')
+    pending = []
+    for ident,data,alleles in db.execute('SELECT v.id,v.data,a.alleles FROM variants v '
+                                       'JOIN ambiguous_sites a ON v.chrom=a.chrom AND v.pos=a.pos'):
+        row = json.loads(data)
+        row['status'] = h.site_exclusion_status(alleles)
+        pending.append((json.dumps(row),ident))
+        if len(pending) == 10000:
+            db.executemany('UPDATE variants SET eligible=0,data=? WHERE id=?',pending)
+            pending.clear()
+    db.executemany('UPDATE variants SET eligible=0,data=? WHERE id=?',pending)
+    # This invariant is enforced only after unsupported sites have been audited.
+    db.execute('CREATE UNIQUE INDEX eligible_sites ON variants(chrom,pos) WHERE eligible=1')
+    db.commit()
+
+
 def bounded_windows(db,chrom,start,end,max_distance,max_pairs):
     """Split dense anchor intervals instead of dropping pairs or truncating a VCF."""
     pending=[(start,end)]
@@ -80,11 +100,11 @@ def run_genome(a, inputs, before, out):
         db.execute('PRAGMA cache_size=-16384')
         db.execute('PRAGMA temp_store=FILE')
         db.executescript('''
-            CREATE TABLE variants(id INTEGER PRIMARY KEY, variant TEXT UNIQUE NOT NULL,
+            CREATE TABLE variants(id INTEGER PRIMARY KEY, variant TEXT NOT NULL,
                 chrom TEXT NOT NULL,pos INTEGER NOT NULL,eligible INTEGER NOT NULL,
                 paired INTEGER DEFAULT 0, tested INTEGER DEFAULT 0,data TEXT NOT NULL);
             CREATE INDEX positions ON variants(eligible,chrom,pos);
-            CREATE UNIQUE INDEX eligible_sites ON variants(chrom,pos) WHERE eligible=1;
+            CREATE INDEX sites ON variants(chrom,pos,variant);
             CREATE TABLE pairs(id INTEGER PRIMARY KEY,p REAL,q REAL,data TEXT NOT NULL);
             CREATE INDEX probabilities ON pairs(p,id);
         ''')
@@ -93,14 +113,12 @@ def run_genome(a, inputs, before, out):
                 raise ValueError('A coordinate-sorted BAM with a completed index is required')
             lengths = dict(zip(bam.references,bam.lengths))
             for n,row in enumerate(h.iter_variant_records(inputs[1],a.sample,lengths,fasta),1):
-                try:
-                    db.execute('INSERT INTO variants(variant,chrom,pos,eligible,data) VALUES(?,?,?,?,?)',
-                               (row['variant'],row['chrom'],row['pos'],int(row['status']=='eligible'),json.dumps(row)))
-                except sqlite3.IntegrityError as exc:
-                    raise ValueError('Duplicate variant or multiple eligible alleles at one site: '+row['variant']) from exc
+                db.execute('INSERT INTO variants(variant,chrom,pos,eligible,data) VALUES(?,?,?,?,?)',
+                           (row['variant'],row['chrom'],row['pos'],int(row['status']=='eligible'),json.dumps(row)))
                 if n % 10000 == 0:
                     db.commit()
             db.commit()
+            exclude_ambiguous_sites(db)
             windows = db.execute('SELECT DISTINCT chrom, (pos-1)/100000 FROM variants WHERE eligible=1 ORDER BY chrom,pos').fetchall()
             batches=(batch for chrom,window in windows
                      for batch in bounded_windows(db,chrom,window*100000+1,(window+1)*100000+1,a.max_distance,a.max_pairs))
@@ -128,6 +146,7 @@ def run_genome(a, inputs, before, out):
                     row['status'] = 'cis_linkage_supported_under_null' if q<=.05 and row['alt_alt']>=2 else 'no_significant_cis_linkage'
                 counts[row['status']] += 1
                 writer.writerow(row)
+        variant_counts = Counter()
         with gzip.open(work/f'{a.sample}.variant_assessability.tsv.gz','wt',newline='') as stream:
             writer = csv.DictWriter(stream,AUDIT_FIELDS,delimiter='\t',extrasaction='ignore')
             writer.writeheader()
@@ -135,12 +154,14 @@ def run_genome(a, inputs, before, out):
                 row=json.loads(data)
                 if row['status']=='eligible':
                     row['status']='has_assessable_pair' if tested else 'insufficient_fragment_evidence' if paired else 'no_linkable_variant_in_distance'
+                variant_counts[row['status']] += 1
                 writer.writerow(row)
         records,eligible=db.execute('SELECT count(*),coalesce(sum(eligible),0) FROM variants').fetchone()
         db.close()
         (work/'assessment.sqlite').unlink()
         summary=dict(schema=h.METHOD,sample=a.sample,status='complete',statistics_status='complete',
                      inputs=before,eligible_snvs=eligible,input_records=records,pairs=sum(counts.values()),
+                     variant_status_counts=dict(variant_counts),site_policy=h.SITE_POLICY,
                      pair_status_counts=dict(counts),parameters=vars(a),limitation=h.LIMITATION,
                      software=dict(numpy=numpy.__version__,scipy=scipy.__version__,pysam=pysam.__version__,rng='PCG64'),
                      code_sha256={n:hashlib.sha256(Path(__file__).with_name(n).read_bytes()).hexdigest()
@@ -154,7 +175,9 @@ def run_genome(a, inputs, before, out):
             f'<title>{html.escape(a.sample)} — read-backed linkage</title><h1>{html.escape(a.sample)} — read-backed linkage</h1>'
             f'<p>{html.escape(h.LIMITATION)}</p><p>{records:,} input records; {eligible:,} eligible SNVs; '
             f'{sum(counts.values()):,} pairs. All records are retained in compressed TSV files.</p>'
-            '<pre>'+html.escape(json.dumps(dict(counts),indent=2))+'</pre><ul>'+links+'</ul>'
+            f'<p>{html.escape(h.SITE_POLICY)}</p><h2>Variant assessability</h2><pre>'
+            +html.escape(json.dumps(dict(variant_counts),indent=2))+'</pre><h2>Pair assessments</h2>'
+            +'<pre>'+html.escape(json.dumps(dict(counts),indent=2))+'</pre><ul>'+links+'</ul>'
             '<p>Insufficient evidence is not evidence against a variant. P-values test conditional linkage; '
             'they are not germline or pathogenicity probabilities. Correction spans all assessable pairs in this report.</p>')
         if before != [h.fingerprint(p,digest=p==inputs[1]) for p in inputs]:

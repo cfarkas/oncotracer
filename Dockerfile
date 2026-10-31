@@ -114,7 +114,7 @@ COPY . ${ONCOTRACER_HOME}/
 
 # Run the same isolated tool and synthetic-call probes used by Conda installation.
 RUN python -B -c "from pathlib import Path; from oncotracer_cli.variant_install_checks import verify_variant_environment; verify_variant_environment(Path('/opt/oncotracer-envs/variants'))"
-RUN python -B -m unittest tests.test_quilt2_recovery -q
+RUN python -B -m unittest tests.test_haplotype_evidence tests.test_variant_postcalling tests.test_quilt2_recovery -q
 
 RUN if [[ -z "${SOURCE_COMMIT}" && -z "${SOURCE_SHA256}" ]]; then \
         python scripts/build_native_binary.py \
