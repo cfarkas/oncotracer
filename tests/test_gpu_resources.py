@@ -7,6 +7,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 import threading
+import time
+import types
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -130,9 +133,110 @@ class GPUResourcesTests(unittest.TestCase):
 
     def test_free_memory_is_rechecked_under_lock(self):
         with self.reservations(), patch.object(gpu,'inventory',side_effect=[
-            [dict(DEVICE)], [{**DEVICE,'budget_mb':0}]]):
+            [dict(DEVICE)], [dict(DEVICE)], [{**DEVICE,'budget_mb':0}]]):
             with self.assertRaisesRegex(RuntimeError,'Timed out'):
                 with gpu.lease('other application grew',timeout=0):self.fail('overcommitted GPU')
+
+    def test_waiting_more_than_24_hours_does_not_fail_normal_analysis(self):
+        real_time=time.monotonic;offset=[0];entered=threading.Event();errors=[];admitted=[]
+        clock=types.SimpleNamespace(monotonic=lambda:real_time()+offset[0],sleep=time.sleep)
+        original=gpu._ticket
+        @contextlib.contextmanager
+        def ticket(*args):
+            with original(*args) as path:
+                if args[1]=='long wait':entered.set()
+                yield path
+        with self.reservations(),patch.object(gpu,'time',clock),patch.object(gpu,'_ticket',ticket):
+            def waiter():
+                try:
+                    with gpu.lease('long wait',poll_seconds=.01):admitted.append(True)
+                except BaseException as error:errors.append(error)
+            with gpu.lease('active caller'):
+                worker=threading.Thread(target=waiter);worker.start()
+                self.assertTrue(entered.wait(2));offset[0]=2*86400
+                time.sleep(.06)
+                self.assertTrue(worker.is_alive());self.assertFalse(errors);self.assertFalse(admitted)
+            worker.join(2)
+            self.assertFalse(worker.is_alive());self.assertEqual(errors,[]);self.assertEqual(admitted,[True])
+
+    def test_fifo_prevents_later_samples_from_overtaking(self):
+        order=[];errors=[];ready={n:threading.Event() for n in ('first','second','third')}
+        original=gpu._ticket
+        @contextlib.contextmanager
+        def ticket(*args):
+            with original(*args) as path:
+                if args[1] in ready:ready[args[1]].set()
+                yield path
+        with self.reservations() as directory,patch.object(gpu,'_ticket',ticket):
+            def waiter(label):
+                try:
+                    with gpu.lease(label,poll_seconds=.005,timeout=3):
+                        order.append(label);time.sleep(.02)
+                except BaseException as error:errors.append(error)
+            threads=[]
+            with gpu.lease('active caller'):
+                for name in ready:
+                    t=threading.Thread(target=waiter,args=(name,));threads.append(t);t.start()
+                    self.assertTrue(ready[name].wait(2))
+            for t in threads:t.join(4)
+            self.assertFalse(any(t.is_alive() for t in threads));self.assertEqual(errors,[])
+            self.assertEqual(order,list(ready));self.assertEqual(list(directory.glob('wait-*.json')),[])
+
+    def test_default_gpu_queue_deadline_is_120_hours(self):
+        real_time=time.monotonic;offset=[0];entered=threading.Event();errors=[]
+        clock=types.SimpleNamespace(monotonic=lambda:real_time()+offset[0],sleep=time.sleep)
+        original=gpu._ticket
+        @contextlib.contextmanager
+        def ticket(*args):
+            with original(*args) as path:
+                if args[1]=='deadline':entered.set()
+                yield path
+        with self.reservations() as directory,patch.object(gpu,'time',clock),patch.object(gpu,'_ticket',ticket):
+            def waiter():
+                try:
+                    with gpu.lease('deadline',poll_seconds=.005):self.fail('admitted twice')
+                except BaseException as error:errors.append(error)
+            with gpu.lease('active caller'):
+                worker=threading.Thread(target=waiter);worker.start();self.assertTrue(entered.wait(2))
+                offset[0]=119*3600;time.sleep(.03)
+                self.assertTrue(worker.is_alive());self.assertEqual(errors,[])
+                offset[0]=121*3600;worker.join(2)
+                self.assertFalse(worker.is_alive());self.assertEqual(len(errors),1)
+                self.assertIsInstance(errors[0],RuntimeError);self.assertIn('Timed out',str(errors[0]))
+            self.assertEqual(list(directory.glob('wait-*.json')),[])
+
+    def test_cancelled_and_expired_requests_do_not_block_the_queue(self):
+        with self.reservations() as directory:
+            with gpu.lease('active caller'):
+                with self.assertRaisesRegex(RuntimeError,'Timed out'):
+                    with gpu.lease('diagnostic',timeout=.02,poll_seconds=.005):self.fail('admitted twice')
+                stop=threading.Event();threading.Timer(.02,stop.set).start()
+                with self.assertRaises(InterruptedError):
+                    with gpu.lease('cancel',cancel=stop,poll_seconds=.005):self.fail('admitted twice')
+            self.assertEqual(list(directory.glob('wait-*.json')),[])
+            with gpu.lease('recovery',timeout=.1):pass
+
+    def test_dead_process_ticket_is_reclaimed_without_pid_namespace_assumptions(self):
+        with self.reservations() as directory:
+            code=('import runpy,sys,time;g=runpy.run_path(sys.argv[1]);'
+                  'd=g["lock_directory"]();c=g["_ticket"](d,"crashed",[__import__("json").loads(sys.argv[2])],8192);'
+                  'p=c.__enter__();print(p,flush=True);time.sleep(60)')
+            child=subprocess.Popen([sys.executable,'-B','-c',code,gpu.__file__,json.dumps(DEVICE)],stdout=subprocess.PIPE,text=True)
+            try:
+                path=Path(child.stdout.readline().strip());self.assertTrue(path.is_file())
+                child.kill();child.wait(timeout=5)
+                with gpu.lease('after crash',timeout=.2):pass
+                self.assertFalse(path.exists());self.assertEqual(list(directory.glob('wait-*.json')),[])
+            finally:
+                if child.poll() is None:child.kill();child.wait(timeout=5)
+                child.stdout.close()
+
+    def test_incompatible_older_waiter_does_not_block_another_gpu(self):
+        small={**DEVICE,'uuid':'GPU-small','total_mb':12288,'reserve_mb':4096,'budget_mb':8192}
+        with self.reservations() as directory,patch.object(gpu,'inventory',return_value=[dict(DEVICE),small]):
+            with gpu._ticket(directory,'large request',[DEVICE],18000):
+                with gpu.lease('smaller request',minimum_mb=8192,timeout=.1) as device:
+                    self.assertEqual(device['uuid'],'GPU-small')
 
     def test_insufficient_capacity_fails_without_silent_cpu_fallback(self):
         with self.reservations(),patch.object(gpu,'inventory',return_value=[{**DEVICE,'total_mb':8192,'reserve_mb':4096}]):

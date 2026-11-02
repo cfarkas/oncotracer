@@ -62,6 +62,15 @@ GPU selection does not turn CPU tools into GPU tools. The largest Illumina steps
 
 Each GPU admits one heavy OncoTracer stage at a time across the same user's native and Docker projects. Other samples wait for the GPU while CPU stages can continue. On multi-GPU hosts, stages can use separate visible devices. `CUDA_VISIBLE_DEVICES` restricts the selection.
 
+Requests are served in arrival order for each compatible GPU. Normal analysis
+waits up to **120 hours (5 days)** for GPU admission. This is a limit on queue
+waiting, not the duration of an admitted analysis stage. Queue messages show the
+elapsed wait and number of earlier compatible requests. Stop cancels waiting
+requests; tickets left by a crashed process are reclaimed using operating-system
+locks, including across native and Docker processes. Diagnostic probes retain
+their explicit short timeout. Missing GPUs and insufficient total VRAM remain
+errors; waiting does not disable the memory reserve or silently switch to CPU.
+
 Admission rechecks free VRAM while holding the device lock, then reserves **at least 4 GiB or 20% of total VRAM**, whichever is larger, in addition to current desktop/other application use. Caller worker counts and framework allocations are bounded; Dorado uses an explicit batch size. Manual sample counts do not override the GPU queue. The terminal reports waiting and admitted stages.
 
 These limits reduce memory pressure; they cannot prevent an unrelated application or another user's process from consuming more VRAM later. If the requested model cannot fit, OncoTracer reports the stage as incomplete and retains completed work. It does not silently switch that stage to CPU. Stop cancels waiting jobs and releases their locks.

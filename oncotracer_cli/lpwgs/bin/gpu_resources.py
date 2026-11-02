@@ -16,10 +16,12 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 
 MIB = 1024 ** 2
 POLICY = 'reserved-vram-v1'
+DEFAULT_QUEUE_TIMEOUT = 120 * 60 * 60
 
 
 def enabled(config, override=None):
@@ -76,7 +78,9 @@ def inventory():
 def options():
     devices = inventory()
     return dict(detected=bool(devices), devices=devices, policy=POLICY,
+                queue_timeout_hours=DEFAULT_QUEUE_TIMEOUT // 3600,
                 note='GPU stages share one queue per GPU across this user\'s projects. '
+                     'Requests use arrival order and wait up to 120 hours by default. '
                      'At least 4 GiB or 20% of VRAM is reserved in addition to current use. '
                      'CPU alignment, CNA, GLIMPSE2 and FFPErase remain on CPU.')
 
@@ -96,8 +100,8 @@ def lock_directory(*, create=True):
     return path
 
 
-def _open_lock(directory, uuid):
-    fd = os.open(directory / (uuid + '.lock'), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+def _open_private(path, flags=os.O_RDWR | os.O_CREAT):
+    fd = os.open(path, flags | os.O_NOFOLLOW, 0o600)
     info = os.fstat(fd)
     if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_nlink != 1 or info.st_mode & 0o077:
         os.close(fd)
@@ -105,59 +109,145 @@ def _open_lock(directory, uuid):
     return fd
 
 
+def _open_lock(directory, uuid):
+    return _open_private(directory / (uuid + '.lock'))
+
+
 @contextmanager
-def lease(label, *, minimum_mb=8192, cancel=None, poll_seconds=1, timeout=86400):
+def _queue_guard(directory):
+    fd = _open_lock(directory, 'queue')
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield fd
+    finally:
+        os.close(fd)
+
+
+@contextmanager
+def _ticket(directory, label, devices, minimum_mb):
+    """A locked ticket survives PID namespaces and is reclaimable after a crash."""
+    path = fd = None
+    try:
+        with _queue_guard(directory) as counter:
+            raw = os.read(counter, 128).strip()
+            if raw and not raw.isdigit():
+                raise RuntimeError('Invalid GPU queue sequence')
+            existing = [int(p.name.split('-')[1]) for p in directory.glob('wait-*.json')
+                        if re.fullmatch(r'wait-\d{20}-.+\.json', p.name)]
+            sequence = max([int(raw or b'0'), *existing]) + 1
+            if sequence >= 10**20:
+                raise RuntimeError('GPU queue sequence exhausted')
+            os.lseek(counter, 0, os.SEEK_SET)
+            os.ftruncate(counter, 0)
+            os.write(counter, str(sequence).encode())
+            fd, name = tempfile.mkstemp(prefix=f'wait-{sequence:020d}-', suffix='.json', dir=directory)
+            path = Path(name)
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            record = dict(label=label, minimum_mb=minimum_mb,
+                          devices=[d['uuid'] for d in devices if d['total_mb']-d['reserve_mb'] >= minimum_mb])
+            os.write(fd, json.dumps(record).encode())
+        yield path
+    finally:
+        if fd is not None:
+            try:
+                with _queue_guard(directory):
+                    path.unlink(missing_ok=True)
+            finally:
+                os.close(fd)
+
+
+def _older_waiters(directory, ticket, uuid):
+    """Called under queue.lock; a released ticket lock proves its owner exited."""
+    ahead = 0
+    for path in sorted(directory.glob('wait-*.json')):
+        if path.name >= ticket.name:
+            break
+        fd = _open_private(path, os.O_RDWR)
+        try:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                record = json.loads(os.read(fd, 65536))
+                if uuid in record['devices']:
+                    ahead += 1
+            else:
+                path.unlink()  # Dead waiter; never trust host/container PID numbers.
+        finally:
+            os.close(fd)
+    return ahead
+
+
+@contextmanager
+def lease(label, *, minimum_mb=8192, cancel=None, poll_seconds=1, timeout=DEFAULT_QUEUE_TIMEOUT):
     """Wait for a compatible GPU, recheck free VRAM under its lock, then reserve.
 
-    A request never silently switches to CPU. Timeouts and cancellation are
-    explicit failures, allowing the workflow to retain validated completed work.
+    FIFO among compatible requests. Normal analysis waits up to 120 hours;
+    bounded diagnostic callers can explicitly supply a shorter timeout. Cancellation,
+    unavailable hardware and insufficient total capacity remain explicit.
     """
     directory = lock_directory()
     started = time.monotonic()
     last_notice = -60
     acquired = None
     try:
-        while acquired is None:
-            if cancel is not None and cancel.is_set():
-                raise InterruptedError('Stopped while waiting for GPU: ' + label)
-            devices = inventory()
-            if not devices:
-                raise RuntimeError('GPU requested but no visible NVIDIA GPU is available; choose GPU usage No or repair the driver/runtime')
-            if not any(d['total_mb'] - d['reserve_mb'] >= minimum_mb for d in devices):
-                raise RuntimeError(f'{label} requires {minimum_mb / 1024:g} GiB of GPU memory after the desktop reserve')
-            for device in sorted(devices, key=lambda d: (-d['budget_mb'], d['uuid'])):
-                fd = _open_lock(directory, device['uuid'])
-                try:
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    current = next((d for d in inventory() if d['uuid'] == device['uuid']), None)
-                    if current and current['budget_mb'] >= minimum_mb:
-                        acquired = (fd, current)
-                        break
-                except BlockingIOError:
-                    pass
-                except BaseException:
-                    os.close(fd)
-                    raise
-                if acquired is None:
-                    os.close(fd)
-            if acquired is not None:
-                break
-            elapsed = time.monotonic() - started
-            if elapsed >= timeout:
-                raise RuntimeError('Timed out waiting for reserved GPU memory: ' + label)
-            if elapsed - last_notice >= 60:
-                print(f'GPU queue [{label}]: waiting for another GPU stage or available VRAM; CPU work can continue.', file=sys.stderr, flush=True)
-                last_notice = elapsed
-            if cancel is not None:
-                cancel.wait(poll_seconds)
-            else:
-                time.sleep(poll_seconds)
+        devices = inventory()
+        if not devices:
+            raise RuntimeError('GPU requested but no visible NVIDIA GPU is available; choose GPU usage No or repair the driver/runtime')
+        if not any(d['total_mb'] - d['reserve_mb'] >= minimum_mb for d in devices):
+            raise RuntimeError(f'{label} requires {minimum_mb / 1024:g} GiB of GPU memory after the desktop reserve')
+        with _ticket(directory, label, devices, minimum_mb) as ticket:
+            while acquired is None:
+              if cancel is not None and cancel.is_set():
+                  raise InterruptedError('Stopped while waiting for GPU: ' + label)
+              devices = inventory()
+              if not devices:
+                  raise RuntimeError('GPU requested but no visible NVIDIA GPU is available; choose GPU usage No or repair the driver/runtime')
+              if not any(d['total_mb'] - d['reserve_mb'] >= minimum_mb for d in devices):
+                  raise RuntimeError(f'{label} requires {minimum_mb / 1024:g} GiB of GPU memory after the desktop reserve')
+              ahead = 0
+              with _queue_guard(directory):
+                  for device in sorted(devices, key=lambda d: (-d['budget_mb'], d['uuid'])):
+                      if device['total_mb'] - device['reserve_mb'] < minimum_mb:
+                          continue
+                      older = _older_waiters(directory, ticket, device['uuid'])
+                      ahead = max(ahead, older)
+                      if older:
+                          continue
+                      fd = _open_lock(directory, device['uuid'])
+                      try:
+                          fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                          current = next((d for d in inventory() if d['uuid'] == device['uuid']), None)
+                          if current and current['budget_mb'] >= minimum_mb:
+                              acquired = (fd, current)
+                              break
+                      except BlockingIOError:
+                          pass
+                      except BaseException:
+                          os.close(fd)
+                          raise
+                      if acquired is None:
+                          os.close(fd)
+              if acquired is not None:
+                  break
+              elapsed = time.monotonic() - started
+              if timeout is not None and elapsed >= timeout:
+                    raise RuntimeError(f'Timed out waiting for GPU admission after {elapsed:.1f} seconds: ' + label)
+              if elapsed - last_notice >= 60:
+                  print(f'GPU queue [{label}]: waiting {elapsed/60:.1f} min; {ahead} earlier compatible request(s); '
+                        'waiting for the active stage or reserved VRAM. CPU work can continue.', file=sys.stderr, flush=True)
+                  last_notice = elapsed
+              if cancel is not None:
+                  cancel.wait(poll_seconds)
+              else:
+                  time.sleep(poll_seconds)
+        if cancel is not None and cancel.is_set():
+            raise InterruptedError('Stopped while waiting for GPU: ' + label)
         fd, device = acquired
         record = dict(device, label=label, pid=os.getpid(), policy=POLICY)
         os.ftruncate(fd, 0)
         os.write(fd, (json.dumps(record) + '\n').encode())
         print(f"GPU [{label}]: {device['name']} ({device['uuid']}), budget {device['budget_mb']/1024:.1f} GiB, "
-              f"reserve {device['reserve_mb']/1024:.1f} GiB plus existing use.", file=sys.stderr, flush=True)
+                f"reserve {device['reserve_mb']/1024:.1f} GiB plus existing use.", file=sys.stderr, flush=True)
         yield device
     finally:
         if acquired is not None:
