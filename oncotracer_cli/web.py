@@ -381,7 +381,7 @@ class WebState:
             if self.setup_args:
                 # Keep advanced local resource and cache flags supplied to setup.
                 from .setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
-                for key in ("reference_cache", *EXECUTABLES, *RESOURCE_FLAGS,
+                for key in ("reference_cache", "gpu_wait_hours", *EXECUTABLES, *RESOURCE_FLAGS,
                             *RESOURCE_FILES["marlin"], *RESOURCE_FILES["sturgeon"]):
                     setattr(args, key, copy.deepcopy(getattr(self.setup_args, key, None)))
             from .setup import VARIANT_FIELDS
@@ -714,6 +714,8 @@ class WebState:
                 command = _launcher() + ["setup", "--project", str(project), "--run", "--non-interactive",
                                          "--backend", prepared["backend"]]
             status_path = Path(prepared['outdir']) / '08_variants/variant_status.json'
+            if self.setup_args and getattr(self.setup_args, 'gpu_wait_hours', None) is not None:
+                command += ['--gpu-wait-hours', str(self.setup_args.gpu_wait_hours)]
             prior_status = status_path.stat().st_mtime_ns if status_path.exists() else None
             manifest_path = Path(prepared['outdir']) / '06_workflow_summary/native_run_manifest.json'
             prior_manifest = manifest_path.stat().st_mtime_ns if manifest_path.exists() else None

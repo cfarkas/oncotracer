@@ -44,6 +44,29 @@ For headless runs, `--gpu` selects GPU use and `--cpu` overrides a saved GPU cho
 oncotracer run --config /path/to/project/config/run.yml --backend docker --gpu
 ```
 
+Use `--gpu-wait-hours HOURS` to set how long each stage may wait for GPU
+admission. The default is **120 hours**. For example, allow up to 240 hours:
+
+```bash
+oncotracer run --config /path/to/project/config/run.yml --backend docker --gpu --gpu-wait-hours 240
+```
+
+The same flag works with `--backend conda`, `oncotracer variants`, and browser setup:
+
+```bash
+oncotracer --interactive --backend conda --gpu-wait-hours 240
+nextflow run main.nf --interactive --backend docker --gpu-wait-hours 240
+```
+
+Browser setup saves this choice for a new project and applies it when launching
+an existing project from that session. To retain it across future launches, set
+`gpu_wait_hours: 240` in the project's `config/run.yml`. The command-line flag
+overrides the saved value; otherwise the saved value or the 120-hour default is
+used. Positive fractional hours are accepted (`0.5` means 30 minutes); zero,
+negative and non-finite values are rejected. The limit applies only while waiting,
+never to an admitted task. Changing it does not invalidate completed scientific
+stages. Diagnostic probes keep their short timeout.
+
 The saved setting is `gpu_usage: true` or `false`. A saved GPU request is retained if the project is opened on a machine without GPU access; the browser asks you to restore access or explicitly choose CPU.
 
 ## Which stages use the GPU?

@@ -20,6 +20,8 @@ from .source_runtime import python_module
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__)
+    from .gpu_runtime import add_wait_argument
+    add_wait_argument(p)
     p.add_argument('--project-dir', default=str(Path(__file__).resolve().parents[1]), help=argparse.SUPPRESS)
     p.add_argument('--launch-dir', default=str(Path.cwd()), help=argparse.SUPPRESS)
     p.add_argument('--interactive', action='store_true', help='open the local OncoTracer visual browser setup')
@@ -137,6 +139,8 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         argv += ['--parallel-samples', str(args.parallel_samples)]
     if args.gpu is not None:
         argv.append('--gpu' if args.gpu else '--cpu')
+    if args.gpu_wait_hours is not None:
+        argv += ['--gpu-wait-hours', str(args.gpu_wait_hours)]
     env = os.environ.copy()
     old = env.get('PYTHONPATH', '')
     env['PYTHONPATH'] = str(source) + (os.pathsep + old if old else '')

@@ -24,6 +24,72 @@ DEVICE = dict(index=0, uuid='GPU-test-123', name='Test GPU', total_mb=24576,
 
 
 class GPUResourcesTests(unittest.TestCase):
+    def test_wait_hours_flag_is_available_for_all_launch_routes_and_validated(self):
+        from oncotracer_cli.cli import parse_arguments
+        commands = (['run', '--config', 'run.yml'], ['internal-run', '--config', 'run.yml'],
+                    ['variants', '--config', 'run.yml'], ['--interactive', '--backend', 'conda'],
+                    ['setup', '--project', 'project', '--run'])
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertIsNone(parse_arguments(command).gpu_wait_hours)
+                self.assertEqual(parse_arguments([*command, '--gpu-wait-hours', '240']).gpu_wait_hours, 240)
+                self.assertEqual(parse_arguments([*command, '--gpu-wait-hours', '.5']).gpu_wait_hours, .5)
+        for value in ('0', '-2', 'nan', 'inf', '1e308', 'no'):
+            with self.subTest(value=value), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                parse_arguments(['run', '--config', 'run.yml', '--gpu-wait-hours', value])
+        with self.assertRaises(ValueError):
+            gpu.wait_hours(True)
+
+    def test_wait_hours_precedence_restores_environment_and_reaches_children(self):
+        with patch.dict(os.environ, {'ONCOTRACER_GPU_WAIT_HOURS': '99'}):
+            for config, override, expected in (({}, None, 120), ({'gpu_wait_hours': 180}, None, 180),
+                                               ({'gpu_wait_hours': 180}, .5, .5)):
+                with gpu.queue_wait(config, override) as hours:
+                    self.assertEqual(hours, expected)
+                    child = subprocess.check_output([sys.executable, '-c',
+                        'import os;print(os.environ["ONCOTRACER_GPU_WAIT_HOURS"])'], text=True)
+                    self.assertEqual(float(child), expected)
+                self.assertEqual(os.environ['ONCOTRACER_GPU_WAIT_HOURS'], '99')
+            with self.assertRaisesRegex(RuntimeError, 'worker failed'):
+                with gpu.queue_wait({}, 5):
+                    raise RuntimeError('worker failed')
+            self.assertEqual(os.environ['ONCOTRACER_GPU_WAIT_HOURS'], '99')
+
+    def test_cli_override_reaches_native_dispatch_and_docker_internal_run(self):
+        from oncotracer_cli import cli
+        with tempfile.TemporaryDirectory() as temporary:
+            config = Path(temporary) / 'run.yml'
+            config.write_text('mode: ont\ngpu_wait_hours: 180\n')
+            args = cli.parse_arguments(['run', '--config', str(config), '--backend', 'docker',
+                                        '--dry-run', '--gpu-wait-hours', '240'])
+            def native_dispatch(*unused):
+                self.assertEqual(os.environ['ONCOTRACER_GPU_WAIT_HOURS'], '240')
+            with patch.object(cli, '_execute_run', side_effect=native_dispatch):
+                cli.execute_run(config, args)
+            with patch.object(cli, '_run') as launch, patch.object(cli, '_load_install_config', return_value={}):
+                cli._run_docker(config, args)
+            argv = launch.call_args.args[0]
+            self.assertEqual(argv[argv.index('--gpu-wait-hours') + 1], '240.0')
+            config.write_text('mode: ont\ngpu_wait_hours: invalid\n')
+            args.gpu_wait_hours = None
+            with patch.object(cli, '_execute_run') as run, self.assertRaises(OncoTracerError):
+                cli.execute_run(config, args)
+            run.assert_not_called()
+
+    def test_custom_wait_limit_applies_without_extending_diagnostic_timeout(self):
+        with self.reservations(), gpu.queue_wait({}, .00001):
+            with gpu.lease('active caller'):
+                started = time.monotonic()
+                with self.assertRaisesRegex(RuntimeError, 'Timed out'):
+                    with gpu.lease('short configured wait', poll_seconds=.005):
+                        self.fail('admitted twice')
+                self.assertLess(time.monotonic() - started, 1)
+        with self.reservations(), gpu.queue_wait({}, 240):
+            with gpu.lease('active caller'):
+                with self.assertRaisesRegex(RuntimeError, 'Timed out'):
+                    with gpu.lease('diagnostic', timeout=.02, poll_seconds=.005):
+                        self.fail('admitted twice')
+
     def test_gpu_run_dispatch_does_not_enable_methylation(self):
         from oncotracer_cli import cli, docker_runtime
         from oncotracer_cli.methylation import resolve_methylation_request

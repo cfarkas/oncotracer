@@ -9,6 +9,7 @@ import csv
 import fcntl
 import io
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -22,6 +23,39 @@ import time
 MIB = 1024 ** 2
 POLICY = 'reserved-vram-v1'
 DEFAULT_QUEUE_TIMEOUT = 120 * 60 * 60
+_DEFAULT_TIMEOUT = object()
+
+
+def wait_hours(value):
+    """A finite positive duration; fractions of an hour are supported."""
+    try:
+        hours = float(value)
+    except (TypeError, ValueError, OverflowError):
+        hours = float('nan')
+    if isinstance(value, bool) or not math.isfinite(hours * 3600) or hours <= 0:
+        raise ValueError('gpu_wait_hours must be a finite positive number of hours')
+    return hours
+
+
+def add_wait_argument(parser):
+    parser.add_argument('--gpu-wait-hours', type=wait_hours, metavar='HOURS',
+                        help='maximum wait for GPU admission per stage (default: 120 hours; accepts fractions); does not limit running tasks')
+
+
+@contextmanager
+def queue_wait(config, override=None):
+    """Apply this run's queue limit to workers, including child processes."""
+    hours = wait_hours(config.get('gpu_wait_hours', 120) if override is None else override)
+    key = 'ONCOTRACER_GPU_WAIT_HOURS'
+    previous = os.environ.get(key)
+    os.environ[key] = format(hours, '.17g')
+    try:
+        yield hours
+    finally:
+        if previous is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = previous
 
 
 def enabled(config, override=None):
@@ -178,13 +212,15 @@ def _older_waiters(directory, ticket, uuid):
 
 
 @contextmanager
-def lease(label, *, minimum_mb=8192, cancel=None, poll_seconds=1, timeout=DEFAULT_QUEUE_TIMEOUT):
+def lease(label, *, minimum_mb=8192, cancel=None, poll_seconds=1, timeout=_DEFAULT_TIMEOUT):
     """Wait for a compatible GPU, recheck free VRAM under its lock, then reserve.
 
-    FIFO among compatible requests. Normal analysis waits up to 120 hours;
+    FIFO among compatible requests. Normal analysis defaults to 120 hours;
     bounded diagnostic callers can explicitly supply a shorter timeout. Cancellation,
     unavailable hardware and insufficient total capacity remain explicit.
     """
+    if timeout is _DEFAULT_TIMEOUT:
+        timeout = wait_hours(os.environ.get('ONCOTRACER_GPU_WAIT_HOURS', 120)) * 3600
     directory = lock_directory()
     started = time.monotonic()
     last_notice = -60
@@ -233,7 +269,9 @@ def lease(label, *, minimum_mb=8192, cancel=None, poll_seconds=1, timeout=DEFAUL
               if timeout is not None and elapsed >= timeout:
                     raise RuntimeError(f'Timed out waiting for GPU admission after {elapsed:.1f} seconds: ' + label)
               if elapsed - last_notice >= 60:
+                  deadline = f'limit {timeout/3600:g} h' if timeout is not None else 'no deadline'
                   print(f'GPU queue [{label}]: waiting {elapsed/60:.1f} min; {ahead} earlier compatible request(s); '
+                        f'{deadline}; '
                         'waiting for the active stage or reserved VRAM. CPU work can continue.', file=sys.stderr, flush=True)
                   last_notice = elapsed
               if cancel is not None:

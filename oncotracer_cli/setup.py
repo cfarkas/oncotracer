@@ -308,6 +308,7 @@ def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
         run.threads = args.threads
     if getattr(args, "variant_parallel_samples", None) is not None:
         run.parallel_samples = args.variant_parallel_samples
+    run.gpu_wait_hours = getattr(args, 'gpu_wait_hours', None)
     return cli.command_run(run)
 
 
@@ -712,6 +713,7 @@ def _command_setup(args: argparse.Namespace) -> int:
         "parallel_samples": getattr(args, "variant_parallel_samples", None) or "auto",
         "analysis_memory": getattr(args, "variant_memory", None) or "auto",
         "gpu_usage": bool(args.gpu),
+        "gpu_wait_hours": getattr(args, 'gpu_wait_hours', None) or 120,
         "force": False,
         "run_cna_classifier": False,
         "run_gistic": False,
@@ -1055,6 +1057,11 @@ def command_check(args: argparse.Namespace) -> int:
     path = Path(args.config).expanduser().resolve()
     try:
         config = load_flat_yaml(require_file(path, "Configuration YAML"))
+        from .gpu_runtime import wait_hours
+        try:
+            wait_hours(config.get('gpu_wait_hours', 120))
+        except ValueError as error:
+            errors.append(str(error))
         mode = config.get("mode")
         if mode not in {"illumina", "ont"}:
             errors.append("mode: choose illumina or ont")
@@ -1383,6 +1390,8 @@ def add_setup_commands(subparsers) -> None:
         "--cpu", dest="gpu", action="store_false", help="CPU only (default)"
     )
     parser.set_defaults(gpu=None)
+    from .gpu_runtime import add_wait_argument
+    add_wait_argument(parser)
     meth.add_argument(
         "--accept-sturgeon-license",
         action="store_true",

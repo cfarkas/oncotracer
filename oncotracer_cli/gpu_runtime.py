@@ -1,7 +1,8 @@
 """Public GPU policy shared with the bundled Nextflow helpers."""
 try:
     from .lpwgs.bin.gpu_resources import (POLICY, enabled, environment, inventory,
-                                        lease, limit_torch, lock_directory, options)
+                                        lease, limit_torch, lock_directory, options,
+                                        wait_hours, add_wait_argument, queue_wait)
 except ModuleNotFoundError as error:
     if error.name != 'oncotracer_cli.lpwgs':
         raise
@@ -9,7 +10,8 @@ except ModuleNotFoundError as error:
     # importable code. Importing it must not extract the Nextflow payload or
     # create persistent state during --help and CPU dry runs.
     from ._gpu_policy import (POLICY, enabled, environment, inventory,
-                             lease, limit_torch, lock_directory, options)
+                             lease, limit_torch, lock_directory, options,
+                             wait_hours, add_wait_argument, queue_wait)
 
 TORCH_PROBE = """import json,torch,transformers
 assert torch.cuda.is_available(), 'CUDA PyTorch cannot access the GPU'

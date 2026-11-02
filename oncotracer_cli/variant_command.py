@@ -141,6 +141,17 @@ def _partial_failure_cause(status) -> str:
 
 def command_variants(args) -> int:
     """Authenticate a managed caller prefix before any workflow dispatch."""
+    from .gpu_runtime import queue_wait, wait_hours
+    config = load_flat_yaml(require_file(Path(args.config).expanduser(), 'Variant configuration'))
+    try:
+        hours = wait_hours(config.get('gpu_wait_hours', 120) if getattr(args, 'gpu_wait_hours', None) is None else args.gpu_wait_hours)
+    except ValueError as error:
+        raise OncoTracerError(str(error)) from error
+    with queue_wait(config, hours):
+        return _command_variants_managed(args)
+
+
+def _command_variants_managed(args) -> int:
     if args.dry_run:
         return _command_variants(args)
     config_path = require_file(Path(args.config).expanduser(), "Variant configuration").resolve()
@@ -286,8 +297,10 @@ def _command_variants(args) -> int:
 
 
 def add_variants_command(subparsers) -> None:
+    from .gpu_runtime import add_wait_argument
     parser = subparsers.add_parser("variants", help="Call small variants from existing BAMs without repeating CNA/alignment")
     parser.add_argument("--config", required=True, help="flat YAML with mode, outdir, variant_bam_manifest, variant_reference and variant options")
+    add_wait_argument(parser)
     parser.add_argument("--threads", type=int, help="total CPU budget shared across concurrent samples")
     parser.add_argument("--parallel-samples", type=parallel_argument, help="maximum concurrent samples: auto or a positive integer; total CPU/RAM budgets are shared")
     device = parser.add_mutually_exclusive_group()

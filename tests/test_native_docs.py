@@ -33,6 +33,20 @@ ACTIVE = [
 
 
 class NativeDocumentationTests(unittest.TestCase):
+    def before_gpu_queue_options(self, relative, content):
+        record = json.loads((ROOT / 'docs/assets/tutorial/gpu-queue-compatibility.json').read_text())
+        self.assertEqual(record['schema'], 1)
+        transition = record['files'].get(relative)
+        if transition:
+            self.assertEqual(transition['current_sha256'], hashlib.sha256(content).hexdigest())
+            value = content.decode()
+            for change in reversed(transition['changes']):
+                self.assertEqual(value[change['start']:change['end']], change['current'])
+                value = value[:change['start']] + change['recorded'] + value[change['end']:]
+            content = value.encode()
+            self.assertEqual(transition['recorded_sha256'], hashlib.sha256(content).hexdigest())
+        return content
+
     def before_resume_controls(self, relative, content):
         compatibility = json.loads((ROOT / "docs/assets/tutorial/resume-sturgeon-compatibility.json").read_text())
         self.assertEqual(compatibility["schema"], 1)
@@ -74,11 +88,12 @@ class NativeDocumentationTests(unittest.TestCase):
         return content
 
     def assert_recorded_source_matches(self, relative: str, expected: str) -> None:
-        if hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected:
+        content = self.before_gpu_queue_options(relative, (ROOT / relative).read_bytes())
+        if hashlib.sha256(content).hexdigest() == expected:
             return
         from oncotracer_cli.cli import DEFAULT_IMAGE
 
-        content = self.captured_ont_source(relative, (ROOT / relative).read_bytes())
+        content = self.captured_ont_source(relative, content)
         continuation = json.loads(
             (ROOT / "docs/assets/tutorial/cpg-continuation-compatibility.json").read_text()
         )
@@ -283,7 +298,8 @@ class NativeDocumentationTests(unittest.TestCase):
         for relative, expected in record["source_files"].items():
             self.assertFalse(Path(relative).is_absolute())
             self.assertNotIn("..", Path(relative).parts)
-            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected, relative)
+            content = self.before_gpu_queue_options(relative, (ROOT / relative).read_bytes())
+            self.assertEqual(hashlib.sha256(content).hexdigest(), expected, relative)
         self.assertEqual([(row["sample_id"], row["classifier"]) for row in record["pointer_drags"]],
                          [(0, "marlin"), (1, "sturgeon"), (2, "marlin"), (2, "")])
         self.assertTrue(all(row["pointer_events"] is True for row in record["pointer_drags"]))

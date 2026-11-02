@@ -355,6 +355,10 @@ class UninstallTests(unittest.TestCase):
             )
             for path in (source / "oncotracer_cli").rglob("*.py"):
                 archive.write(path, str(path.relative_to(source)))
+            # Match build_native_binary: zipimport cannot load the namespace
+            # lpwgs directory, so the stdlib GPU helper is also embedded here.
+            archive.write(source / 'oncotracer_cli/lpwgs/bin/gpu_resources.py',
+                          'oncotracer_cli/_gpu_policy.py')
             archive.writestr("payload/provenance/native-v2-sources.json", "{}")
         return launcher
 

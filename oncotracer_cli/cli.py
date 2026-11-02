@@ -596,6 +596,8 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         command.append("--gpu")
     elif args.gpu is False:
         command.append("--cpu")
+    if getattr(args, 'gpu_wait_hours', None) is not None:
+        command.extend(['--gpu-wait-hours', str(args.gpu_wait_hours)])
     outdir = Path(str(config["outdir"])).expanduser().absolute() if config.get("outdir") else None
     config_sha256 = sha256_file(config_path) if outdir is not None else ""
     manifest_path = outdir / "06_workflow_summary/native_run_manifest.json" if outdir is not None else None
@@ -761,7 +763,13 @@ def _prepare_configured_hg38(config_path: Path, args: argparse.Namespace) -> Non
 
 def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
     from .terminal_progress import terminal_session
-    with terminal_session(config_path, enabled=not args.dry_run):
+    from .gpu_runtime import queue_wait, wait_hours
+    config = load_flat_yaml(require_file(config_path, 'OncoTracer YAML config'))
+    try:
+        hours = wait_hours(config.get('gpu_wait_hours', 120) if getattr(args, 'gpu_wait_hours', None) is None else args.gpu_wait_hours)
+    except ValueError as error:
+        raise OncoTracerError(str(error)) from error
+    with queue_wait(config, hours), terminal_session(config_path, enabled=not args.dry_run):
         return _execute_run(config_path, args)
 
 
@@ -1651,6 +1659,8 @@ def command_provenance(args: argparse.Namespace) -> int:
 
 
 def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
+    from .gpu_runtime import add_wait_argument
+    add_wait_argument(parser)
     parser.add_argument(
         "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
     )

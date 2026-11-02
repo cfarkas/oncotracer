@@ -32,6 +32,13 @@ class NextflowGatewayTests(unittest.TestCase):
     def args(self, *values):
         return gateway.parser().parse_args(['--project-dir', str(ROOT), '--launch-dir', str(self.root), *values])
 
+    def test_gpu_queue_hours_reach_browser_full_and_existing_bam_commands(self):
+        for route in (['--interactive'], ['--config', str(self.config), '--analysis', 'full'],
+                      ['--config', str(self.config), '--analysis', 'variants']):
+            with self.subTest(route=route):
+                argv, _, _ = gateway.command(self.args(*route, '--gpu-wait-hours', '240'))
+                self.assertEqual(parse_arguments(argv[3:]).gpu_wait_hours, 240)
+
 
     def test_default_port_remains_automatic_but_explicit_default_is_forwarded(self):
         argv, _, _ = gateway.command(self.args('--interactive'))

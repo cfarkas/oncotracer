@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "base_commit": "b6928735404b9c9ee295a254710d80f524556e14",
+  "scope": "Adds the optional GPU queue timeout to CLI, saved configuration and worker dispatch. Existing video screen controls and recorded hashes remain unchanged. These exact reversible source changes document compatibility; the videos have not been rerecorded.",
+  "files": {
+    "oncotracer_cli/cli.py": {
+      "current_sha256": "1791748260bbfb400b5a83db62a632d5ad93d4ad02283d6711763b9bb02cba37",
+      "recorded_sha256": "44553e990dea765bd295916f3f7438150959ebe437d5834debfb19647925b387",
+      "changes": [
+        {
+          "start": 23933,
+          "end": 24062,
+          "current": "    if getattr(args, 'gpu_wait_hours', None) is not None:\n        command.extend(['--gpu-wait-hours', str(args.gpu_wait_hours)])\n",
+          "recorded": ""
+        },
+        {
+          "start": 30851,
+          "end": 31307,
+          "current": "    from .gpu_runtime import queue_wait, wait_hours\n    config = load_flat_yaml(require_file(config_path, 'OncoTracer YAML config'))\n    try:\n        hours = wait_hours(config.get('gpu_wait_hours', 120) if getattr(args, 'gpu_wait_hours', None) is None else args.gpu_wait_hours)\n    except ValueError as error:\n        raise OncoTracerError(str(error)) from error\n    with queue_wait(config, hours), terminal_session(config_path, enabled=not args.dry_run):\n",
+          "recorded": "    with terminal_session(config_path, enabled=not args.dry_run):\n"
+        },
+        {
+          "start": 66694,
+          "end": 66771,
+          "current": "    from .gpu_runtime import add_wait_argument\n    add_wait_argument(parser)\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/setup.py": {
+      "current_sha256": "53df9b866603c78dc74ce72cd6afe31bc02e8008459a34dcb92c8c4ff21544ff",
+      "recorded_sha256": "569eb05e8ccebe875cea6fded4ad8291a07c315f9f796b646cd9610d06b54303",
+      "changes": [
+        {
+          "start": 13292,
+          "end": 13355,
+          "current": "    run.gpu_wait_hours = getattr(args, 'gpu_wait_hours', None)\n",
+          "recorded": ""
+        },
+        {
+          "start": 36639,
+          "end": 36711,
+          "current": "        \"gpu_wait_hours\": getattr(args, 'gpu_wait_hours', None) or 120,\n",
+          "recorded": ""
+        },
+        {
+          "start": 51843,
+          "end": 52032,
+          "current": "        from .gpu_runtime import wait_hours\n        try:\n            wait_hours(config.get('gpu_wait_hours', 120))\n        except ValueError as error:\n            errors.append(str(error))\n",
+          "recorded": ""
+        },
+        {
+          "start": 70530,
+          "end": 70607,
+          "current": "    from .gpu_runtime import add_wait_argument\n    add_wait_argument(parser)\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/web.py": {
+      "current_sha256": "e7e2e097ab090a52dda9465ae08d5b2c3c0d2300d68fab59c73a6ecf4b364343",
+      "recorded_sha256": "bf9124ba676039e9dc46a1184d89f6f9570da8de62902b71fc65c5db3df4107f",
+      "changes": [
+        {
+          "start": 22559,
+          "end": 22655,
+          "current": "                for key in (\"reference_cache\", \"gpu_wait_hours\", *EXECUTABLES, *RESOURCE_FLAGS,\n",
+          "recorded": "                for key in (\"reference_cache\", *EXECUTABLES, *RESOURCE_FLAGS,\n"
+        },
+        {
+          "start": 46116,
+          "end": 46298,
+          "current": "            if self.setup_args and getattr(self.setup_args, 'gpu_wait_hours', None) is not None:\n                command += ['--gpu-wait-hours', str(self.setup_args.gpu_wait_hours)]\n",
+          "recorded": ""
+        }
+      ]
+    }
+  }
+}
