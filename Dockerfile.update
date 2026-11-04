@@ -1,5 +1,6 @@
 # Application-only update of an already verified scientific runtime.
 # Pass an immutable local image ID/digest. Environment changes require Dockerfile.
+# For a local image ID, use DOCKER_BUILDKIT=0 so no registry lookup is attempted.
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
@@ -16,8 +17,8 @@ COPY . /opt/oncotracer/
 RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
     && python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_variant_postcalling -q \
     && python -B scripts/build_native_binary.py --root /opt/oncotracer \
-       --output /usr/local/bin/oncotracer --source-commit "${SOURCE_COMMIT}" --source-sha256 "${SOURCE_SHA256}" \
-    && chmod 0755 /usr/local/bin/oncotracer \
+       --output /tmp/oncotracer-update --source-commit "${SOURCE_COMMIT}" --source-sha256 "${SOURCE_SHA256}" \
+    && install -m 0755 /tmp/oncotracer-update /usr/local/bin/oncotracer \
     && oncotracer --version \
     && oncotracer provenance --json \
     && nextflow -version
