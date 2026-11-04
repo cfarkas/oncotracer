@@ -1150,7 +1150,11 @@ class StageLedger:
                 "name": name,
                 "command": [canonical(value) for value in command],
                 "inputs": records,
-                "version": __version__,
+                # This maintenance release changes optional orchestration and
+                # failure retention, not any scientific stage contract. Keep
+                # the exact previous cache version; future versions invalidate
+                # normally unless separately reviewed for compatibility.
+                "version": {"2.3.1rc1": "2.3.0"}.get(__version__, __version__),
             },
             sort_keys=True,
         )

@@ -627,7 +627,7 @@ class WebState:
                             "config": {"mode": config["mode"], "backend": result["backend"], "analysis": analysis,
                                 "threads": config.get("threads"), "caller": config.get("ont_caller", "qdnaseq"),
                                 "run_variants": config.get("run_variants", False),
-                                "variant_monte_carlo_linkage": config.get("variant_monte_carlo_linkage",False),
+                                "variant_monte_carlo_linkage": False,
                                 "variant_ont_imputation": config.get("variant_ont_imputation","off"),
                                 "methylation_classifier": config.get("methylation_classifier")}}}
             self.projects[project_id] = prepared

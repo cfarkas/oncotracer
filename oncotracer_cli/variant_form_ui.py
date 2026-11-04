@@ -40,10 +40,6 @@ def variant_form(*, existing_bam=False):
 <div id="variant-caller-settings" hidden><h4>Variant callers</h4><div id="{callers}" class="variant-caller-list" role="group" aria-label="Variant callers"></div>
 <div id="variant-strelka-pairing" hidden><h4>Matched normals for Strelka2 somatic</h4><p class="hint">Select the normal specimen from the same patient for each tumor. Normal/control group membership alone does not establish a match. The matched normal does not inherit the tumor’s FFPE setting.</p><div id="variant-pair-rows"></div><p id="variant-pair-note" class="hint" role="status"></p></div><details class="variant-explainer"><summary>How caller results are used</summary><p class="hint">Mutect2 and ClairS-TO produce tumor-only candidates. Strelka2 somatic uses your explicitly matched tumor–normal pairs. Strelka2 germline, FreeBayes, bcftools and Clair3 run independently per sample. Group assignments never create matched pairs automatically.</p></details></div>
 </section>
-<section class="variant-section" id="variant-linkage-settings">
-<h4>Read-backed linkage</h4><label class="check"><input id="variant_monte_carlo_linkage" type="checkbox"> Add Monte Carlo linkage testing (experimental)</label>
-<p class="hint">Checks whether nearby observed SNVs share independent read fragments. Reports linkage p-values and corrected q-values, never a probability of germline origin. Sparse evidence is reported as unassessable. Whole-genome tables use compressed TSV files.</p>
-</section>
 <section class="variant-section" id="variant-quilt2-settings" hidden>
 <h4>ONT population imputation</h4><label for="variant_ont_imputation">Imputation method</label><select id="variant_ont_imputation"><option value="off">Off</option><option value="quilt2">QUILT2 · research diploid SNP imputation</option></select>
 <p class="hint">Uses ONT reads and a public GRCh38 haplotype panel. Imputed SNPs remain separate from caller results. Tumor admixture, CNA and ancestry mismatch can violate the diploid model. This does not establish germline origin. The first run prepares a large, reusable reference cache on CPU.</p>

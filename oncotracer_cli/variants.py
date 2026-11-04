@@ -15,6 +15,7 @@ import math
 import os
 import re
 import shutil
+import sys
 import tempfile
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
@@ -86,7 +87,8 @@ class VariantRequest:
             result.pop("tool_prefix_diagnostics", None)
             result.pop("parallel_samples", None)
             result.pop("memory", None)
-        if not self.monte_carlo_linkage:result.pop('monte_carlo_linkage',None)
+        # Kept as a legacy constructor field; no pipeline schedules this stage.
+        result.pop('monte_carlo_linkage',None)
         if self.ont_imputation=='off':result.pop('ont_imputation',None)
         for field in ('quilt2_reference_dir','quilt2_cache'):
             if result.get(field) is None:result.pop(field,None)
@@ -223,7 +225,9 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
     if imputation not in {'off','quilt2'}:raise OncoTracerError('variant_ont_imputation must be off or quilt2')
     if imputation=='quilt2' and (mode!='ont' or build!='hg38'):
         raise OncoTracerError('QUILT2 integration requires ONT aligned to GRCh38; Illumina retains GLIMPSE2')
-    request=replace(request,monte_carlo_linkage=mc,ont_imputation=imputation,
+    if mc:
+        print('Pipeline haplotype assessment has been removed; ignoring legacy variant_monte_carlo_linkage=true. Completed outputs are preserved.', file=sys.stderr)
+    request=replace(request,monte_carlo_linkage=False,ont_imputation=imputation,
                     quilt2_reference_dir=path('variant_quilt2_reference_dir'),quilt2_cache=path('variant_quilt2_cache'))
     if mode == 'illumina':
         from .glimpse_pipeline import validate_options
@@ -242,7 +246,7 @@ def variant_plan(request: VariantRequest) -> dict:
     from .variant_model_assets import resource_download_plan
     return {**request.as_dict(), 'engine': 'native', 'nextflow_used': False,
             'resource_downloads': resource_download_plan(request),
-            'stages': [*(['quilt2-diploid-snp-imputation'] if request.ont_imputation=='quilt2' else []), *(['monte-carlo-read-linkage'] if request.monte_carlo_linkage else []), 'variant-bam-validation', *[f'variant-{c}' for c in request.callers],
+            'stages': [*(['quilt2-diploid-snp-imputation'] if request.ont_imputation=='quilt2' else []), 'variant-bam-validation', *[f'variant-{c}' for c in request.callers],
                        'variant-normalization', *(['ffperase-assessment'] if request.ffperase != 'off' else []), *(['varlociraptor-local-fdr'] if request.varlociraptor != 'off' else []), 'variant-evidence', 'annovar-autodetect' if request.annovar == 'auto' else 'annotation-off'],
             'ffpe_handling': (('Mutect2 orientation model; ' if 'mutect2' in request.callers else '') + 'C>T/G>A review flag without automatic exclusion' + ('; independent FFPErase artifact assessment required' if request.ffperase != 'off' else '')) if request.specimen_type == 'ffpe' else 'caller-native filtering',
             'genotypes': 'caller GT preserved; missing remains missing; no AF-derived consensus',
@@ -668,7 +672,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
     env = {}
     if request.tool_prefix:
         env = {'PATH': str(request.tool_prefix/'bin')+os.pathsep+os.environ.get('PATH',''), 'CONDA_PREFIX':str(request.tool_prefix)}
-    from .variant_postcalling import prepare_quilt, impute_quilt, linkage
+    from .variant_postcalling import prepare_quilt, impute_quilt
     quilt_manifest=prepare_quilt(request,bams,fasta,root,runner,threads,toolchain)
     from . import ffperase, varlociraptor
     detection = ffperase.discover(request.ffperase_root, request.ffperase_models, request.ffperase_sif,
@@ -681,8 +685,8 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
         sample_result = {'sample':sample, 'specimen_type': sample_request.specimen_type, 'input_bam':str(source_bam), 'callers':[], 'status':'running'}
         try:
             source_bam = require_file(Path(source_bam), 'Variant input BAM')
-            with tempfile.TemporaryDirectory(prefix=f'.{sample}-', dir=root) as temp:
-                work = Path(temp)
+            from .variant_work import sample_work
+            with sample_work(root, sample, sample_result) as work:
                 ref = work/'reference.fa'
                 ref.symlink_to(fasta.resolve())
                 local_fai = Path(str(ref)+'.fai')
@@ -752,7 +756,10 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                     compatible_signatures = {signature}
                     # Known predecessors have the same scientific caller contract;
                     # only scheduling and published artifact names have changed.
-                    for digest in ('c71529f4c2a04afc126fb0b00a39486b73aea022ab285eecde01beab2d3794c8',
+                    # Retiring post-calling linkage and retaining failed scratch
+                    # do not change caller inputs, filters, or published alleles.
+                    for digest in ('3c7844d3299f4f18add6d17fd7160a616c5343e04d6fac9a249efdb18d86dbc2',
+                                   'c71529f4c2a04afc126fb0b00a39486b73aea022ab285eecde01beab2d3794c8',
                                    'd0dacffb5597528ac96d4c09debf9eb67493a551697c69e87d5ca958ba35b156'):
                         legacy_command = list(signature_command)
                         legacy_command[1] = digest
@@ -854,10 +861,6 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                         for p in scratch.glob('*.log'):
                             shutil.copy2(p,logs/f'{sample}.{caller}.{p.name}')
                 states = [r['status'] for r in sample_result['callers'] if r['status']!='not_applicable']
-                if request.monte_carlo_linkage:
-                    sample_result['monte_carlo_linkage']=linkage(request,sample,bam,
-                        {r['caller']:Path(r['vcf']) for r in sample_result['callers'] if r['status']=='complete'},
-                        fasta,root/'linkage',runner,threads,toolchain,force=force)
                 if quilt_manifest is not None:
                     sample_result['quilt2']=impute_quilt(request,sample,bam,quilt_manifest,root,runner,threads,toolchain,force=force)
                     states.append(sample_result['quilt2']['status'])

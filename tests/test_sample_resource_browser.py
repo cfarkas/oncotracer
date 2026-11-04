@@ -111,21 +111,21 @@ class SampleJobBrowserTests(unittest.TestCase):
         self.assertTrue(saved['gpu_usage'])
         self.assertFalse(self.errors, self.errors)
 
-    def test_continue_linkage_option_is_saved_before_run(self):
+    def test_continue_removes_linkage_option_and_migrates_saved_setting(self):
         self.save_fixture()
         path=self.root/'project/config/run.yml'
         from oncotracer_cli.setup import _render_config
-        path.write_text(_render_config({**load_flat_yaml(path),'run_variants':True,'variant_callers':'bcftools'}))
+        path.write_text(_render_config({**load_flat_yaml(path),'run_variants':True,
+                                       'variant_callers':'bcftools','variant_monte_carlo_linkage':True}))
         self.page.locator('#choose-existing-analysis').click()
         self.page.locator('#resume-project').fill(str(self.root/'project'))
         self.page.locator('#resume-project-button').click()
-        expect(self.page.locator('#resume-postcalling')).to_be_visible(timeout=30000)
-        expect(self.page.locator('#resume-quilt2-field')).to_be_hidden()
-        self.page.locator('#resume-monte-carlo').check()
-        self.page.locator('#resume-apply-resources').click()
-        expect(self.page.locator('#resume-monte-carlo')).to_be_checked(timeout=30000)
         expect(self.page.locator('#resume-apply-resources')).to_be_enabled(timeout=30000)
-        self.assertTrue(load_flat_yaml(path)['variant_monte_carlo_linkage'])
+        expect(self.page.locator('#resume-postcalling')).to_be_hidden()
+        self.assertEqual(self.page.locator('#resume-monte-carlo').count(),0)
+        self.page.locator('#resume-apply-resources').click()
+        expect(self.page.locator('#resume-apply-resources')).to_be_enabled(timeout=30000)
+        self.assertFalse(load_flat_yaml(path)['variant_monte_carlo_linkage'])
         self.assertEqual(self.runs,[])
         self.assertFalse(self.errors,self.errors)
 

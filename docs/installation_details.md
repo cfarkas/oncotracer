@@ -180,6 +180,13 @@ active processes. Unrelated siblings under an owned prefix parent are preserved.
 
 ### Docker
 
+For an application-only update with unchanged scientific environment definitions,
+`Dockerfile.update` can reuse a verified image by immutable image ID/digest. It
+checks every environment definition against the base before updating the
+controller, bundled workflows, and executable. Supply the exact source commit
+and archive SHA-256 as build arguments. Use the full `Dockerfile` when scientific
+environment definitions change.
+
 Install Docker Engine and ensure the current user can access the daemon:
 
 ```bash

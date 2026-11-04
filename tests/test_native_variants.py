@@ -95,6 +95,11 @@ def request_config(**updates: object) -> dict[str, object]:
 
 
 class VariantRequestTests(ResourceFixtureCase):
+    def test_legacy_linkage_option_is_disabled_before_execution(self):
+        request = variants.resolve_variant_request(request_config(variant_monte_carlo_linkage=True), mode='illumina')
+        self.assertFalse(request.monte_carlo_linkage)
+        self.assertNotIn('monte_carlo_linkage', request.as_dict())
+
     def test_disabled_request_does_not_require_tools_or_resources(self):
         with patch.object(shutil, "which", return_value=None):
             self.assertIsNone(variants.resolve_variant_request({}, mode="illumina"))
@@ -364,6 +369,33 @@ class NativeVariantIntegrationTests(ResourceFixtureCase):
             self.assertTrue(result["samples"][0]["callers"][0]["resumed"])
             fixture.assert_unchanged(self)
 
+    def test_pre_retirement_caller_receipt_resumes_without_recalling(self):
+        old_digest = '3c7844d3299f4f18add6d17fd7160a616c5343e04d6fac9a249efdb18d86dbc2'
+        digest = variants._module_digest
+        with tempfile.TemporaryDirectory(prefix="oncotracer-old-caller-resume-") as directory:
+            fixture = SyntheticInput(Path(directory))
+            with patch.object(variants, '_module_digest',
+                              side_effect=lambda name='variants.py': old_digest if name == 'variants.py' else digest(name)):
+                self.assertEqual(self.run_fixture(fixture)['overall_status'], 'complete')
+            with patch.object(variants, '_call', side_effect=AssertionError('completed caller must be reused')):
+                result = self.run_fixture(fixture)
+            self.assertEqual(result['overall_status'], 'complete')
+            self.assertTrue(result['samples'][0]['callers'][0]['resumed'])
+            fixture.assert_unchanged(self)
+
+    def test_retired_pipeline_linkage_never_runs_even_for_legacy_request(self):
+        with tempfile.TemporaryDirectory(prefix="oncotracer-retired-linkage-") as directory:
+            fixture = SyntheticInput(Path(directory))
+            request = variants.VariantRequest('illumina', 'fresh', ('bcftools',),
+                                              annovar='off', monte_carlo_linkage=True)
+            with patch('oncotracer_cli.variant_postcalling.linkage', side_effect=AssertionError('retired stage ran')):
+                result = variants.run_variants(request, {'FIXTURE': fixture.bam}, fixture.reference,
+                                               fixture.outdir, fixture.runner, fixture.ledger, threads=1)
+            self.assertEqual(result['overall_status'], 'complete')
+            self.assertNotIn('monte_carlo_linkage', result['samples'][0])
+            self.assertFalse((fixture.outdir/'08_variants/linkage').exists())
+            fixture.assert_unchanged(self)
+
     def test_modified_published_output_is_not_silently_overwritten(self):
         with tempfile.TemporaryDirectory(prefix="oncotracer-variants-edited-") as directory:
             fixture = SyntheticInput(Path(directory))
@@ -459,7 +491,10 @@ class NativeVariantIntegrationTests(ResourceFixtureCase):
             self.assertEqual(caller["annotation"]["status"], "failed")
             primary = vcf_rows(Path(caller["vcf"]))
             self.assertEqual(primary[0]["genotype"]["GT"], "0/1")
-            self.assertFalse(list((fixture.outdir / "08_variants").rglob("*.hg38_multianno.vcf")))
+            self.assertFalse(list((fixture.outdir / "08_variants/samples").rglob("*.hg38_multianno.vcf")))
+            retained = Path(result['samples'][0]['retained_work_dir'])
+            self.assertTrue(list(retained.rglob('*.hg38_multianno.vcf')))
+            self.assertFalse(list(retained.rglob('complete.json')))
             fixture.assert_unchanged(self)
 
     def test_failed_publication_restores_previous_artifacts_and_completion(self):
@@ -540,6 +575,9 @@ class NativeVariantIntegrationTests(ResourceFixtureCase):
             result = self.run_fixture(fixture, runner=runner)
             self.assertEqual(result["overall_status"], "failed")
             self.assertIn("synthetic caller failure", json.dumps(result))
+            retained = Path(result['samples'][0]['retained_work_dir'])
+            self.assertTrue((retained/'retained_work.json').is_file())
+            self.assertTrue((retained/'bcftools').is_dir())
             fixture.assert_unchanged(self)
 
 

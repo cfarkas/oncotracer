@@ -239,6 +239,8 @@ def resume_project(value, *, backend=None, image=None, resources=None, variant_o
             if imputation not in ('off','quilt2') or (imputation=='quilt2' and (updated.get('mode')!='ont' or updated.get('variant_reference_build','hg38')!='hg38')):
                 raise OncoTracerError('QUILT2 continuation requires ONT / GRCh38')
             updated.update(variant_options)
+        if updated.get('run_variants'):
+            updated['variant_monte_carlo_linkage'] = False
         changes = {"run.yml": _render_config(updated)}
         for name in ("samplesheet.csv", "sample_metadata.csv"):
             file = project / "config" / name

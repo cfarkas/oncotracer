@@ -4,34 +4,20 @@ After variant calling, `oncotracer haplotype-evidence` assesses whether nearby v
 
 **Linkage does not establish germline origin.** A real somatic variant can share a chromosome with a germline variant. A pair seen on one read is insufficient. The output does not assign a probability of inheritance, true-variant status, pathogenicity, or membership of an ancestral haplogroup. Such probabilities require a calibrated model and independent truth data, preferably including matched normal or family evidence.
 
-## Include linkage in an analysis
+## Pipeline integration removed
 
-In **Small variants**, select **Add Monte Carlo linkage testing**. This works for
-ONT, fresh Illumina and FFPE Illumina, with Conda or Docker. Terminal setup accepts
-`--monte-carlo-linkage`; the saved configuration contains
-`variant_monte_carlo_linkage: true`.
+Version 2.3.1rc1 removes haplotype assessment from automated ONT and Illumina
+analyses, including Docker, Conda, and the Nextflow controller. The setup and
+resume forms no longer offer this step. Old `variant_monte_carlo_linkage: true`
+settings are ignored with a diagnostic; resaving a project turns the setting off.
+Completed caller, imputation, and haplotype outputs remain on disk. A compatible
+continuation verifies completed outputs before reuse and proceeds to cohort
+assembly, CNA analysis, and reporting without waiting for linkage.
 
-The integrated stage tests the observed caller VCFs against the corresponding
-BAM. It never substitutes GLIMPSE2 or QUILT2 imputed genotypes for read evidence.
-Each caller is a separate multiple-testing family, recorded in its report. This
-is not a cohort-wide family correction. Insufficient fragments produce an
-unassessable result, not a failed variant or a reference genotype.
-
-Whole-genome assessment uses a disk-backed table and compressed TSV exports,
-with no Excel row limit. It scans 100 kb windows with look-ahead so that pairs
-crossing window boundaries are retained exactly once. The BY correction spans
-**all assessable pairs in the caller VCF**, not each window. There is no global
-100,000-pair truncation; dense windows split automatically to keep each batch
-within the memory limit.
-The small-region command below retains its explicit total pair limit. Add
-`--genome-wide` to that command to use the disk-backed route.
-
-Reports appear under `08_variants/linkage/SAMPLE/CALLER/` for ONT and
-`08_variants/glimpse2/linkage/SAMPLE/CALLER/` for Illumina. All published report
-filenames begin with the sample name. The report links to the complete pair and
-variant-assessability tables. Verified completed reports can be reused; input
-changes or altered output checksums trigger recomputation. Integrated analysis
-makes no VarSome requests and does not invoke an LLM to generate probabilities.
+This follows a whole-genome SQLite writer timeout during a concurrent progress
+inspection. Ordinary read-only queries can block commits in rollback-journal
+mode. Do not inspect a live assessment database. The experimental standalone
+command below is independent of the production pipeline.
 
 ## Run after calling
 

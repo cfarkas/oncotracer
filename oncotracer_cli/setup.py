@@ -332,11 +332,7 @@ VARIANT_FIELDS = ("variant_ont_imputation", *VARIANT_GLIMPSE_FIELDS, "variant_sp
 
 
 def _postcalling_values(args, mode, *, interactive):
-    mc=getattr(args,'variant_monte_carlo_linkage',None)
-    if mc is None and interactive:
-        mc=_ask(None,'Add experimental read-backed Monte Carlo linkage (not germline probability)?',
-                default='no',choices=('yes','no'),interactive=True)=='yes'
-    values={'variant_monte_carlo_linkage':bool(mc)}
+    values={'variant_monte_carlo_linkage':False}
     imputation=getattr(args,'variant_ont_imputation',None)
     if mode=='ont':
         imputation=_ask(imputation,'ONT population imputation (QUILT2: research-only diploid SNP hypotheses)',
@@ -1332,7 +1328,7 @@ def add_setup_commands(subparsers) -> None:
     variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=parallel_argument, help="simultaneous alignment/variant samples: auto recommends a fit; a positive integer overrides resource recommendations (may exhaust memory)")
     variant.add_argument("--variant-memory", help="total memory budget across concurrent samples, or auto (detected at Run)")
     variant.add_argument('--variant-monte-carlo-linkage','--monte-carlo-linkage',action='store_true',default=None,
-                         help='Add offline, disk-backed read-linkage testing; does not estimate germline probability')
+                         help='Deprecated compatibility option; integrated haplotype assessment has been removed')
     variant.add_argument('--variant-ont-imputation',choices=('off','quilt2'),help='Optional ONT diploid SNP imputation with QUILT2')
     variant.add_argument('--variant-quilt2-reference-dir',help='Existing checksum-matching public 1000 Genomes phased VCF folder')
     variant.add_argument('--variant-quilt2-cache',help='Shared writable cache for prepared QUILT2 references')

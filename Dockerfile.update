@@ -1,0 +1,30 @@
+# Application-only update of an already verified scientific runtime.
+# Pass an immutable local image ID/digest. Environment changes require Dockerfile.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+ARG SOURCE_COMMIT
+ARG SOURCE_SHA256
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+WORKDIR /opt/oncotracer
+
+COPY environments/ /tmp/oncotracer-update-environments/
+RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in p.rglob('*') if f.is_file()}; assert digest(Path('/opt/oncotracer/environments')) == digest(Path('/tmp/oncotracer-update-environments')), 'Scientific environment definitions changed; use the full Dockerfile'"
+
+COPY . /opt/oncotracer/
+RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
+    && python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_variant_postcalling -q \
+    && python -B scripts/build_native_binary.py --root /opt/oncotracer \
+       --output /usr/local/bin/oncotracer --source-commit "${SOURCE_COMMIT}" --source-sha256 "${SOURCE_SHA256}" \
+    && chmod 0755 /usr/local/bin/oncotracer \
+    && oncotracer --version \
+    && oncotracer provenance --json \
+    && nextflow -version
+
+LABEL org.opencontainers.image.version="2.3.1rc1" \
+      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
+      org.opencontainers.image.source.sha256="${SOURCE_SHA256}"
+
+ENTRYPOINT ["oncotracer"]
+CMD ["--help"]

@@ -5,10 +5,9 @@ def _controls(prefix, *, resume=False):
     cpu = (f'<label for="{prefix}-threads">Total CPU thread budget (shared by sample jobs)</label>'
            f'<input id="{prefix}-threads" type="number" min="1" step="1">') if resume else ''
     postcalling = ('<section id="resume-postcalling" hidden><h3>Additional variant evidence</h3>'
-        '<label class="check"><input id="resume-monte-carlo" type="checkbox"> Add Monte Carlo read linkage (experimental)</label>'
         '<div id="resume-quilt2-field" hidden><label for="resume-quilt2">ONT population imputation</label>'
         '<select id="resume-quilt2"><option value="off">Off</option><option value="quilt2">QUILT2 · research diploid SNP imputation</option></select></div>'
-        '<p class="hint">Uses observed reads for linkage. QUILT2 imputed SNPs remain separate. Neither establishes germline origin; tumor admixture and CNA can invalidate diploid assumptions. Completed stages are checked before reuse.</p></section>') if resume else ''
+        '<p class="hint">QUILT2 imputed SNPs remain separate from observed calls and do not establish germline origin; tumor admixture and CNA can invalidate diploid assumptions. Completed stages are checked before reuse.</p></section>') if resume else ''
     return f'''<section id="{prefix}-resources" {'hidden' if resume else ''}>
 <h3>Choose parallel sample jobs</h3>
 <p class="hint">Each job processes one sample. Choose the number of samples running at once and see the cores and RAM allocated to each. Completed outputs are validated before reuse.</p>
@@ -117,9 +116,9 @@ async function applyResumeResources(){
   const resources=resourceSelection('resume');
   await loadResume(project,{backend:$('resume-backend').value,
     image:$('resume-backend').value==='conda'?'':$('resume-image').value.trim(),resources,
-    variant_options:prepared?.reviewed_summary?.config?.run_variants?{variant_monte_carlo_linkage:$('resume-monte-carlo').checked,variant_ont_imputation:prepared.reviewed_summary.config.mode==='ont'?$('resume-quilt2').value:'off'}:null});
+    variant_options:prepared?.reviewed_summary?.config?.run_variants?{variant_monte_carlo_linkage:false,variant_ont_imputation:prepared.reviewed_summary.config.mode==='ont'?$('resume-quilt2').value:'off'}:null});
 }
-for(const id of ['resume-monte-carlo','resume-quilt2'])$(id).addEventListener('change',()=>{$('check-badge').textContent='Settings changed · checked again at Run';});
+for(const id of ['resume-quilt2'])$(id).addEventListener('change',()=>{$('check-badge').textContent='Settings changed · checked again at Run';});
 $('resume-apply-resources').onclick=()=>busy($('resume-apply-resources'),applyResumeResources);
 '''
     page = page.replace("(async()=>{try{if(!token)", script + "\n(async()=>{try{if(!token)", 1)
@@ -129,8 +128,8 @@ $('resume-apply-resources').onclick=()=>busy($('resume-apply-resources'),applyRe
   $('resume-threads').value=choices?.threads||prepared.reviewed_summary.config.threads||1;
   $('resume-memory').value=choices?.memory||'auto';
   const savedVariants=prepared.reviewed_summary.config;
-  show('resume-postcalling',Boolean(savedVariants.run_variants));show('resume-quilt2-field',savedVariants.mode==='ont');
-  $('resume-monte-carlo').checked=Boolean(savedVariants.variant_monte_carlo_linkage);$('resume-quilt2').value=savedVariants.variant_ont_imputation||'off';
+  show('resume-postcalling',Boolean(savedVariants.run_variants)&&savedVariants.mode==='ont');show('resume-quilt2-field',savedVariants.mode==='ont');
+  $('resume-quilt2').value=savedVariants.variant_ont_imputation||'off';
   showResourceChoices('resume',choices,true);
   $('run').disabled=!prepared.valid||Boolean(choices&&!resumeResourcesReady);$('run').hidden=false;""", 1)
     page = page.replace("await api('/api/run',{project_id:prepared.id});", """if(prepared.kind==='existing_project'&&prepared.resource_choices){

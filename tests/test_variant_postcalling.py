@@ -55,7 +55,8 @@ class CorrectionTests(unittest.TestCase):
         self.assertNotIn('monte_carlo_linkage',request.as_dict())
         self.assertNotIn('ont_imputation',request.as_dict())
         enabled=replace(request,monte_carlo_linkage=True,ont_imputation='quilt2')
-        self.assertTrue(enabled.as_dict()['monte_carlo_linkage'])
+        self.assertNotIn('monte_carlo_linkage',enabled.as_dict())
+        self.assertNotIn('monte-carlo-read-linkage',variants.variant_plan(enabled)['stages'])
         self.assertIn('quilt2-diploid-snp-imputation',variants.variant_plan(enabled)['stages'])
 
 

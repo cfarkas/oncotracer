@@ -111,6 +111,20 @@ class ParallelSamplesTests(ResourceFixtureCase):
         self.assertEqual(cohort.call_args.kwargs['threads'],8)
         self.assertIn('Muestras simultáneas: 2',(self.root/'output/08_variants/glimpse2/START_HERE.html').read_text())
 
+    def test_legacy_linkage_request_does_not_block_completed_nextflow_outputs(self):
+        self.request=replace(self.request,monte_carlo_linkage=True)
+        owner=self
+        class Runner:
+            def run(self,stage,command,**kwargs):
+                owner.assertTrue(stage.startswith('complete-glimpse2-'),stage)
+                owner.complete(command)
+        with patch('oncotracer_cli.variant_postcalling.linkage',side_effect=AssertionError('retired stage ran')):
+            result,_,cohort=self.run_pipeline(Runner())
+        self.assertEqual(result['overall_status'],'complete')
+        self.assertEqual(set(result['completed_samples']),set(self.bams))
+        self.assertFalse((self.root/'output/08_variants/glimpse2/linkage').exists())
+        cohort.assert_called_once()
+
     def test_one_failure_keeps_other_samples_and_suppresses_partial_cohort(self):
         owner=self
         class Runner:

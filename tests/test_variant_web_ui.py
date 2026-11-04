@@ -137,7 +137,7 @@ function variantPairPayload(){return {};}
 let value=guidedVariantPayload({variant_callers:'clair3',variant_clair3_model:'/previous/model',
   variant_varlociraptor:'required',variant_varlociraptor_scenario:'/previous/scenario.yml',
   variant_varlociraptor_events:'SOMATIC',variant_varlociraptor_sample:'tumor'});
-assert.equal(value.variant_monte_carlo_linkage,true);
+assert.equal(value.variant_monte_carlo_linkage,false);
 assert.equal(value.variant_clair3_model,'auto');
 assert.equal(value.variant_parallel_samples,'auto');
 assert.equal(value.variant_memory,'auto');

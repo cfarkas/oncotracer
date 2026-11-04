@@ -1,4 +1,4 @@
-"""Opt-in QUILT2 imputation and read-backed Monte Carlo linkage stages."""
+"""QUILT2 imputation and legacy standalone linkage helpers."""
 from __future__ import annotations
 import json
 import os
@@ -39,11 +39,6 @@ def quilt_tools(request):
 
 
 def preflight(request,toolchain=None):
-    if request.monte_carlo_linkage:
-        result=subprocess.run([core_python(toolchain),'-I','-B','-c','import pysam,numpy,scipy; print("LINKAGE_OK")'],
-                              capture_output=True,text=True,timeout=60)
-        if result.returncode or 'LINKAGE_OK' not in result.stdout:
-            raise OncoTracerError('Monte Carlo linkage requires pysam, NumPy and SciPy in the checked core environment')
     if request.ont_imputation=='quilt2':
         tools=quilt_tools(request)
         environment=os.environ.copy()

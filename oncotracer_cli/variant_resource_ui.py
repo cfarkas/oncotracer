@@ -90,13 +90,13 @@ function configureVariantModelControls(config={}){
   if(config.variant_ont_profile)get('variant_ont_profile').value=config.variant_ont_profile;
   if(config.variant_clairsto_platform)get('variant_clairsto_platform').value=config.variant_clairsto_platform;
   get('variant-scenario-mode').value=config.variant_varlociraptor_scenario?'custom':'standard';
-  for(const key of ['variant_download_resources','variant_accept_ffperase_license','variant_monte_carlo_linkage']){
+  for(const key of ['variant_download_resources','variant_accept_ffperase_license']){
     if(config[key]!==undefined)get(key).checked=config[key]===true||String(config[key]).toLowerCase()==='true';
   }
 }
 function syncVariantChoices(platform,preservation){
   const ready=Boolean(preservation),glimpse=platform==='illumina';
-  show('variant-quilt2-settings',ready&&!glimpse);show('variant-linkage-settings',ready);
+  show('variant-quilt2-settings',ready&&!glimpse);
   show('variant-caller-settings',ready&&!glimpse);show('variant-glimpse-settings',ready&&glimpse);show('variant-glimpse-resources',ready&&glimpse);show('variant-parallel-controls',ready);
   show('variant-target-settings',!glimpse);show('variant-extra-filter-settings',!glimpse);
   for(const nav of document.querySelectorAll('.variant-nav'))nav.hidden=glimpse;
@@ -136,7 +136,7 @@ function guidedVariantPayload(data){
     data.variant_confidence_gwas=get('variant_confidence_gwas').value||'medium';
     for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])data[key]=get(key).value.trim();
   }else data.variant_engine='legacy';
-  data.variant_monte_carlo_linkage=get('variant_monte_carlo_linkage').checked;
+  data.variant_monte_carlo_linkage=false;
   data.variant_ont_imputation=typeof mode!=='undefined'&&mode==='ont'?get('variant_ont_imputation').value:'off';
   for(const key of ['variant_quilt2_reference_dir','variant_quilt2_cache'])data[key]=data.variant_ont_imputation==='quilt2'?get(key).value.trim():'';
   const parallel=get('variant_parallel_samples').value.trim();
@@ -156,7 +156,7 @@ function guidedVariantPayload(data){
   }
   return data;
 }
-for(const id of ['variant-clair3-source','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile','variant_ont_imputation','variant_monte_carlo_linkage','variant_quilt2_reference_dir','variant_quilt2_cache']){
+for(const id of ['variant-clair3-source','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile','variant_ont_imputation','variant_quilt2_reference_dir','variant_quilt2_cache']){
   for(const event of ['input','change'])document.getElementById(id).addEventListener(event,()=>{
     const get=key=>document.getElementById(key);
     if(id==='variant-clair3-source'){
@@ -203,7 +203,7 @@ function variantResourceValues(){
   const keys=[...variantPathKeys,'variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_patients','variant_reuse_from','variant_clairsto_platform','variant_ffperase','variant_varlociraptor','variant_annovar','variant_ont_profile'];
   const values=Object.fromEntries(keys.map(key=>[key,document.getElementById(key).value.trim()]));
   values.variant_engine=typeof mode!=='undefined'&&mode==='illumina'?'glimpse2':'legacy';
-  values.variant_monte_carlo_linkage=document.getElementById('variant_monte_carlo_linkage').checked;
+  values.variant_monte_carlo_linkage=false;
   values.variant_ont_imputation=typeof mode!=='undefined'&&mode==='ont'?document.getElementById('variant_ont_imputation').value:'off';
   for(const key of ['variant_quilt2_reference_dir','variant_quilt2_cache'])values[key]=document.getElementById(key).value.trim();
   values.variant_download_resources=document.getElementById('variant_download_resources').checked;

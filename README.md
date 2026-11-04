@@ -38,7 +38,7 @@ The image is saved for later commands. See [installation](docs/installation.md) 
 
 Before setup, `oncotracer --detect-resources` (also `--detect_resources`) suggests [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) from this machine's CPU/RAM; choose the combination in new setup or **Review and run** for continuation.
 
-Optional [QUILT2 imputation for ONT](docs/ont_imputation.md) and [Monte Carlo linkage](docs/haplotype_evidence.md) provide research evidence alongside observed calls.
+Optional [QUILT2 imputation for ONT](docs/ont_imputation.md) provides research evidence alongside observed calls. Automated haplotype assessment was removed in 2.3.1rc1; [standalone experimental linkage](docs/haplotype_evidence.md) is separate from production runs.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 
