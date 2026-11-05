@@ -15,10 +15,12 @@ RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str
 
 COPY . /opt/oncotracer/
 RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
-    && python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_variant_postcalling tests.test_glimpse_joint tests.test_glimpse_resume -q \
+    && PATH="${ONCOTRACER_VARIANTS_PREFIX}/bin:${PATH}" /opt/conda/bin/python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_variant_postcalling tests.test_glimpse_joint tests.test_glimpse_resume -q \
+    && build_dir="$(mktemp -d /tmp/oncotracer-build.XXXXXXXX)" \
     && python -B scripts/build_native_binary.py --root /opt/oncotracer \
-       --output /tmp/oncotracer-update --source-commit "${SOURCE_COMMIT}" --source-sha256 "${SOURCE_SHA256}" \
-    && install -m 0755 /tmp/oncotracer-update /usr/local/bin/oncotracer \
+       --output "${build_dir}/oncotracer" --source-commit "${SOURCE_COMMIT}" --source-sha256 "${SOURCE_SHA256}" \
+    && install -m 0755 "${build_dir}/oncotracer" /usr/local/bin/oncotracer \
+    && rm "${build_dir}/oncotracer" && rmdir "${build_dir}" \
     && oncotracer --version \
     && oncotracer provenance --json \
     && nextflow -version
