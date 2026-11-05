@@ -19,7 +19,7 @@ import subprocess
 import tempfile
 from collections import Counter
 
-VERSION = 'glimpse-cohort-v1'
+VERSION = 'glimpse-cohort-v2'
 IMPUTED_MIN_GP = 0.90
 IMPUTED_MIN_INFO = 0.80
 _COMMON_INFO = {'ALLELEID', 'GENEINFO', 'MC', 'RS', 'ORIGIN', 'NEAND_MARKER',
@@ -52,7 +52,7 @@ _EXTRA_FORMATS = {
 
 def _common_info(tag):
     return tag not in _SAMPLE_INFO and (
-        tag in _COMMON_INFO or tag.startswith(('CLN', 'ONC', 'SCI', 'ANN_'))
+        tag in _COMMON_INFO or tag.startswith(('CLN', 'ONC', 'SCI'))
         or tag.endswith(('.refGene', '.ensGene', '.knownGene')))
 
 
@@ -78,8 +78,11 @@ def _sha256(path):
 
 
 def _implementation_digest():
-    source = importlib.resources.files(__package__).joinpath('glimpse_joint.py').read_bytes()
-    return hashlib.sha256(source).hexdigest()
+    digest = hashlib.sha256()
+    for name in ('glimpse_joint.py', 'clinvar_identity.py'):
+        digest.update(name.encode())
+        digest.update(importlib.resources.files(__package__).joinpath(name).read_bytes())
+    return digest.hexdigest()
 
 
 def _canonical_header(pysam, source, lengths):
@@ -102,7 +105,7 @@ def _add_definition(collection, tag, number, kind, description):
         collection.add(tag, number, kind, description)
 
 
-def _header(pysam, sample_headers, reference, sample_roles, population_excluded_samples):
+def _header(pysam, sample_headers, reference, sample_roles, population_excluded_samples, clinvar=None):
     out = pysam.VariantHeader()
     with pysam.FastaFile(str(reference)) as fasta:
         lengths = dict(zip(fasta.references, fasta.lengths))
@@ -120,6 +123,9 @@ def _header(pysam, sample_headers, reference, sample_roles, population_excluded_
         for line in str(header).splitlines():
             if line.startswith(('##LPWGSReferenceSequenceSHA256=', '##LPWGSReferenceDictionarySHA256=', '##LPWGSClinVarSHA256=', '##LPWGSSchema=')):
                 key, value = line.split('=', 1)
+                if key == '##LPWGSClinVarSHA256' and clinvar:
+                    out.add_meta('OncoTracerClinVarSource', items=[('ID', sample), ('SHA256', value)])
+                    continue
                 if key in metadata and metadata[key] != value:
                     raise ValueError(f'Incompatible reference, annotation release or export schema: {key}')
                 metadata[key] = value
@@ -152,6 +158,9 @@ def _header(pysam, sample_headers, reference, sample_roles, population_excluded_
         out.info.add(tag, number, kind, description)
     for key, value in metadata.items():
         out.add_meta(key[2:], value=value)
+    if clinvar:
+        out.add_meta('LPWGSClinVarContentSHA256', value=clinvar['content_sha256'])
+        out.add_meta('LPWGSClinVarContentPolicy', value=clinvar['policy'])
     return out, maps, lengths
 
 
@@ -314,7 +323,8 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
                  reference: Path, threads: int = 1,
                  imputed_by_sample: dict[str, list[Path]] | None = None,
                  sample_roles: dict[str, str] | None = None,
-                 population_excluded_samples: dict[str, str] | None = None) -> dict:
+                 population_excluded_samples: dict[str, str] | None = None,
+                 clinvar_by_sample: dict[str, str] | None = None) -> dict:
     """Create indexed all-evidence and germline population VCFs, returning a manifest.
 
     Output rows are normalized, exact biallelic alleles. Splitting a multiallelic
@@ -358,6 +368,15 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
     reference = Path(reference).resolve()
     if not Path(str(reference) + '.fai').is_file():
         raise ValueError('Indexed reference FASTA is required; missing .fai')
+    headers = {}
+    for sample, path in samples.items():
+        with pysam.VariantFile(str(path)) as reader:
+            if list(reader.header.samples) != [sample]:
+                raise ValueError(f'Each input requires exactly the expected unique sample: {sample}: {path}')
+            headers[sample] = reader.header.copy()
+    from .clinvar_identity import cohort_provenance
+    clinvar = cohort_provenance(headers, clinvar_by_sample)
+    header, maps, lengths = _header(pysam, headers, reference, sample_roles, population_excluded_samples, clinvar)
     input_identity = {
         'schema': VERSION, 'implementation_sha256': _implementation_digest(),
         'samples': {s: _identity(p) for s, p in samples.items()}, 'sample_roles': sample_roles,
@@ -365,6 +384,7 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
         'reference': _identity(reference), 'reference_index': _identity(str(reference) + '.fai'),
         'imputed': {s: [_identity(p) for p in paths] for s, paths in sorted(imputed_by_sample.items())},
         'imputed_min_gp': IMPUTED_MIN_GP, 'imputed_min_info': IMPUTED_MIN_INFO,
+        'clinvar_provenance': clinvar,
     }
     fingerprint = hashlib.sha256(json.dumps(input_identity, sort_keys=True).encode()).hexdigest()
     output_dir = Path(output_dir).resolve()
@@ -380,13 +400,6 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
             and previous.get('output_checksums', {}).get(name + '.tbi') == _sha256(str(output_dir / name) + '.tbi')
             for name in filenames.values()):
             return dict(previous, reused=True)
-    headers = {}
-    for sample, path in samples.items():
-        with pysam.VariantFile(str(path)) as reader:
-            if list(reader.header.samples) != [sample]:
-                raise ValueError(f'Each input requires exactly the expected unique sample: {sample}: {path}')
-            headers[sample] = reader.header.copy()
-    header, maps, lengths = _header(pysam, headers, reference, sample_roles, population_excluded_samples)
     order = {chrom: index for index, chrom in enumerate(lengths)}
     output_dir.mkdir(parents=True, exist_ok=True)
     commands, counts = [], Counter()

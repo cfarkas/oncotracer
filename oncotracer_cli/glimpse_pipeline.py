@@ -360,7 +360,9 @@ def _ffpe_command(resolved,vcf,sample_root,sample,paths,bam,reference,tools):
 
 def _cohort(request,exports,root,tools,reference,threads,imputed,sample_statuses,runner,stop):
     from .glimpse_joint import merge_cohort
+    from .clinvar_identity import sample_sources
     options={'threads':threads,'imputed_by_sample':{sample:list(map(str,paths)) for sample,paths in imputed.items()},
+             'clinvar_by_sample':sample_sources({sample:root/'samples'/sample for sample in exports}),
              'sample_roles':sample_statuses or {},
              'population_excluded_samples':{t:'matched_normal_from_same_individual_included' for t,n in request.matched_normals}}
     if not isinstance(runner,CommandRunner):
@@ -425,6 +427,10 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
     base,root=_claim_output_root(outdir,bams)
     options=request.glimpse_config or {};resources=Path(options.get('resource_dir') or root/'resources').resolve()
     bundle=workflow_bundle(options.get('workflow_source'))
+    from .glimpse_resume import previous_run, identical_bundle, retain_memory_budget, completed_export
+    previous_rows, previous_runtimes = previous_run(root) if not force else ({}, {})
+    if not options.get('workflow_source') and previous_runtimes:
+        bundle = identical_bundle(bundle, previous_runtimes)
     imported_calls={sample:verified_calls(options.get('reuse_from'),sample,bam) for sample,bam in sorted(bams.items())}
     status={'schema':SCHEMA,'engine':'nextflow-glimpse2','nextflow_used':True,'requested':plan(request),
             'resource_allocation':allocation,'started_at':utc_now(),'samples':[], 'completed_samples':[],
@@ -434,6 +440,7 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
         sample_root=root/'samples'/sample;sample_root.mkdir(parents=True,exist_ok=True)
         params,audit=sample_parameters(request,sample,bam,reference,sample_root,resources,
             allocation['threads_per_sample'],verified_imports=imported_calls[sample],memory=allocation['memory_per_sample'])
+        retain_memory_budget(params, previous_runtimes.get(sample, {}))
         normal=dict(request.matched_normals).get(sample)
         if normal:
             params.update(matched_normal_bam=str(Path(bams[normal]).resolve()),matched_normal_sample=normal)
@@ -441,7 +448,7 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
             audit=[x for x in audit if x['kind']!='somatic']
         row={'sample':sample,'input_bam':str(Path(bam).resolve()),'status':'queued',
              'sample_role':(sample_statuses or {}).get(sample,'unknown'),'output':str(sample_root),
-             'reused_calls':audit,'callers':[],'threads':allocation['threads_per_sample'],'memory':allocation['memory_per_sample']}
+             'reused_calls':audit,'callers':[],'threads':params['threads'],'memory':params['memory']}
         status['samples'].append(row)
         launch=root/'launch'/sample;launch.mkdir(parents=True,exist_ok=True)
         for key in ('python','llm_python','llm_model'):
@@ -500,6 +507,15 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
             try:
                 atomic_write_json(params_path,params)
                 if stop.is_set():raise _SampleCancelled('Stopped before launching sample')
+                runtime_path=sample_root/'pipeline_info/runtime.json'
+                reused = completed_export(sample_root, previous_rows.get(sample, {}),
+                    previous_runtimes.get(sample, {}), json.loads(runtime_path.read_text()),
+                    row.get('reuse_validation')) if runtime_path.is_file() else None
+                if reused is not None and resolved_ffpe is None:
+                    paths=sorted((sample_root/'imputation').rglob('*.imputed.bcf'))
+                    if paths:
+                        return {**result,'status':'complete','annotated_vcf':str(reused),
+                                'reused_completed_workflow':True},reused,paths
                 with (launch/'nextflow.log').open('a') as log:
                     child_env = sample_runner.child_environment() if isinstance(sample_runner, CommandRunner) else os.environ
                     prepared=getattr(tools,'nextflow_environment',{})
@@ -561,7 +577,9 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
             try:
                 status['cohort']=_cohort(request,exports,root,tools,reference,allocation['total_threads'],imputed,sample_statuses,runner,stop)
                 status['cohort']['sample_roles']=sample_statuses or {};status['cohort_status']='complete'
-            except (OSError,ValueError,subprocess.SubprocessError,OncoTracerError,RuntimeError) as error:status['cohort_error']=str(error)
+            except (OSError,ValueError,subprocess.SubprocessError,OncoTracerError,RuntimeError) as error:
+                status['cohort_status']='interrupted' if stop.is_set() else 'failed'
+                status['cohort_error']=str(error)
         status['overall_status']='interrupted' if stop.is_set() else 'partial_failure' if status.get('cohort_error') or status['failed_samples'] and exports else 'failed' if status['failed_samples'] else 'complete'
     except (_SampleCancelled,KeyboardInterrupt):
         stop.set();status['overall_status']='interrupted'

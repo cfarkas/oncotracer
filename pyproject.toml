@@ -1,6 +1,6 @@
 [project]
 name = "oncotracer"
-version = "2.3.1rc1"
+version = "2.3.1rc2"
 description = "Native, auditable LP-WGS CNA analysis for Illumina and Oxford Nanopore data"
 authors = [{ name = "OncoTracer developers" }]
 readme = "PYPI_README.md"

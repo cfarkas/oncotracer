@@ -9,7 +9,7 @@ Analyze Illumina and Oxford Nanopore (ONT) copy-number changes and small variant
 Use Linux and Python 3.10–3.13. Install the application in your Python environment:
 
 ```bash
-python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.3.0-rc.1/oncotracer-2.3.0-py3-none-any.whl"
+python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.3.1-rc.2/oncotracer-2.3.1rc2-py3-none-any.whl"
 ```
 
 This **GitHub preview** is not a stable scientific-parity release; frozen CNA parity remains unresolved. `pip install oncotracer` installs the separately published PyPI 2.1.0 without these updates. Choose **one** backend:
@@ -29,7 +29,7 @@ oncotracer --interactive --backend conda
 With Docker running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.3.0-rc.1
+oncotracer install --docker --image carlosfarkas/oncotracer:2.3.1-rc.2
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
@@ -37,6 +37,8 @@ oncotracer --interactive --backend docker
 The image is saved for later commands. See [installation](docs/installation.md) and [FFPE/ONT resources](docs/variants.md). Use Conda for ONT methylation.
 
 Before setup, `oncotracer --detect-resources` (also `--detect_resources`) suggests [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) from this machine's CPU/RAM; choose the combination in new setup or **Review and run** for continuation.
+
+The [2.3.1rc2 maintenance preview](docs/releases/2.3.1rc2.md) fixes ClinVar cohort provenance and reuses verified completed workflows across application updates.
 
 Optional [QUILT2 imputation for ONT](docs/ont_imputation.md) provides research evidence alongside observed calls. Automated haplotype assessment was removed in 2.3.1rc1; [standalone experimental linkage](docs/haplotype_evidence.md) is separate from production runs.
 
@@ -123,7 +125,7 @@ oncotracer uninstall --conda --yes --purge
 **Docker image:** remove the selected image/tag:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:2.3.0-rc.1
+docker image rm carlosfarkas/oncotracer:2.3.1-rc.2
 ```
 
 This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Image layers may remain.

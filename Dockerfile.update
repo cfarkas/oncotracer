@@ -15,7 +15,7 @@ RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str
 
 COPY . /opt/oncotracer/
 RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
-    && python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_variant_postcalling -q \
+    && python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_variant_postcalling tests.test_glimpse_joint tests.test_glimpse_resume -q \
     && python -B scripts/build_native_binary.py --root /opt/oncotracer \
        --output /tmp/oncotracer-update --source-commit "${SOURCE_COMMIT}" --source-sha256 "${SOURCE_SHA256}" \
     && install -m 0755 /tmp/oncotracer-update /usr/local/bin/oncotracer \
@@ -23,7 +23,7 @@ RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
     && oncotracer provenance --json \
     && nextflow -version
 
-LABEL org.opencontainers.image.version="2.3.1rc1" \
+LABEL org.opencontainers.image.version="2.3.1rc2" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
       org.opencontainers.image.source.sha256="${SOURCE_SHA256}"
 

@@ -60,7 +60,11 @@ print(json.dumps({'bundle':str(bundle), 'main_exists':(bundle/'main.nf').is_file
             first = invoke()
             self.assertTrue(first['main_exists']); self.assertTrue(first['launch_exists'])
             self.assertEqual(first['nextflow'], '/fixture/nextflow')
-            self.assertEqual(first['digest'], hashlib.sha256((ROOT/'oncotracer_cli/glimpse_joint.py').read_bytes()).hexdigest())
+            digest = hashlib.sha256()
+            for name in ('glimpse_joint.py', 'clinvar_identity.py'):
+                digest.update(name.encode())
+                digest.update((ROOT/'oncotracer_cli'/name).read_bytes())
+            self.assertEqual(first['digest'], digest.hexdigest())
             bundle = Path(first['bundle'])
             self.assertEqual(bundle, root/'cache/oncotracer_cli/lpwgs')
             original = (bundle/'main.nf').read_bytes()

@@ -1,5 +1,7 @@
 """Real two-sample VCF fixtures exercising missingness and allele evidence."""
 from pathlib import Path
+import gzip
+import hashlib
 import os
 import shutil
 import tempfile
@@ -25,9 +27,11 @@ class GlimpseJointTests(unittest.TestCase):
         self.reference.write_text('>chr1\n' + 'A' * 300 + '\n>chr2\n' + 'C' * 200 + '\n')
         pysam.faidx(str(self.reference))
 
-    def vcf(self, sample, rows, *, sample_info=False, imputed=False, length=300, reverse_header=False):
+    def vcf(self, sample, rows, *, sample_info=False, imputed=False, length=300, reverse_header=False, clinvar_sha=None):
         path = self.root / (sample + ('.imputed' if imputed else '.input') + '.vcf.gz')
         header = pysam.VariantHeader()
+        if clinvar_sha:
+            header.add_meta('LPWGSClinVarSHA256', value=clinvar_sha)
         for chrom, size in ([('chr2', 200), ('chr1', length)] if reverse_header else [('chr1', length), ('chr2', 200)]):
             header.contigs.add(chrom, length=size)
         header.formats.add('GT', 1, 'String', 'Genotype')
@@ -74,9 +78,59 @@ class GlimpseJointTests(unittest.TestCase):
         pysam.tabix_index(str(path), preset='vcf', force=True)
         return path
 
-    def merge(self, paths, imputed=None, roles=None, exclusions=None):
+    def merge(self, paths, imputed=None, roles=None, exclusions=None, clinvar=None):
         return merge_cohort(paths, self.root / 'cohort', BCFTOOLS, self.reference,
-                            imputed_by_sample=imputed, sample_roles=roles, population_excluded_samples=exclusions)
+                            imputed_by_sample=imputed, sample_roles=roles, population_excluded_samples=exclusions,
+                            clinvar_by_sample=clinvar)
+
+    def clinvar(self, name, *, annotation='Pathogenic', date='20261025', history='first'):
+        path = self.root / (name + '.clinvar.vcf.gz')
+        with gzip.open(path, 'wt') as stream:
+            stream.write('##fileformat=VCFv4.2\n##fileDate=' + date + '\n'
+                         '##bcftools_normVersion=1.23.1\n##bcftools_normCommand=norm -f ref.fa; Date=' + history + '\n'
+                         '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n'
+                         'chr1\t10\t1\tA\tG\t.\t.\tCLNSIG=' + annotation + '\n')
+        return path, hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def test_clinvar_history_differences_merge_only_with_verified_content(self):
+        ca, ha = self.clinvar('A', history='Monday')
+        cb, hb = self.clinvar('B', history='Tuesday')
+        a = self.vcf('A', [('chr1', 10, 'A', 'G', (0, 1))], clinvar_sha=ha)
+        b = self.vcf('B', [('chr1', 10, 'A', 'G', (1, 1))], clinvar_sha=hb)
+        original = {p: p.read_bytes() for p in (a, b, ca, cb)}
+        with self.assertRaisesRegex(ValueError, 'LPWGSClinVarSHA256'):
+            self.merge({'A': a, 'B': b})
+        manifest = self.merge({'A': a, 'B': b}, clinvar={'A': ca, 'B': cb})
+        proof = manifest['inputs']['clinvar_provenance']
+        self.assertEqual(proof['samples']['A']['content_sha256'], proof['samples']['B']['content_sha256'])
+        self.assertNotEqual(proof['samples']['A']['raw_sha256'], proof['samples']['B']['raw_sha256'])
+        with pysam.VariantFile(manifest['outputs']['all_evidence']) as stream:
+            header = str(stream.header)
+            self.assertIn('##LPWGSClinVarContentSHA256=', header)
+            self.assertIn(ha, header)
+            self.assertIn(hb, header)
+            self.assertNotIn('##LPWGSClinVarSHA256=', header)
+        self.assertTrue(self.merge({'A': a, 'B': b}, clinvar={'A': ca, 'B': cb})['reused'])
+        for path, data in original.items():
+            self.assertEqual(path.read_bytes(), data)
+        # A corrupted resource must fail even when a completed cohort cache exists.
+        cb.write_bytes(cb.read_bytes() + b'changed')
+        with self.assertRaisesRegex(ValueError, 'does not match'):
+            self.merge({'A': a, 'B': b}, clinvar={'A': ca, 'B': cb})
+
+    def test_clinvar_release_annotations_and_wrong_source_are_rejected(self):
+        ca, ha = self.clinvar('A')
+        a = self.vcf('A', [('chr1', 10, 'A', 'G', (0, 1))], clinvar_sha=ha)
+        for change in ({'annotation': 'Benign'}, {'date': '20261026'}):
+            cb, hb = self.clinvar('B', **change)
+            b = self.vcf('B', [('chr1', 10, 'A', 'G', (0, 1))], clinvar_sha=hb)
+            with self.assertRaisesRegex(ValueError, 'Incompatible ClinVar'):
+                self.merge({'A': a, 'B': b}, clinvar={'A': ca, 'B': cb})
+            with self.assertRaisesRegex(ValueError, 'does not match'):
+                self.merge({'A': a, 'B': b}, clinvar={'A': ca, 'B': ca})
+        self.assertFalse((self.root / 'cohort/cohort.manifest.json').exists())
+        with self.assertRaisesRegex(ValueError, 'every cohort sample'):
+            self.merge({'A': a, 'B': b}, clinvar={'A': ca})
 
     def records(self, manifest, kind='all_evidence'):
         with pysam.VariantFile(manifest['outputs'][kind]) as reader:
@@ -114,6 +168,24 @@ class GlimpseJointTests(unittest.TestCase):
         self.assertEqual(population['chr1', 20, 'A', ('T',)].samples['B']['DS'], (1.0,))
         self.assertTrue(Path(manifest['outputs']['all_evidence'] + '.tbi').is_file())
         self.assertTrue(self.merge({'B': b, 'A': a})['reused'])
+
+    def test_caller_and_clinvar_gene_annotations_remain_sample_specific(self):
+        a = self.vcf('A', [('chr1', 10, 'A', 'G', (0, 1))])
+        b = self.vcf('B', [('chr1', 10, 'A', 'G', (1, 1))])
+        for path, annotation in ((a, 'ISG15%3A9636'), (b, 'ISG15')):
+            with pysam.VariantFile(str(path)) as reader:
+                header = reader.header.copy()
+                record = next(reader).copy()
+            record.info['ANN_GENE'] = annotation
+            with pysam.VariantFile(str(path), 'wz', header=header) as writer:
+                writer.write(record)
+            pysam.tabix_index(str(path), preset='vcf', force=True)
+        manifest = self.merge({'A': a, 'B': b})
+        record = next(iter(self.records(manifest).values()))
+        self.assertNotIn('ANN_GENE', record.info)
+        self.assertEqual(record.samples['A']['ANN_GENE'], 'ISG15%3A9636')
+        self.assertEqual(record.samples['B']['ANN_GENE'], 'ISG15')
+        self.assertEqual(record.info['CLNSIG'], ('Pathogenic',))
 
     def test_backfill_requires_exact_allele_quality_and_never_overrides_existing_hold(self):
         a = self.vcf('A', [('chr1', 10, 'A', 'G', (0, 1)), ('chr1', 20, 'A', 'G', (0, 1)),

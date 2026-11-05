@@ -136,6 +136,22 @@ class ParallelSamplesTests(ResourceFixtureCase):
         self.assertEqual(result['failed_samples'],['SAMPLE_B'])
         self.assertEqual(len(result['completed_samples']),2);cohort.assert_not_called()
 
+    def test_cohort_failure_publishes_failed_status_and_retains_sample_success(self):
+        owner = self
+        class Runner:
+            def run(self, stage, command, **kwargs):
+                owner.complete(command)
+        tools = ReadyTools({'nextflow':'nextflow','bcftools':'bcftools'}, {})
+        with patch.object(pipeline, 'preflight', return_value=tools), \
+             patch.object(pipeline, 'preflight_jobs', return_value=[]), \
+             patch.object(pipeline, 'ensure_resources'), \
+             patch('oncotracer_cli.glimpse_joint.merge_cohort', side_effect=ValueError('different release')):
+            result = pipeline.run(self.request, self.bams, self.reference, self.root/'output', Runner(), None, threads=8)
+        self.assertEqual(result['cohort_status'], 'failed')
+        self.assertEqual(result['overall_status'], 'partial_failure')
+        self.assertEqual(len(result['completed_samples']), 3)
+        self.assertEqual(result['cohort_error'], 'different release')
+
     def test_sigterm_prevents_queued_launches_and_restores_signal_handlers(self):
         owner=self;barrier=threading.Barrier(2);launched=[];lock=threading.Lock()
         before=signal.getsignal(signal.SIGTERM)

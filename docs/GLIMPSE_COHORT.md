@@ -8,7 +8,33 @@
 
 This is a merge of independently called genotypes, not joint variant calling. An absent record stays missing. It never becomes `0/0` just because another sample has an alternate allele. Optional full GLIMPSE chromosome files can fill an absent record only at the exact chromosome, position, reference and alternate allele, with a valid called-genotype posterior of at least 0.90 and imputation INFO of at least 0.80. Existing unresolved, somatic and FFPE decisions are never overwritten. Off-panel sites remain missing.
 
-All records are normalized against the same indexed reference. Multiallelic records are separated by alternate allele, with other alternate copies represented as missing. Thus a phased `1|2` at REF=A, ALT=G,T becomes `1|.` for A>G and `.|1` for A>T. These are allele-specific rows, not a reconstructed multiallelic genotype. Primary phase, carrier interpretation and evidence remain sample-specific FORMAT fields. ClinVar and available functional annotations stay in INFO. Conflicting common annotations, incompatible reference dictionaries, duplicate sample identities and duplicate normalized alleles fail explicitly.
+All records are normalized against the same indexed reference. Multiallelic records are separated by alternate allele, with other alternate copies represented as missing. Thus a phased `1|2` at REF=A, ALT=G,T becomes `1|.` for A>G and `.|1` for A>T. These are allele-specific rows, not a reconstructed multiallelic genotype. Primary phase, carrier interpretation and evidence remain sample-specific FORMAT fields. Shared ClinVar annotations stay in INFO. The available caller or imputation annotations in `ANN_*` remain sample-specific FORMAT fields: one sample can have a caller gene symbol while another has a ClinVar gene/ID fallback for the same allele. Neither value replaces the other. Conflicting common annotations, incompatible reference dictionaries, duplicate sample identities and duplicate normalized alleles fail explicitly.
+
+Since 2.3.1rc2, cohort construction can verify equivalent ClinVar normalization
+files whose compressed-file hashes differ because bcftools recorded different
+command timestamps or paths. The original `LPWGSClinVarSHA256` in each sample
+VCF must match the actual retained normalization file. A separate content hash
+then compares all decompressed bytes except `##bcftools_*Command=` header lines.
+Release metadata, field definitions, tool versions and every annotation record
+remain part of this comparison. A different release, changed annotation, missing
+proof or checksum mismatch still stops the merge.
+
+The cohort header records `LPWGSClinVarContentSHA256`, its versioned policy, and
+each sample's original raw checksum in `OncoTracerClinVarSource`. The manifest
+retains source paths, raw/content hashes, record counts and excluded command
+headers. Sample VCFs and their original provenance are never rewritten. The
+controller locates normalization files from completed chromosome annotation
+receipts. Direct Python callers can provide `clinvar_by_sample={sample: path}`;
+without this evidence the strict raw-checksum comparison remains in force.
+
+Maintenance continuation retains an old bundled workflow path only when its
+complete code/data inventory is byte-identical to the newly installed bundle.
+It may retain an earlier smaller memory cap within the current allocation.
+Previously completed sample workflows can bypass rerunning Nextflow only after
+normal resume preflight passes, the full runtime is unchanged, and the final VCF
+checksum and runtime-bound completion summary validate. Interrupted workflows
+continue through the usual per-stage checks. A cohort error is now explicitly
+reported as `cohort_status: failed` with overall `partial_failure`.
 
 The population VCF requires `EVCLASS=germline_supported` and `FT=PASS`. `GFACCEPT=0`, `GFRESCUE=1` or `GFPOP=0` also masks the sample genotype. FFPE/imputation rescue candidates remain in the complete audit VCF and require confirmation before population inclusion. `AC`, `AN`, `AF`, `NS` and `N_MISSING` are recalculated from the retained primary genotypes. `AF` describes called alleles in this selected cohort, not an ancestry-calibrated population frequency. Missing and partial genotypes require appropriate downstream QC.
 
