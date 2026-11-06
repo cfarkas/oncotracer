@@ -32,8 +32,9 @@ def variant_form(*, existing_bam=False):
 {preservation_controls}
 <p id="{note}" class="hint" role="status">Choose Fresh or FFPE from your specimen records.</p>
 <div id="variant-glimpse-settings" hidden>
-<p class="notice"><strong>Complete GLIMPSE2 analysis</strong> · Sequencing calls, mandatory germline imputation, ClinVar and available ANNOVAR annotation, traits, polygenic scores, ancestry, homozygosity, interpretation reports and an annotated cohort VCF. Available completed work is verified before reuse.</p>
+<p class="notice"><strong>Complete GLIMPSE2 analysis</strong> · Sequencing calls, mandatory germline imputation, ClinVar and available ANNOVAR annotation, traits, polygenic scores, ancestry, homozygosity, interpretation reports and annotated sample VCFs. Available completed work is verified before reuse.</p>
 <p class="hint">Imputation adds germline evidence. Absence from the reference panel does not establish somatic origin. FFPE damage flags remain visible, including when imputation supports the allele.</p>
+<label for="variant_merge_vcfs"><input id="variant_merge_vcfs" type="checkbox" checked> Merge sample VCFs into cohort VCFs</label><p class="hint">Optional cohort export. Per-sample annotated VCFs and reports are produced with either choice.</p>
 {path_field('variant_patients', 'Patient metadata TSV (optional)', kind='asset', detect=False, placeholder='sample, name, age and sex; unknown age/sex allowed', hint='Match sample identifiers exactly. Provide name, age or birth year and sex when known; samples with missing metadata are included.')}
 <label for="variant_confidence_gwas">Trait and GWAS confidence</label><select id="variant_confidence_gwas"><option value="strict">Strict · stronger genotype evidence</option><option value="medium" selected>Medium · include labeled moderate-confidence results</option><option value="exploratory">Exploratory · include labeled low-confidence results</option></select><p class="hint">This setting changes trait/GWAS reporting only. Clinical evidence and polygenic-score filters retain their own requirements.</p>
 </div>

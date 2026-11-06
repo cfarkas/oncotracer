@@ -3816,6 +3816,7 @@ def run_native(
     root: Path | None = None,
     threads: int | None = None,
     parallel_samples: int | None = None,
+    merge_vcfs: bool | None = None,
     force: bool | None = None,
     dry_run: bool = False,
     methylation: bool | None = None,
@@ -3831,6 +3832,7 @@ def run_native(
         root=root,
         threads=threads,
         parallel_samples=parallel_samples,
+        merge_vcfs=merge_vcfs,
         force=force,
         dry_run=dry_run,
         methylation=methylation,
@@ -3852,6 +3854,7 @@ def _run_native_impl(
     root: Path | None,
     threads: int | None,
     parallel_samples: int | None,
+    merge_vcfs: bool | None,
     force: bool | None,
     dry_run: bool,
     methylation: bool | None,
@@ -3888,6 +3891,8 @@ def _run_native_impl(
         from .sample_resources import parallel_value
         config["parallel_samples"] = parallel_value(parallel_samples)
         config["variant_parallel_samples"] = parallel_value(parallel_samples)
+    if merge_vcfs is not None:
+        config["variant_merge_vcfs"] = merge_vcfs
     _reject_local_sample_panel(config)
     if methylation_only is not None:
         config["methylation_only"] = methylation_only
@@ -3950,6 +3955,7 @@ def _run_native_impl(
                 root=execution_root,
                 threads=threads,
                 parallel_samples=parallel_samples,
+                merge_vcfs=merge_vcfs,
                 force=force,
                 dry_run=False,
                 methylation=methylation,

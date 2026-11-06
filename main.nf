@@ -33,6 +33,14 @@ workflow {
         if (selectedFlag(params.dry_run, 'dry_run')) argv.add('--dry-run')
         if (selectedFlag(params.gpu, 'gpu')) argv.add('--gpu')
         if (selectedFlag(params.cpu, 'cpu')) argv.add('--cpu')
+        def mergeVcfs = params.containsKey('mergeVcfs') ? params.mergeVcfs : params.merge_vcfs
+        def noMergeVcfs = params.containsKey('noMergeVcfs') ? params.noMergeVcfs : params.no_merge_vcfs
+        if (selectedFlag(noMergeVcfs, 'no_merge_vcfs')) {
+            if (mergeVcfs != null) throw new IllegalArgumentException('Choose either --merge_vcfs or --no_merge_vcfs')
+            argv.add('--no-merge-vcfs')
+        } else if (mergeVcfs != null) {
+            argv.add(selectedFlag(mergeVcfs, 'merge_vcfs') ? '--merge-vcfs' : '--no-merge-vcfs')
+        }
         def gpuWaitHours = params.containsKey('gpuWaitHours') ? params.gpuWaitHours : params.gpu_wait_hours
         if (gpuWaitHours != null) argv.addAll(['--gpu-wait-hours', gpuWaitHours.toString()])
         ['config', 'start_dir', 'backend', 'threads', 'parallel_samples', 'project', 'input_folder',

@@ -323,7 +323,7 @@ VARIANT_RESOURCE_FIELDS = (
     "variant_varlociraptor_scenario", "variant_quilt2_reference_dir", "variant_quilt2_cache",
 )
 VARIANT_ASSESSMENT_FIELDS = ("variant_ffperase", "variant_varlociraptor", "variant_varlociraptor_fdr", "variant_varlociraptor_events", "variant_varlociraptor_sample")
-VARIANT_BOOLEAN_FIELDS = ("variant_download_resources", "variant_accept_ffperase_license", "variant_monte_carlo_linkage")
+VARIANT_BOOLEAN_FIELDS = ("variant_merge_vcfs", "variant_download_resources", "variant_accept_ffperase_license", "variant_monte_carlo_linkage")
 VARIANT_GLIMPSE_FIELDS = (
     "variant_engine", "variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir",
     "variant_parallel_samples", "variant_memory", "variant_confidence_gwas", "variant_patients", "variant_reuse_from", "variant_nextflow", "variant_workflow_source",
@@ -350,10 +350,17 @@ def _glimpse_variant_values(args, specimen: str, *, interactive: bool) -> dict[s
             raise OncoTracerError("Variant callers for illumina: " + ", ".join(VARIANT_CALLERS_BY_MODE["illumina"]))
         if len(selected) != len(set(selected)):
             raise OncoTracerError("Choose each variant caller only once.")
-    print("Illumina short variants: complete Nextflow workflow with mandatory GLIMPSE2, germline and somatic evidence, annotation, reports and a cohort VCF.")
+    print("Illumina short variants: complete Nextflow workflow with mandatory GLIMPSE2, germline and somatic evidence, annotation and per-sample reports; cohort VCF merging is optional.")
     values = {"run_variants": True, "variant_engine": "glimpse2", "variant_specimen_type": specimen,
               "variant_callers": "bcftools,mutect2", "variant_annovar": "auto", "variant_varlociraptor": "off",
               "variant_ffperase": "required" if specimen == "ffpe" else "off"}
+    merge = getattr(args, "variant_merge_vcfs", None)
+    if merge is not None and type(merge) is not bool:
+        raise OncoTracerError("variant_merge_vcfs must be true or false")
+    values["variant_merge_vcfs"] = _ask(
+        None if merge is None else ("yes" if merge else "no"),
+        "Merge sample VCFs into cohort VCFs? (--merge-vcfs / --no-merge-vcfs)",
+        default="yes", choices=("yes", "no"), interactive=interactive) == "yes"
     parallel = getattr(args, "variant_parallel_samples", None)
     parallel = parallel_value(parallel if parallel is not None else 'auto')
     values["variant_parallel_samples"] = parallel
@@ -1325,6 +1332,8 @@ def add_setup_commands(subparsers) -> None:
         help="single Illumina library status (default: tumor)",
     )
     variant = parser.add_argument_group("Optional native small-variant calling")
+    from .cohort_options import add_arguments as add_cohort_arguments
+    add_cohort_arguments(variant)
     variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=parallel_argument, help="simultaneous alignment/variant samples: auto recommends a fit; a positive integer overrides resource recommendations (may exhaust memory)")
     variant.add_argument("--variant-memory", help="total memory budget across concurrent samples, or auto (detected at Run)")
     variant.add_argument('--variant-monte-carlo-linkage','--monte-carlo-linkage',action='store_true',default=None,

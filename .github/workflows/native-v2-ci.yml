@@ -63,6 +63,7 @@ jobs:
           python3 -m unittest -v \
             tests/test_bootstrap.py \
             tests/test_native_cli.py \
+            tests/test_optional_cohort.py \
             tests/test_nextflow_gateway.py \
             tests/test_nextflow_runtime.py \
             tests/test_native_engine.py \
@@ -171,7 +172,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/outside-checkout"
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
-          ./oncotracer --version | grep -F 'OncoTracer 2.3.0'
+          ./oncotracer --version | grep -F 'OncoTracer 2.3.1rc3'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA and variant analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
@@ -240,7 +241,7 @@ jobs:
           python3 -m pip install 'poetry>=2,<3'
           poetry check --lock
           poetry install --no-interaction
-          poetry run oncotracer --version | grep -F 'OncoTracer 2.3.0'
+          poetry run oncotracer --version | grep -F 'OncoTracer 2.3.1rc3'
       - name: Verify GPU controls in Firefox without starting analysis
         run: |
           python3 -m pip install playwright
@@ -560,7 +561,7 @@ jobs:
             "$RUNNER_TEMP/docker-installed-doctor.json"
       - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
-          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.3.0'
+          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.3.1rc3'
           docker run --rm oncotracer:v2-ci provenance --json \
             | tee "$RUNNER_TEMP/docker-provenance.json"
           jq -e \

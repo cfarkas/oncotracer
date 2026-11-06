@@ -48,6 +48,49 @@ class ParallelSamplesTests(ResourceFixtureCase):
         chromosome.parent.mkdir(parents=True,exist_ok=True);chromosome.write_bytes(b'BCF fixture')
         return params
 
+    def test_merge_choice_can_be_disabled_reenabled_and_disabled_on_resume(self):
+        captured = []
+        class Runner:
+            def run(inner, stage, command, **kwargs):
+                captured.append(ParallelSamplesTests.complete(command))
+        output = self.root/'output'
+        old_cohort = output/'08_variants/glimpse2/cohort/previous.vcf.gz'
+        for enabled in (False, True, False):
+            with self.subTest(enabled=enabled):
+                self.request = replace(self.request, glimpse_config={**self.request.glimpse_config, 'merge_vcfs':enabled})
+                status, bootstrap, cohort = self.run_pipeline(Runner())
+                self.assertEqual(status['overall_status'], 'complete')
+                self.assertEqual(set(status['completed_samples']), set(self.bams))
+                self.assertEqual(status['cohort_status'], 'complete' if enabled else 'skipped')
+                self.assertEqual(cohort.call_count, int(enabled))
+                self.assertEqual('cohort-vcf-merge' in status['requested']['stages'], enabled)
+                self.assertTrue(all(Path(row['annotated_vcf']).is_file() for row in status['samples']))
+                if enabled:
+                    old_cohort.parent.mkdir(exist_ok=True)
+                    old_cohort.write_bytes(b'previous completed merge')
+                else:
+                    page=(output/'08_variants/glimpse2/START_HERE.html').read_text()
+                    self.assertIn('Fusión de VCF desactivada', page)
+                    self.assertNotIn('previous.vcf.gz', page)
+                    self.assertNotIn('cohort', status)
+        self.assertEqual(old_cohort.read_bytes(), b'previous completed merge')
+        self.assertTrue(all('merge_vcfs' not in params for params in captured))
+        by_sample={sample:[p for p in captured if p['sample']==sample] for sample in self.bams}
+        self.assertTrue(all(rows[0]==rows[1]==rows[2] for rows in by_sample.values()))
+
+    def test_disabled_merge_keeps_sample_failure_visible(self):
+        self.request=replace(self.request, glimpse_config={**self.request.glimpse_config,'merge_vcfs':False})
+        class Runner:
+            def run(inner, stage, command, **kwargs):
+                if stage.endswith('SAMPLE_B'):
+                    raise OncoTracerError('sample computation failed')
+                ParallelSamplesTests.complete(command)
+        status, bootstrap, cohort=self.run_pipeline(Runner())
+        self.assertEqual(status['overall_status'],'partial_failure')
+        self.assertEqual(status['failed_samples'],['SAMPLE_B'])
+        self.assertEqual(status['cohort_status'],'skipped')
+        cohort.assert_not_called()
+
     def test_default_validation_and_total_budget(self):
         self.assertEqual(pipeline.validate_options({})['parallel_samples'],'auto')
         for value in (False,True,0,-1,1.5,'2.0','zero',None):

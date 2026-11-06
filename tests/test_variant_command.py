@@ -56,6 +56,19 @@ class VariantCommandTests(unittest.TestCase):
                 execute_run(self.config,args)
             self.assertFalse(self.outdir.exists())
 
+    def test_merge_override_changes_plan_without_rewriting_config(self):
+        for configured, flag, expected in [(True,'--no-merge-vcfs',False),(False,'--merge-vcfs',True)]:
+            with self.subTest(configured=configured):
+                self.save(variant_merge_vcfs=configured)
+                before=self.config.read_bytes()
+                code, output=self.cli('--dry-run',flag)
+                self.assertEqual(code,0,output)
+                plan=json.loads(output)['variants']
+                self.assertEqual(plan['cohort_merge_enabled'],expected)
+                self.assertEqual('cohort-vcf-merge' in plan['stages'],expected)
+                self.assertEqual(self.config.read_bytes(),before)
+                self.assertFalse(self.outdir.exists())
+
     def test_dry_run_resolves_relative_paths_without_tools_or_writes(self):
         before = {str(p.relative_to(self.root)):p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
         with patch.object(variant_command, 'preflight_variant_tools', side_effect=AssertionError('dry-run executed tool discovery')):
