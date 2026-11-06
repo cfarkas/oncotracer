@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:2.3.1-rc.2"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:2.3.1-rc.3"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -476,6 +476,7 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
                 root=Path(args.root).expanduser().resolve() if args.root else None,
                 threads=args.threads,
                 parallel_samples=getattr(args, "parallel_samples", None),
+                merge_vcfs=getattr(args, "variant_merge_vcfs", None),
                 force=args.force if args.force else None,
                 dry_run=args.dry_run,
                 methylation=args.methylation,
@@ -584,6 +585,8 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--threads", str(args.threads)])
     if getattr(args, "parallel_samples", None) is not None:
         command.extend(["--parallel-samples", str(args.parallel_samples)])
+    if getattr(args, "variant_merge_vcfs", None) is not None:
+        command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
     if args.force:
         command.append("--force")
     if args.methylation:
@@ -664,6 +667,8 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--threads", str(args.threads)])
     if getattr(args, "parallel_samples", None) is not None:
         command.extend(["--parallel-samples", str(args.parallel_samples)])
+    if getattr(args, "variant_merge_vcfs", None) is not None:
+        command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
     if args.force:
         command.append("--force")
     if args.methylation:
@@ -1659,6 +1664,8 @@ def command_provenance(args: argparse.Namespace) -> int:
 
 
 def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
+    from .cohort_options import add_arguments as add_cohort_arguments
+    add_cohort_arguments(parser)
     from .gpu_runtime import add_wait_argument
     add_wait_argument(parser)
     parser.add_argument(

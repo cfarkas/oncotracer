@@ -27,7 +27,7 @@ from .runtime import CommandRunner, CommandResult, OncoTracerError, atomic_write
 SCHEMA='oncotracer-glimpse2-v1'
 MIN_SAMPLE_MEMORY_GB=32 # Complete workflow includes the default CPU float32 local LLM.
 BUNDLE=Path(__file__).parent/'lpwgs'
-OPTION_KEYS=('parallel_samples','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','confidence_gwas','patients','reuse_from','reference_reuse_from','nextflow','workflow_source','clinvar','memory','pgs_cache','ancestry_explorer_cache','literature_cache','llm_model','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites')
+OPTION_KEYS=('merge_vcfs','parallel_samples','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','confidence_gwas','patients','reuse_from','reference_reuse_from','nextflow','workflow_source','clinvar','memory','pgs_cache','ancestry_explorer_cache','literature_cache','llm_model','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites')
 PATH_KEYS={'workflow_source','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','patients','reuse_from','reference_reuse_from','clinvar','pgs_cache','ancestry_explorer_cache','literature_cache','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites'}
 
 
@@ -60,6 +60,10 @@ def validate_patient_table(path):
 
 def validate_options(config):
     result={key:config['variant_'+key] for key in OPTION_KEYS if config.get('variant_'+key) not in (None,'')}
+    merge = config.get('variant_merge_vcfs', True)
+    if type(merge) is not bool:
+        raise OncoTracerError('variant_merge_vcfs must be true or false')
+    result['merge_vcfs'] = merge
     confidence=result.setdefault('confidence_gwas','medium')
     if confidence not in {'strict','medium','exploratory'}:raise OncoTracerError('variant_confidence_gwas must be strict, medium or exploratory')
     for key in PATH_KEYS & result.keys():
@@ -78,10 +82,11 @@ def validate_options(config):
 
 def plan(request):
     return {**request.as_dict(),'engine':'nextflow-glimpse2','nextflow_used':True,'glimpse2_required':True,
+        'cohort_merge_enabled':(request.glimpse_config or {}).get('merge_vcfs',True),
         'stages':['reuse-validated-bams','germline-and-somatic-candidates','glimpse2-reference-phase-ligate',
                   'clinvar-and-functional-annotation','germline-somatic-unconfirmed-evidence','traits-gwas-polygenic-models',
                   'ancestry-mitochondria-neanderthal','homozygosity-roh','cancer-and-cardiomyopathy',
-                  'literature-and-integrated-reports','annotated-vcf',*(['ffperase-and-evidence-adjudication'] if request.specimen_type=='ffpe' else []),'cohort-vcf-merge'],
+                  'literature-and-integrated-reports','annotated-vcf',*(['ffperase-and-evidence-adjudication'] if request.specimen_type=='ffpe' else []),*(['cohort-vcf-merge'] if (request.glimpse_config or {}).get('merge_vcfs',True) else [])],
         'execution':'Samples run in bounded parallel slots with isolated Nextflow caches. threads and variant_memory are total budgets divided across active slots.',
         'resource_policy':{'requested_parallel_samples':_positive_slots((request.glimpse_config or {}).get('parallel_samples','auto')), 'total_memory_gb':_memory_gb((request.glimpse_config or {}).get('memory','auto')), 'minimum_memory_gb_per_sample':MIN_SAMPLE_MEMORY_GB, 'minimum_reason':'The complete workflow includes local float32 LLM reporting as well as genomic analysis.', 'allocation':'Automatic mode checks CPU/cgroup and available RAM limits and prefers eight CPUs per sample with 32GiB each. Explicit numeric concurrency is honoured up to the sample count, even beyond recommended fits, with resource warnings. Each slot receives an equal share of the budget and at least one CPU thread.'},
         'interpretation':'Imputation supports germline hypotheses; it does not prove somatic origin or FFPE artifact status. Votes reuse sequencing evidence and are not independent tests.',
@@ -165,7 +170,7 @@ def sample_parameters(request,sample,bam,reference,output,resources,threads,veri
         'literature_cache':str(resources/'literature'),'clinvar':str(resources/'clinvar/clinvar_GRCh38.vcf.gz'),
         'min_mapping_quality':request.min_mapping_quality,'min_base_quality':request.min_base_quality}
     for key in OPTION_KEYS:
-        if key in options and key not in {'parallel_samples','analysis_reuse_from','reuse_from','nextflow','workflow_source','memory'}:params[key]=options[key]
+        if key in options and key not in {'merge_vcfs','parallel_samples','analysis_reuse_from','reuse_from','nextflow','workflow_source','memory'}:params[key]=options[key]
     if request.gpu_usage:
         from .gpu_runtime import native_prefix
         params['llm_python'] = str(native_prefix('gpu-reports') / 'bin/python')
@@ -237,6 +242,8 @@ def _page(root,status):
         rows.append(f'<tr><td>{html.escape(s["sample"])}</td><td>{html.escape(s["status"])}</td><td>{link}</td></tr>')
     cohort=status.get('cohort',{}).get('outputs',{})
     links=''.join(f'<li><a href="{html.escape(os.path.relpath(str(v),root),quote=True)}">{html.escape(k)}</a></li>' for k,v in cohort.items() if isinstance(v,str) and Path(v).is_file())
+    if status.get('cohort_status') == 'skipped':
+        links='<li>Fusión de VCF desactivada para esta ejecución. Los VCF y los informes individuales están disponibles en los resultados de cada muestra.</li>'
     allocation=status.get('resource_allocation',{})
     budget=('<p><strong>Muestras simultáneas: '+str(allocation.get('parallel_samples','1'))+' / solicitadas: '+str(allocation.get('requested_parallel_samples','1'))+'</strong> · '+str(allocation.get('threads_per_sample','?'))+' CPU y '+str(allocation.get('memory_gb_per_sample','?'))+' GB por muestra. Presupuesto total: '+str(allocation.get('total_threads','?'))+' CPU / '+str(allocation.get('total_memory_gb','?'))+' GB.</p>') if allocation else ''
     (root/'START_HERE.html').write_text('<!doctype html><html lang="es"><meta charset="utf-8"><title>OncoTracer · variantes</title><style>body{font:17px system-ui;max-width:1200px;margin:40px auto;padding:20px;color:#173c48}table{border-collapse:collapse;width:100%}td,th{padding:14px;border-bottom:1px solid #ddd;text-align:left}a{color:#006d77}</style><h1>OncoTracer · análisis completo de variantes</h1><p>GLIMPSE2, evidencia de lecturas, anotación, ascendencia y revisión de enfermedades. Los resultados de imputación no confirman origen somático.</p>'+budget+'<table><tr><th>Muestra</th><th>Estado</th><th>Resultados</th></tr>'+''.join(rows)+'</table><h2>VCF conjunto</h2><ul>'+links+'</ul><p>El archivo poblacional conserva genotipos faltantes y excluye por muestra evidencia somática o no confirmada. Es una fusión de llamadas, no joint calling.</p></html>')
@@ -435,6 +442,8 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
     status={'schema':SCHEMA,'engine':'nextflow-glimpse2','nextflow_used':True,'requested':plan(request),
             'resource_allocation':allocation,'started_at':utc_now(),'samples':[], 'completed_samples':[],
             'failed_samples':[],'interrupted_samples':[],'overall_status':'running','status_file':str(base/'variant_status.json')}
+    if not options.get('merge_vcfs', True):
+        status.update(cohort_status='skipped', cohort_skip_reason='Disabled by variant_merge_vcfs=false')
     jobs=[];exports={};imputed={};stop=threading.Event()
     for sample,bam in sorted(bams.items()):
         sample_root=root/'samples'/sample;sample_root.mkdir(parents=True,exist_ok=True)
@@ -572,7 +581,7 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
             for row in status['samples']:
                 if row['status']=='queued':row['status']='not_started';row['reason']='Analysis interrupted before a sample slot became available'
         # Full cohort only after every selected sample succeeds.
-        if not stop.is_set() and len(exports)==len(bams):
+        if not stop.is_set() and len(exports)==len(bams) and options.get('merge_vcfs',True):
             status['cohort_status']='running';publish()
             try:
                 status['cohort']=_cohort(request,exports,root,tools,reference,allocation['total_threads'],imputed,sample_statuses,runner,stop)

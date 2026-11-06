@@ -629,6 +629,7 @@ class WebState:
                                 "run_variants": config.get("run_variants", False),
                                 "variant_monte_carlo_linkage": False,
                                 "variant_ont_imputation": config.get("variant_ont_imputation","off"),
+                                "variant_merge_vcfs": config.get("variant_merge_vcfs", True),
                                 "methylation_classifier": config.get("methylation_classifier")}}}
             self.projects[project_id] = prepared
             return {key: value for key, value in prepared.items() if key not in

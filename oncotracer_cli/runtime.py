@@ -1154,7 +1154,7 @@ class StageLedger:
                 # failure retention, not any scientific stage contract. Keep
                 # the exact previous cache version; future versions invalidate
                 # normally unless separately reviewed for compatibility.
-                "version": {"2.3.1rc1": "2.3.0", "2.3.1rc2": "2.3.0"}.get(__version__, __version__),
+                "version": {"2.3.1rc1": "2.3.0", "2.3.1rc2": "2.3.0", "2.3.1rc3": "2.3.0"}.get(__version__, __version__),
             },
             sort_keys=True,
         )

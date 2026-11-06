@@ -61,3 +61,16 @@ Keep the generated caller and bin-size settings for your first run. Leave `force
 - For an individual advanced field, use the [parameter reference](configuration/parameter_reference.md).
 
 For CNA analysis, tumor and normal samples are analyzed independently; normal rows are not pooled into a reference. Somatic Strelka2 variant calling requires an explicit [tumor-to-normal pairing](variants_reference.md#strelka2-germline-and-somatic-calling).
+
+## Optional cohort VCF merge
+
+Illumina Fresh and FFPE analyses merge sample VCFs into cohort VCFs by default.
+Set `variant_merge_vcfs: false` to finish after the individual sample exports,
+or pass `--no-merge-vcfs` to `oncotracer run` or `oncotracer variants` for one
+invocation. `--merge-vcfs` enables it explicitly. Command-line choices override
+YAML without rewriting the file. All per-sample VCFs and reports are retained.
+
+Terminal setup prompts for the choice. Browser setup includes a **Merge sample
+VCFs into cohort VCFs** checkbox. For Nextflow, use `--merge_vcfs false` or
+`--no_merge_vcfs`; `--merge_vcfs true` enables the merge. The choice applies to
+cohort export only and does not disable GLIMPSE2 or sample annotation.

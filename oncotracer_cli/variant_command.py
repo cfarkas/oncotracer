@@ -174,6 +174,8 @@ def _command_variants(args) -> int:
     config = load_flat_yaml(config_path)
     if sha256_file(config_path) != digest:
         raise OncoTracerError("Variant configuration changed while being read")
+    if getattr(args, "variant_merge_vcfs", None) is not None:
+        config["variant_merge_vcfs"] = args.variant_merge_vcfs
     parallel_samples = getattr(args, "parallel_samples", None)
     if getattr(args, 'gpu', None) is not None:
         config['gpu_usage'] = args.gpu
@@ -301,6 +303,8 @@ def add_variants_command(subparsers) -> None:
     parser = subparsers.add_parser("variants", help="Call small variants from existing BAMs without repeating CNA/alignment")
     parser.add_argument("--config", required=True, help="flat YAML with mode, outdir, variant_bam_manifest, variant_reference and variant options")
     add_wait_argument(parser)
+    from .cohort_options import add_arguments as add_cohort_arguments
+    add_cohort_arguments(parser)
     parser.add_argument("--threads", type=int, help="total CPU budget shared across concurrent samples")
     parser.add_argument("--parallel-samples", type=parallel_argument, help="maximum concurrent samples: auto or a positive integer; total CPU/RAM budgets are shared")
     device = parser.add_mutually_exclusive_group()

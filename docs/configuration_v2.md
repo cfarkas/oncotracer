@@ -165,3 +165,16 @@ Use a new `outdir` and report every non-default setting. See [Advanced refinemen
 ## GPU selection
 
 `gpu_usage: true` enables supported GPU stages with shared reservations; `false` selects CPU. The browser writes this setting for both new and continued projects. `--gpu`/`--cpu` override it for a run. See [GPU setup and memory limits](gpu.md).
+
+## Optional cohort VCF merge
+
+Illumina Fresh and FFPE analyses merge sample VCFs into cohort VCFs by default.
+Set `variant_merge_vcfs: false` to finish after the individual sample exports,
+or pass `--no-merge-vcfs` to `oncotracer run` or `oncotracer variants` for one
+invocation. `--merge-vcfs` enables it explicitly. Command-line choices override
+YAML without rewriting the file. All per-sample VCFs and reports are retained.
+
+Terminal setup prompts for the choice. Browser setup includes a **Merge sample
+VCFs into cohort VCFs** checkbox. For Nextflow, use `--merge_vcfs false` or
+`--no_merge_vcfs`; `--merge_vcfs true` enables the merge. The choice applies to
+cohort export only and does not disable GLIMPSE2 or sample annotation.

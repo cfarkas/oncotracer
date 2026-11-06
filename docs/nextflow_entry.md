@@ -127,3 +127,15 @@ Illumina's primary variant controls are preservation, optional patient metadata 
 The confidence values are `strict`, `medium` (default), and `exploratory`. They apply to trait/GWAS reporting; they do not relax clinical-variant or polygenic-scoring requirements. Patient metadata can include sample identifiers, names, age or birth year and sex; missing age/sex does not exclude a sample.
 
 FFPE requires FFPERASE assessment and its existing resource/license checks. Imputation supplies additional germline evidence; absence from a reference panel does not establish somatic origin, and imputation support alone does not validate an artifact or a somatic mutation.
+
+## Choose whether to merge cohort VCFs
+
+```bash
+nextflow run main.nf --analysis full --config project/config/run.yml --merge_vcfs false
+nextflow run main.nf --interactive --no_merge_vcfs
+```
+
+Omit the option to use `variant_merge_vcfs` from YAML (enabled by default).
+Use `--merge_vcfs true` to request merging explicitly. The interactive choice
+can be changed in the browser before running. Per-sample VCFs and reports
+are produced with either choice.

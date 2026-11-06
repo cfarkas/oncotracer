@@ -118,6 +118,14 @@ class NextflowGatewayTests(unittest.TestCase):
             self.assertEqual(parse_arguments(argv[3:]).threads, 3)
         self.assertFalse((self.root / 'SHOULD_NOT_EXIST').exists())
 
+    def test_merge_choice_reaches_browser_variants_and_full_cli(self):
+        for flags in [('--interactive',), ('--analysis','variants','--config',self.config.name),
+                      ('--analysis','full','--config',self.config.name)]:
+            for flag,expected in [('--merge-vcfs',True),('--no-merge-vcfs',False)]:
+                with self.subTest(flags=flags,flag=flag):
+                    argv, _, _ = gateway.command(self.args(*flags,flag))
+                    self.assertIs(parse_arguments(argv[3:]).variant_merge_vcfs,expected)
+
     def test_parallel_sample_override_reaches_visual_variants_and_full_cli(self):
         for flags in [('--interactive',), ('--analysis','variants','--config',self.config.name),
                       ('--analysis','full','--config',self.config.name)]:
@@ -278,6 +286,18 @@ class NextflowGatewayTests(unittest.TestCase):
             self.assertEqual(parsed.input_folder, str(self.root / 'named ONT'))
             self.assertFalse(parsed.variants)
             self.assertFalse(parsed.run)
+        for flags, expected in [(['--merge_vcfs','false'],False),(['--merge-vcfs','false'],False),
+                                (['--merge_vcfs','true'],True),(['--no_merge_vcfs'],False)]:
+            choice=subprocess.run([*argv,'--interactive',*flags],cwd=self.root,env=env,text=True,capture_output=True,timeout=90)
+            self.assertEqual(choice.returncode,0,choice.stdout+choice.stderr)
+            parsed=parse_arguments(json.loads(record.read_text())['argv'][3:])
+            self.assertIs(parsed.variant_merge_vcfs,expected)
+        before=record.read_bytes()
+        conflict_choice=subprocess.run([*argv,'--interactive','--merge_vcfs','true','--no_merge_vcfs'],
+                                       cwd=self.root,env=env,text=True,capture_output=True,timeout=90)
+        self.assertNotEqual(conflict_choice.returncode,0)
+        self.assertIn('Choose either',conflict_choice.stdout+conflict_choice.stderr)
+        self.assertEqual(record.read_bytes(),before)
         before = record.read_bytes()
         conflict = subprocess.run([*argv, '--interactive', '--ont_named_samples', '--ffpe'],
                                   cwd=self.root, env=env, text=True, capture_output=True, timeout=90)
