@@ -793,7 +793,8 @@ def _execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
     if not args.dry_run and getattr(args, "command", None) != "internal-run":
         from .project_resume import has_recorded_outputs, resume_project, audit_intermediates, audit_summary
         if config_path.name == "run.yml" and config_path.parent.name == "config" and has_recorded_outputs(config_path.parent.parent):
-            result = resume_project(config_path.parent.parent, backend=getattr(args, "backend", None), image=getattr(args, "image", None))
+            with operation("Verifying saved project and installed environment", verbose=getattr(args, "verbose", False)):
+                result = resume_project(config_path.parent.parent, backend=getattr(args, "backend", None), image=getattr(args, "image", None))
             args.backend = result["backend"]
             with operation("Checking saved intermediate files", verbose=getattr(args, "verbose", False)):
                 audit = audit_intermediates(config_path.parent.parent)
