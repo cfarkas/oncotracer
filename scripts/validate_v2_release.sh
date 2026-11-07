@@ -769,6 +769,26 @@ run_stage \
   "$CONTEXT_DIR/nextflow-expected.txt"
 
 action_build_binary() {
+  # A changed environment fingerprint or failed verification invalidates this
+  # stage during --resume. Retain its previous artifacts before rebuilding;
+  # the standalone builder deliberately refuses to overwrite an existing file.
+  local artifact previous=""
+  local -a artifacts=(oncotracer oncotracer.provenance.json oncotracer.version.txt oncotracer.help.txt SHA256SUMS)
+  for artifact in "${artifacts[@]}"; do
+    if [[ -e "$RELEASE_CANDIDATE_DIR/$artifact" || -L "$RELEASE_CANDIDATE_DIR/$artifact" ]]; then
+      [[ -f "$RELEASE_CANDIDATE_DIR/$artifact" && ! -L "$RELEASE_CANDIDATE_DIR/$artifact" ]] ||
+        die "unexpected candidate artifact type: $RELEASE_CANDIDATE_DIR/$artifact"
+    fi
+  done
+  for artifact in "${artifacts[@]}"; do
+    if [[ -f "$RELEASE_CANDIDATE_DIR/$artifact" ]]; then
+      if [[ -z "$previous" ]]; then
+        previous="$RELEASE_CANDIDATE_DIR/previous.$SESSION_ID"
+        mkdir -- "$previous"
+      fi
+      mv -- "$RELEASE_CANDIDATE_DIR/$artifact" "$previous/$artifact"
+    fi
+  done
   python3 "$REPOSITORY_ROOT/scripts/build_native_binary.py" \
     --output "$BINARY" \
     --source-commit "$SOURCE_COMMIT" \
