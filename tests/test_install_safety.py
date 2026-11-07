@@ -23,7 +23,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from oncotracer_cli import cli, install_safety
+from oncotracer_cli import __version__, cli, install_safety
 from oncotracer_cli.runtime import OncoTracerError
 
 
@@ -32,7 +32,7 @@ ORIGINAL_ACTIVE_PROCESSES = install_safety._active_processes
 
 
 SOURCE = {
-    "oncotracer_version": "2.3.0",
+    "oncotracer_version": __version__,
     "source_commit": "a" * 40,
     "source_sha256": "b" * 64,
 }
@@ -100,6 +100,13 @@ def _snapshot(root: Path) -> dict[str, tuple[str, int, bytes]]:
 
 
 class InstallerSourceIdentityTests(unittest.TestCase):
+    def test_known_prior_installation_sources_remain_recognized(self):
+        for version in ("2.1.0", "2.3.0", "2.3.1rc2", "2.3.1", "2.3.2", __version__):
+            self.assertTrue(install_safety._valid_source({**SOURCE, "oncotracer_version": version}))
+        for version in ("1.1.0", "2.3.99", "4.0.0", None):
+            self.assertFalse(install_safety._valid_source({**SOURCE, "oncotracer_version": version}))
+        self.assertFalse(install_safety._valid_source({**SOURCE, "source_sha256": "invalid"}))
+
     def test_mutating_install_requires_matching_clean_source_identity(self) -> None:
         valid = {
             **SOURCE,
@@ -329,7 +336,7 @@ with zipfile.ZipFile(wheel, "w", zipfile.ZIP_DEFLATED) as archive:
     output=io.StringIO(newline="")
     csv.writer(output).writerows(rows)
     archive.writestr(record_name,output.getvalue().encode())
-""",
+""".replace("2.3.0", __version__),
         )
         self.apptainer = _write_executable(
             self.scratch / "fake-apptainer",
@@ -2415,9 +2422,9 @@ with mock.patch.object(install_safety, "_source_identity", return_value=source):
         code = r"""
 import pathlib, shutil, sys
 from unittest import mock
-from oncotracer_cli import cli, install_safety
+from oncotracer_cli import __version__, cli, install_safety
 source = {
-    "oncotracer_version": "2.3.0",
+    "oncotracer_version": __version__,
     "source_commit": "a" * 40,
     "source_sha256": "b" * 64,
 }

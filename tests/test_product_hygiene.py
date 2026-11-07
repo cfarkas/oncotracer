@@ -238,6 +238,22 @@ def python_nextflow_command_violations(relative: str, text: str) -> list[str]:
     return sorted(violations)
 
 
+# The owner explicitly requested these exact study commands and benchmark
+# destination on the public front page. Other local paths remain forbidden.
+def without_authorized_benchmark_examples(relative: str, text: str) -> str:
+    root = "/".join(("", "media", "server"))
+    study = root + "/STORAGE/" + "LPWGS" + "_2025/Paper/oncotracer_outputs/"
+    benchmark = root + "/storage_disk4/oncotracer_benchmark_07_11_2026"
+    allowed = {
+        "README.md": [benchmark, *(study + name + "/config/run.yml" for name in
+                                  ("Illumina_Fresh", "Illumina_FFPE", "ONT_Fresh"))],
+        "docs/benchmarks/2026-11-07.md": [benchmark],
+    }
+    for literal in allowed.get(source_relative(relative), []):
+        text = re.sub(r"(?<![\w/])" + re.escape(literal) + r"(?![\w/.=-])", "PUBLISHED_BENCHMARK_PATH", text)
+    return text
+
+
 def materialized_tree_violations(staging: Path) -> list[str]:
     """Audit every readable file that will enter the native zipapp."""
     violations: list[str] = []
@@ -255,8 +271,9 @@ def materialized_tree_violations(staging: Path) -> list[str]:
                     f"shipped source is not readable as strict UTF-8: {relative}"
                 )
             continue
+        path_audit_text = without_authorized_benchmark_examples(relative, text)
         for marker in FORBIDDEN_LOCAL_TEXT:
-            if marker in text:
+            if marker in path_audit_text:
                 violations.append(f"local path leaked by {relative}: {marker}")
         for pattern in SECRET_PATTERNS:
             if pattern.search(text):
@@ -298,6 +315,13 @@ class ProductHygieneTests(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertEqual(list(payload.iterdir()),[helper])
 
+    def test_published_benchmark_paths_are_exact_documentation_exceptions(self):
+        path = "/".join(("", "media", "server", "storage_disk4", "oncotracer_benchmark_07_11_2026"))
+        self.assertNotIn(FORBIDDEN_LOCAL_TEXT[0], without_authorized_benchmark_examples("README.md", "`" + path + "`"))
+        for filename, value in (("oncotracer_cli/cli.py", path), ("README.md", path + "/private"),
+                                ("README.md", path + "_other")):
+            self.assertIn(FORBIDDEN_LOCAL_TEXT[0], without_authorized_benchmark_examples(filename, value))
+
     def test_tracked_tree_has_no_local_paths_secrets_or_runtime_artifacts(self) -> None:
         paths = tracked_paths()
         relative_names = {
@@ -316,8 +340,9 @@ class ProductHygieneTests(unittest.TestCase):
             text = readable_text(path)
             if text is None:
                 continue
+            path_audit_text = without_authorized_benchmark_examples(relative, text)
             for marker in FORBIDDEN_LOCAL_TEXT:
-                self.assertNotIn(marker, text, f"local path leaked by {relative}")
+                self.assertNotIn(marker, path_audit_text, f"local path leaked by {relative}")
             for pattern in SECRET_PATTERNS:
                 self.assertIsNone(
                     pattern.search(text),
