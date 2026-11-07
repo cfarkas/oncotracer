@@ -126,6 +126,12 @@ class NextflowGatewayTests(unittest.TestCase):
                     argv, _, _ = gateway.command(self.args(*flags,flag))
                     self.assertIs(parse_arguments(argv[3:]).variant_merge_vcfs,expected)
 
+    def test_storage_mode_reaches_browser_variants_and_full_cli(self):
+        for flags in [('--interactive',), ('--analysis','variants','--config',self.config.name),
+                      ('--analysis','full','--config',self.config.name)]:
+            argv, _, _ = gateway.command(self.args(*flags,'--storage-mode','compact'))
+            self.assertEqual(parse_arguments(argv[3:]).variant_storage_mode,'compact')
+
     def test_parallel_sample_override_reaches_visual_variants_and_full_cli(self):
         for flags in [('--interactive',), ('--analysis','variants','--config',self.config.name),
                       ('--analysis','full','--config',self.config.name)]:

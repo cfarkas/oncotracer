@@ -27,7 +27,7 @@ from .runtime import CommandRunner, CommandResult, OncoTracerError, atomic_write
 SCHEMA='oncotracer-glimpse2-v1'
 MIN_SAMPLE_MEMORY_GB=32 # Complete workflow includes the default CPU float32 local LLM.
 BUNDLE=Path(__file__).parent/'lpwgs'
-OPTION_KEYS=('merge_vcfs','parallel_samples','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','confidence_gwas','patients','reuse_from','reference_reuse_from','nextflow','workflow_source','clinvar','memory','pgs_cache','ancestry_explorer_cache','literature_cache','llm_model','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites')
+OPTION_KEYS=('storage_mode','merge_vcfs','parallel_samples','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','confidence_gwas','patients','reuse_from','reference_reuse_from','nextflow','workflow_source','clinvar','memory','pgs_cache','ancestry_explorer_cache','literature_cache','llm_model','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites')
 PATH_KEYS={'workflow_source','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','patients','reuse_from','reference_reuse_from','clinvar','pgs_cache','ancestry_explorer_cache','literature_cache','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites'}
 
 
@@ -64,6 +64,10 @@ def validate_options(config):
     if type(merge) is not bool:
         raise OncoTracerError('variant_merge_vcfs must be true or false')
     result['merge_vcfs'] = merge
+    from .storage_options import validate_mode
+    result['storage_mode'] = validate_mode(config.get('variant_storage_mode'))
+    if result['storage_mode'] == 'compact' and config.get('variant_workflow_source'):
+        raise OncoTracerError('Compact storage requires the bundled GLIMPSE2 workflow; use --storage-mode full for a custom workflow')
     confidence=result.setdefault('confidence_gwas','medium')
     if confidence not in {'strict','medium','exploratory'}:raise OncoTracerError('variant_confidence_gwas must be strict, medium or exploratory')
     for key in PATH_KEYS & result.keys():
@@ -82,6 +86,7 @@ def validate_options(config):
 
 def plan(request):
     return {**request.as_dict(),'engine':'nextflow-glimpse2','nextflow_used':True,'glimpse2_required':True,
+        'storage_mode':(request.glimpse_config or {}).get('storage_mode','compact'),
         'cohort_merge_enabled':(request.glimpse_config or {}).get('merge_vcfs',True),
         'stages':['reuse-validated-bams','germline-and-somatic-candidates','glimpse2-reference-phase-ligate',
                   'clinvar-and-functional-annotation','germline-somatic-unconfirmed-evidence','traits-gwas-polygenic-models',
@@ -170,7 +175,7 @@ def sample_parameters(request,sample,bam,reference,output,resources,threads,veri
         'literature_cache':str(resources/'literature'),'clinvar':str(resources/'clinvar/clinvar_GRCh38.vcf.gz'),
         'min_mapping_quality':request.min_mapping_quality,'min_base_quality':request.min_base_quality}
     for key in OPTION_KEYS:
-        if key in options and key not in {'merge_vcfs','parallel_samples','analysis_reuse_from','reuse_from','nextflow','workflow_source','memory'}:params[key]=options[key]
+        if key in options and key not in {'storage_mode','merge_vcfs','parallel_samples','analysis_reuse_from','reuse_from','nextflow','workflow_source','memory'}:params[key]=options[key]
     if request.gpu_usage:
         from .gpu_runtime import native_prefix
         params['llm_python'] = str(native_prefix('gpu-reports') / 'bin/python')
@@ -513,46 +518,52 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
             command=[tools['nextflow'],'run',bundle/'main.nf','-params-file',params_path,'-work-dir',sample_root/'work']
             if not force:command.append('--continue')
             result={'command':list(map(str,command))}
-            try:
-                atomic_write_json(params_path,params)
-                if stop.is_set():raise _SampleCancelled('Stopped before launching sample')
-                runtime_path=sample_root/'pipeline_info/runtime.json'
-                reused = completed_export(sample_root, previous_rows.get(sample, {}),
-                    previous_runtimes.get(sample, {}), json.loads(runtime_path.read_text()),
-                    row.get('reuse_validation')) if runtime_path.is_file() else None
-                if reused is not None and resolved_ffpe is None:
+            from .glimpse_storage import PhaseScratchCompactor
+            compactor = PhaseScratchCompactor(sample_root, sample, workflow_bundle(),
+                mode=options.get('storage_mode', 'compact'), cancel=stop)
+            if compactor.mode == 'compact':
+                result['storage_compaction'] = compactor.summary
+            with compactor:
+                try:
+                    atomic_write_json(params_path,params)
+                    if stop.is_set():raise _SampleCancelled('Stopped before launching sample')
+                    runtime_path=sample_root/'pipeline_info/runtime.json'
+                    reused = completed_export(sample_root, previous_rows.get(sample, {}),
+                        previous_runtimes.get(sample, {}), json.loads(runtime_path.read_text()),
+                        row.get('reuse_validation')) if runtime_path.is_file() else None
+                    if reused is not None and resolved_ffpe is None:
+                        paths=sorted((sample_root/'imputation').rglob('*.imputed.bcf'))
+                        if paths:
+                            return {**result,'status':'complete','annotated_vcf':str(reused),
+                                    'reused_completed_workflow':True},reused,paths
+                    with (launch/'nextflow.log').open('a') as log:
+                        child_env = sample_runner.child_environment() if isinstance(sample_runner, CommandRunner) else os.environ
+                        prepared=getattr(tools,'nextflow_environment',{})
+                        with isolated_nextflow_environment({**child_env,**prepared}) as nextflow_env:
+                            sample_runner.run('complete-glimpse2-'+sample,command,cwd=launch,
+                                              env={**prepared,**nextflow_env},stdout=log,stderr=log)
+                    if stop.is_set():raise _SampleCancelled('Stopped after sample workflow')
+                    vcf=sample_root/'cohort_vcf'/f'{sample}.cohort_vcf'/f'{sample}.annotated.vcf.gz'
+                    require_file(vcf,'Completed annotated VCF')
                     paths=sorted((sample_root/'imputation').rglob('*.imputed.bcf'))
-                    if paths:
-                        return {**result,'status':'complete','annotated_vcf':str(reused),
-                                'reused_completed_workflow':True},reused,paths
-                with (launch/'nextflow.log').open('a') as log:
-                    child_env = sample_runner.child_environment() if isinstance(sample_runner, CommandRunner) else os.environ
-                    prepared=getattr(tools,'nextflow_environment',{})
-                    with isolated_nextflow_environment({**child_env,**prepared}) as nextflow_env:
-                        sample_runner.run('complete-glimpse2-'+sample,command,cwd=launch,
-                                          env={**prepared,**nextflow_env},stdout=log,stderr=log)
-                if stop.is_set():raise _SampleCancelled('Stopped after sample workflow')
-                vcf=sample_root/'cohort_vcf'/f'{sample}.cohort_vcf'/f'{sample}.annotated.vcf.gz'
-                require_file(vcf,'Completed annotated VCF')
-                paths=sorted((sample_root/'imputation').rglob('*.imputed.bcf'))
-                if not paths:raise OncoTracerError('No completed GLIMPSE2 chromosome BCFs found')
-                if resolved_ffpe is not None:
-                    package_path=str(Path(__file__).parent.parent)
-                    env={'PYTHONPATH':os.pathsep.join(filter(None,[package_path,os.environ.get('PYTHONPATH','')]))}
-                    # FFPErase runs Picard outside Nextflow; cap this sample's JVM.
-                    env['_JAVA_OPTIONS']=f'-Xmx{max(1,int(allocation["memory_gb_per_sample"]*.7))}g -XX:ActiveProcessorCount={allocation["threads_per_sample"]}'
-                    with (launch/'ffperase.log').open('a') as log:
-                        sample_runner.run('ffpe-glimpse2-'+sample,_ffpe_command(resolved_ffpe,vcf,sample_root,sample,paths,bam,reference,tools),
-                                          cwd=launch,env=env,stdout=log,stderr=log)
-                    vote=json.loads((sample_root/'ffpe_review'/f'{sample}.ffpe_glimpse.summary.json').read_text())
-                    vcf=Path(vote['all_vcf']);result['ffpe_review']=vote
-                    from .glimpse_ffpe_report import render_ffpe_review
-                    result['ffpe_report']=render_ffpe_review(sample_root,sample,vote)
-                return {**result,'status':'complete','annotated_vcf':str(vcf)},vcf,paths
-            except _SampleCancelled as error:
-                return {**result,'status':'interrupted','error':str(error)},None,None
-            except (OSError,ValueError,subprocess.SubprocessError,OncoTracerError,RuntimeError) as error:
-                return {**result,'status':'failed','error':str(error)},None,None
+                    if not paths:raise OncoTracerError('No completed GLIMPSE2 chromosome BCFs found')
+                    if resolved_ffpe is not None:
+                        package_path=str(Path(__file__).parent.parent)
+                        env={'PYTHONPATH':os.pathsep.join(filter(None,[package_path,os.environ.get('PYTHONPATH','')]))}
+                        # FFPErase runs Picard outside Nextflow; cap this sample's JVM.
+                        env['_JAVA_OPTIONS']=f'-Xmx{max(1,int(allocation["memory_gb_per_sample"]*.7))}g -XX:ActiveProcessorCount={allocation["threads_per_sample"]}'
+                        with (launch/'ffperase.log').open('a') as log:
+                            sample_runner.run('ffpe-glimpse2-'+sample,_ffpe_command(resolved_ffpe,vcf,sample_root,sample,paths,bam,reference,tools),
+                                              cwd=launch,env=env,stdout=log,stderr=log)
+                        vote=json.loads((sample_root/'ffpe_review'/f'{sample}.ffpe_glimpse.summary.json').read_text())
+                        vcf=Path(vote['all_vcf']);result['ffpe_review']=vote
+                        from .glimpse_ffpe_report import render_ffpe_review
+                        result['ffpe_report']=render_ffpe_review(sample_root,sample,vote)
+                    return {**result,'status':'complete','annotated_vcf':str(vcf)},vcf,paths
+                except _SampleCancelled as error:
+                    return {**result,'status':'interrupted','error':str(error)},None,None
+                except (OSError,ValueError,subprocess.SubprocessError,OncoTracerError,RuntimeError) as error:
+                    return {**result,'status':'failed','error':str(error)},None,None
 
         pending=iter(jobs);active={}
         with ThreadPoolExecutor(max_workers=allocation['parallel_samples'],thread_name_prefix='glimpse-sample') as pool:

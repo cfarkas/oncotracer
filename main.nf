@@ -41,6 +41,8 @@ workflow {
         } else if (mergeVcfs != null) {
             argv.add(selectedFlag(mergeVcfs, 'merge_vcfs') ? '--merge-vcfs' : '--no-merge-vcfs')
         }
+        def storageMode = params.containsKey('storageMode') ? params.storageMode : params.storage_mode
+        if (storageMode != null) argv.addAll(['--storage-mode', storageMode.toString()])
         def gpuWaitHours = params.containsKey('gpuWaitHours') ? params.gpuWaitHours : params.gpu_wait_hours
         if (gpuWaitHours != null) argv.addAll(['--gpu-wait-hours', gpuWaitHours.toString()])
         ['config', 'start_dir', 'backend', 'threads', 'parallel_samples', 'project', 'input_folder',
