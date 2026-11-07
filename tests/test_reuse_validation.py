@@ -127,7 +127,7 @@ class ReuseValidationTests(unittest.TestCase):
                 def run(self,stage,command,**kwargs):
                     requests=json.load(kwargs['stdin'])['requests']
                     assert all(r['parameters']['preflight_only'] for r in requests)
-                    json.dump({'samples':[{'run':False,'reuse_validation':{'sample':r['parameters']['sample']}} for r in requests]},kwargs['stdout'])
+                    json.dump({'samples':[{'sample':r['parameters']['sample'],'run':False,'reuse_validation':{'sample':r['parameters']['sample']}} for r in requests]},kwargs['stdout'])
             self.assertEqual(preflight_jobs(jobs,Runner(),root),[{'sample':'A'},{'sample':'B'}])
 
 
