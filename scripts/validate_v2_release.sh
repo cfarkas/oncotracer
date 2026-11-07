@@ -1516,13 +1516,13 @@ expected_source = {
 for key, value in expected_source.items():
     if source.get(key) != value:
         raise SystemExit(f"oncotracer doctor source mismatch for {key}")
-groups = ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
+groups = ("core", "qdnaseq", "ichorcna", "classifier", "gistic", "variants")
 prefixes = record.get("prefixes", {})
 environments = record.get("environments", {})
 if set(prefixes) != set(groups) or set(environments) != set(groups):
-    raise SystemExit("oncotracer doctor did not report all five native environments")
+    raise SystemExit("oncotracer doctor did not report all six native environments")
 for group in groups:
-    expected_path = root / group
+    expected_path = Path(str(root) + "-variants") / "variants" if group == "variants" else root / group
     prefix = prefixes[group]
     if Path(str(prefix.get("path", ""))).resolve() != expected_path:
         raise SystemExit(f"oncotracer doctor used the wrong {group} prefix")
@@ -1533,6 +1533,10 @@ for group in groups:
 core_probes = set(environments["core"].get("probes", {}))
 if core_probes != {"bwa", "samtools", "minimap2", "pigz", "picard"}:
     raise SystemExit("oncotracer doctor core probe matrix is incomplete")
+variant_probes = environments["variants"].get("probes", {})
+for probe in ("bcftools", "samtools", "freebayes", "gatk", "varlociraptor", "quilt2", "synthetic_call"):
+    if variant_probes.get(probe, {}).get("success") is not True:
+        raise SystemExit(f"oncotracer doctor variant semantic probe failed for {probe}")
 PY
 }
 
@@ -1547,6 +1551,7 @@ action_install_environments() {
   for name in core qdnaseq ichorcna classifier gistic; do
     conda list --explicit --prefix "$ENV_ROOT/$name" > "$CONTEXT_DIR/native-${name}.explicit.txt"
   done
+  conda list --explicit --prefix "${ENV_ROOT}-variants/variants" > "$CONTEXT_DIR/native-variants.explicit.txt"
 
   test -x "$ENV_ROOT/core/bin/bwa"
   test -x "$ENV_ROOT/core/bin/samtools"
@@ -1616,6 +1621,10 @@ verify_install_environments() {
     conda list --explicit --prefix "$ENV_ROOT/$name" > "$current"
     cmp -s "$current" "$CONTEXT_DIR/native-${name}.explicit.txt"
   done
+  [[ -d "${ENV_ROOT}-variants/variants" ]]
+  current="$TMP_DIR/native-variants.explicit.current.txt"
+  conda list --explicit --prefix "${ENV_ROOT}-variants/variants" > "$current"
+  cmp -s "$current" "$CONTEXT_DIR/native-variants.explicit.txt"
   python3 - "$CONTEXT_DIR/native-install.json" "$ENV_ROOT" <<'PY'
 import json
 import sys
@@ -1629,6 +1638,7 @@ expected = {
     "ichorcna_prefix": root / "ichorcna",
     "classifier_prefix": root / "classifier",
     "gistic_prefix": root / "gistic",
+    "variants_prefix": Path(str(root) + "-variants") / "variants",
 }
 if install.get("backend") != "conda":
     raise SystemExit("native install record is not the Conda backend")
@@ -1664,8 +1674,8 @@ PY
 }
 
 run_stage \
-  "install-and-probe-five-environments" \
-  "copied oncotracer install --conda --prefix ENV_ROOT; export five explicit specs; direct semantic BWA/samtools/minimap2/pigz/Picard/qDNAseq/Biobase/ichorCNA/classifier/GISTIC probes; oncotracer doctor --backend conda" \
+  "install-and-probe-six-environments" \
+  "copied oncotracer install --conda --prefix ENV_ROOT; export six explicit specs; direct semantic BWA/samtools/minimap2/pigz/Picard/qDNAseq/Biobase/ichorCNA/classifier/GISTIC probes and required variant semantic probes; oncotracer doctor --backend conda" \
   action_install_environments verify_install_environments \
   "$BINARY" "$REPOSITORY_ROOT/environments" "$REPOSITORY_ROOT/bin/scripts/prepare_qdnaseq_bin_data.sh"
 

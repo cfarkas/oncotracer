@@ -791,6 +791,50 @@ class NativeDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(evidence, text)
 
+    def test_server_doctor_requires_all_six_exact_environments_and_variant_probes(self) -> None:
+        driver = (ROOT / "scripts/validate_v2_release.sh").read_text(encoding="utf-8")
+        function = driver[driver.index("verify_doctor_record() {"):driver.index("\naction_install_environments() {")]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "envs"
+            record_path = Path(directory) / "doctor.json"
+            groups = ("core", "qdnaseq", "ichorcna", "classifier", "gistic", "variants")
+            record = {
+                "schema": "oncotracer-doctor-v1", "oncotracer_version": "3.0.0",
+                "backend": "conda", "nextflow_required": False, "success": True,
+                "source": {
+                    "source_commit": "a" * 40, "source_sha256": "b" * 64,
+                    "source_sha256_definition": "sha256(git -c tar.umask=0002 archive --format=tar COMMIT)",
+                    "source_metadata_origin": "embedded", "source_tree_dirty": False, "success": True,
+                },
+                "prefixes": {group: {"path": str(Path(str(root) + "-variants") / "variants" if group == "variants" else root / group),
+                                     "configured": True, "exists": True} for group in groups},
+                "environments": {group: {"success": True, "probes": {}} for group in groups},
+            }
+            record["environments"]["core"]["probes"] = {name: {"success": True} for name in ("bwa", "samtools", "minimap2", "pigz", "picard")}
+            record["environments"]["variants"]["probes"] = {name: {"success": True} for name in ("bcftools", "samtools", "freebayes", "gatk", "varlociraptor", "quilt2", "synthetic_call")}
+            cases = [("complete", record, True)]
+            for group in ("core", "variants"):
+                missing = json.loads(json.dumps(record))
+                missing["environments"].pop(group)
+                missing["prefixes"].pop(group)
+                cases.append(("missing-" + group, missing, False))
+            wrong_prefix = json.loads(json.dumps(record))
+            wrong_prefix["prefixes"]["variants"]["path"] = str(root / "variants")
+            cases.append(("wrong-variant-prefix", wrong_prefix, False))
+            for probe in ("quilt2", "synthetic_call"):
+                failed = json.loads(json.dumps(record))
+                failed["environments"]["variants"]["probes"][probe]["success"] = False
+                cases.append(("failed-" + probe, failed, False))
+            wrong_source = json.loads(json.dumps(record))
+            wrong_source["source"]["source_commit"] = "c" * 40
+            cases.append(("foreign-source", wrong_source, False))
+            for name, payload, accepted in cases:
+                with self.subTest(name=name):
+                    record_path.write_text(json.dumps(payload), encoding="utf-8")
+                    command = 'set -Eeuo pipefail\nSOURCE_COMMIT="$1"\nSOURCE_SHA256="$2"\nENV_ROOT="$3"\n' + function + '\nverify_doctor_record "$4"\n'
+                    result = subprocess.run(["bash", "-c", command, "doctor-test", "a" * 40, "b" * 64, str(root), str(record_path)], capture_output=True, text=True)
+                    self.assertEqual(result.returncode == 0, accepted, result.stderr)
+
     def test_server_validation_tree_manifests_are_complete_and_self_safe(self) -> None:
         driver = (ROOT / "scripts/validate_v2_release.sh").read_text(encoding="utf-8")
         start = driver.index("write_tree_manifest() {")
