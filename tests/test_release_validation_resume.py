@@ -94,5 +94,70 @@ class ReleaseValidationResumeTests(unittest.TestCase):
             self.assertEqual((previous / "oncotracer").read_bytes(), b"older binary")
 
 
+class SharedReferencePreflightTests(unittest.TestCase):
+    """Reject incomplete legacy caches before running expensive baselines."""
+
+    def make_reference(self, root):
+        files = (
+            "genome.fa.fai", "genome.dict", "genome.fa.map-ont.mmi",
+            "bwa/genome.amb", "bwa/genome.ann", "bwa/genome.bwt",
+            "bwa/genome.pac", "bwa/genome.sa",
+            ".oncotracer/reference-index-provenance/samurai-hg38.bwa-index.json",
+            ".oncotracer/reference-index-provenance/samurai-hg38-map-ont.minimap2-index.json",
+        )
+        for name in files:
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("fixture\n")
+        (root / "genome.fa").write_text(">chr1\nACGT\n")
+        locks = root / ".oncotracer/locks"
+        locks.mkdir()
+        for name in ("samurai-hg38.bwa-index.lock", "samurai-hg38-map-ont.minimap2-index.lock"):
+            (locks / name).touch()
+
+    def check_reference(self, root):
+        source = (ROOT / "scripts/validate_v2_release.sh").read_text()
+        function = "verify_reference_directory() {" + source.split(
+            "verify_reference_directory() {", 1)[1].split(
+            '\nverify_reference_directory "$SHARED_REFERENCE"', 1)[0]
+        return subprocess.run(
+            ["bash", "-c", function + '\nverify_reference_directory "$1"', "check", str(root)],
+            capture_output=True, text=True, timeout=10)
+
+    def test_complete_reference_accepts_empty_reader_locks_without_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_reference(root)
+            before = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+            result = self.check_reference(root)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(before, {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()})
+
+    def test_legacy_indexes_without_provenance_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_reference(root)
+            metadata = root / ".oncotracer/reference-index-provenance/samurai-hg38.bwa-index.json"
+            metadata.unlink()
+            result = self.check_reference(root)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("verified native reference bundle", result.stderr)
+            self.assertFalse(metadata.exists())
+
+    def test_missing_or_symlinked_reader_lock_is_rejected(self):
+        for linked in (False, True):
+            with self.subTest(linked=linked), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.make_reference(root)
+                lock = root / ".oncotracer/locks/samurai-hg38.bwa-index.lock"
+                lock.unlink()
+                if linked:
+                    lock.symlink_to(root / "genome.fa")
+                result = self.check_reference(root)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("reader lock", result.stderr)
+                self.assertEqual((root / "genome.fa").read_text(), ">chr1\nACGT\n")
+
+
 if __name__ == "__main__":
     unittest.main()

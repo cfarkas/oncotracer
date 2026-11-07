@@ -137,6 +137,13 @@ scripts/validate_v2_release.sh \
   --resume
 ```
 
+The shared reference must be a complete native OncoTracer reference, including
+both index provenance manifests and physical reader locks under `.oncotracer/`.
+Prepare it with `oncotracer reference install --mode both --lpwgs-root
+/large/storage` and use its `references/samurai_hg38` directory above. A legacy
+FASTA/index copy without those records is rejected before baseline analysis;
+the native runtime also verifies the index content and installed tool identity.
+
 The driver is CPU-only (`CUDA_VISIBLE_DEVICES` is empty and `NVIDIA_VISIBLE_DEVICES=void`) and never queries, resets, configures, or loads NVIDIA devices. This keeps release validation isolated from GPU-backed sequencing services.
 
 The driver refuses an empty path, `/`, the repository checkout or any path inside it, a validation/reference path overlap, a dirty checkout, or a non-empty validation directory without its release-driver sentinel and `--resume`. Its content-derived stage signatures include the exact source, command, inputs, tool identity, and explicit Conda specifications; complete output manifests are regenerated and compared before a completed stage is reused. The driver validates all six default native environments: the five CNA environments and the required variants environment. It records and rechecks their explicit Conda specifications and requires every variant semantic probe, including QUILT2 and the synthetic variant call. These probes use exact prefix executables; in particular, GISTIC derives the one usable `share/mcr-*/v*` runtime exclusively from its exact prefix and must return the real `gp_gistic2_from_seg` usage signature with exit status zero. It downloads the official self-contained Nextflow 26.04.6 distribution and verifies SHA-256 `182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c`; that executable runs only the immutable v1.1 comparator at commit `032c1268fa7fdcadc48087055066d7a9fc59bd89`. Before any baseline starts, the nested SAMURAI v1.4.0 source must resolve to commit `6a901940288b008237703c6b181d447e7dee4fcf`. The copied v2 executable runs every native operation from outside the checkout with Python path injection disabled, and any scientific parity failure stops the script.

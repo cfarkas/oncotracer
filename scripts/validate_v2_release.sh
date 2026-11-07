@@ -35,7 +35,9 @@ Required:
                          and every path inside that checkout are rejected.
   --threads N            Positive analysis thread count.
   --shared-reference DIR Complete hg38 cache containing genome.fa, faidx,
-                         Picard dictionary, BWA index, and minimap2 index.
+                         Picard dictionary, BWA/minimap2 indexes, and native
+                         .oncotracer provenance and reader locks. Use a
+                         verified `oncotracer reference install --mode both`.
 
 Optional:
   --resume               Reuse only stages whose source, command, inputs,
@@ -685,11 +687,30 @@ verify_reference_directory() {
   local required=(
     genome.fa genome.fa.fai genome.dict genome.fa.map-ont.mmi
     bwa/genome.amb bwa/genome.ann bwa/genome.bwt bwa/genome.pac bwa/genome.sa
+    .oncotracer/reference-index-provenance/samurai-hg38.bwa-index.json
+    .oncotracer/reference-index-provenance/samurai-hg38-map-ont.minimap2-index.json
   )
   local relative
   for relative in "${required[@]}"; do
-    [[ -s "$root/$relative" ]] || {
-      printf 'Missing shared reference component: %s\n' "$root/$relative" >&2
+    [[ -f "$root/$relative" && -s "$root/$relative" && ! -L "$root/$relative" ]] || {
+      printf 'Missing or unsafe shared reference component: %s; use a verified native reference bundle\n' "$root/$relative" >&2
+      return 1
+    }
+  done
+  for relative in .oncotracer .oncotracer/locks .oncotracer/reference-index-provenance; do
+    [[ -d "$root/$relative" && ! -L "$root/$relative" ]] || {
+      printf 'Missing or unsafe shared reference state directory: %s\n' "$root/$relative" >&2
+      return 1
+    }
+  done
+  # Native reader locks are intentionally empty; their presence and physical
+  # type are required before expensive baseline analysis begins. The native
+  # runtime later verifies complete index hashes and installed tool identities.
+  for relative in \
+    .oncotracer/locks/samurai-hg38.bwa-index.lock \
+    .oncotracer/locks/samurai-hg38-map-ont.minimap2-index.lock; do
+    [[ -f "$root/$relative" && ! -L "$root/$relative" ]] || {
+      printf 'Missing or unsafe shared reference reader lock: %s\n' "$root/$relative" >&2
       return 1
     }
   done
