@@ -39,6 +39,47 @@ class ResumeTests(unittest.TestCase):
         self.patch.start()
         self.addCleanup(self.patch.stop)
 
+    def test_v23_to_v30_migration_keeps_checkpoints_and_audit_history(self):
+        owner_path = self.output / OUTPUT_OWNER_RELATIVE
+        owner = json.loads(owner_path.read_text())
+        owner["runtime_identity"]["oncotracer_version"] = "2.3.1rc2"
+        owner_path.write_text(json.dumps(owner))
+        artifact = self.output / "completed.txt"
+        artifact.write_text("verified original output")
+        ledger = StageLedger(self.output / ".oncotracer-native/state.json")
+        ledger.complete("fixture", "original-signature", [artifact])
+        before = ledger.path.read_bytes()
+        target = dict(self.identity, oncotracer_version="3.0.0")
+        with patch("oncotracer_cli.project_resume._runtime", return_value=target):
+            resume_project(self.project)
+            receipt = json.loads((self.project / "config/resume.json").read_text())
+            self.assertEqual(receipt["migrations"][0]["from_version"], "2.3.1rc2")
+            self.assertEqual(receipt["migrations"][0]["previous_runtime_identity"], owner["runtime_identity"])
+            self.assertEqual(ledger.path.read_bytes(), before)
+            self.assertTrue(ledger.reusable("fixture", "original-signature", [artifact]))
+            artifact.write_text("corrupt")
+            self.assertFalse(ledger.reusable("fixture", "original-signature", [artifact]))
+            resume_project(self.project)
+            repeated = json.loads((self.project / "config/resume.json").read_text())
+            self.assertEqual(repeated["migrations"], receipt["migrations"])
+
+    def test_unreviewed_major_transitions_leave_project_untouched(self):
+        for old_version, new_version in [("2.2.1", "3.0.0"), ("2.3.99", "3.0.0"),
+                                         ("2.3.1rc2", "4.0.0"), ("3.0.0", "2.3.2")]:
+            with self.subTest(previous=old_version, target=new_version):
+                owner_path = self.output / OUTPUT_OWNER_RELATIVE
+                owner = json.loads(owner_path.read_text())
+                owner["runtime_identity"]["oncotracer_version"] = old_version
+                owner_path.write_text(json.dumps(owner))
+                before = owner_path.read_bytes()
+                config = (self.project / "config/run.yml").read_bytes()
+                with patch("oncotracer_cli.project_resume._runtime", return_value=dict(self.identity, oncotracer_version=new_version)):
+                    with self.assertRaisesRegex(OncoTracerError, "explicit data migration"):
+                        resume_project(self.project)
+                self.assertEqual(owner_path.read_bytes(), before)
+                self.assertEqual((self.project / "config/run.yml").read_bytes(), config)
+                self.assertFalse((self.project / "config/resume.json").exists())
+
     def move(self):
         target = self.root / "Paper" / "outputs" / "study"
         target.parent.mkdir(parents=True)

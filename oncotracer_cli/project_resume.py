@@ -220,8 +220,21 @@ def resume_project(value, *, backend=None, image=None, resources=None, variant_o
         if moved and old.exists():
             raise OncoTracerError("The original project still exists. Move the entire project, or choose the original; copied projects are not silently adopted.")
         identity = _runtime(backend, config) if owner else None
-        if owner and str(owner["runtime_identity"].get("oncotracer_version", "")).split(".")[0] != str(identity.get("oncotracer_version", "")).split(".")[0]:
-            raise OncoTracerError("Resume across different major versions requires an explicit data migration.")
+        migration = None
+        if owner:
+            previous_version = str(owner["runtime_identity"].get("oncotracer_version", ""))
+            target_version = str(identity.get("oncotracer_version", ""))
+            if previous_version.split(".")[0] != target_version.split(".")[0]:
+                # Reviewed native v2.3 ownership/checkpoint schemas remain unchanged.
+                # This authorizes the runtime transition, never an output or stage.
+                compatible = {"2.3.0", "2.3.1rc1", "2.3.1rc2", "2.3.1rc3", "2.3.1", "2.3.2"}
+                if previous_version not in compatible or target_version != "3.0.0":
+                    raise OncoTracerError("Resume across different major versions requires an explicit data migration.")
+                migration = {"schema": "oncotracer-project-migration-v1", "from_version": previous_version,
+                             "to_version": target_version, "prepared_at": utc_now(),
+                             "previous_runtime_identity": owner["runtime_identity"],
+                             "selected_runtime_identity": identity,
+                             "strategy": "preserve-native-v2.3-checkpoints-and-revalidate"}
         updated = _rebase(config, old, project) if moved else dict(config)
         updated["execution_backend"] = backend
         if resources is not None:
@@ -286,6 +299,11 @@ def resume_project(value, *, backend=None, image=None, resources=None, variant_o
                        "recovered_configuration": str(recovered) if recovered else None,
                        "backup": str(backup) if backup else None,
                        "note": "Stage signatures and output integrity are checked at Run; missing or incompatible work is recomputed."}
+            migrations = list(previous.get("migrations", []))
+            if migration:
+                migrations.append(migration)
+            if migrations:
+                receipt["migrations"] = migrations
             atomic_write_json(receipt_path, receipt)
             if owner:
                 atomic_write_json(owner_path, dict(owner, canonical_path_sha256=_canonical_path_sha256(output), runtime_identity=identity))
