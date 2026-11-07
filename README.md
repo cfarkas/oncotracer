@@ -54,13 +54,14 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 
 ## Recorded study commands
 
-The 3.0.0 validation resumes the saved studies with dynamic resources and compact
-storage. Existing checkpoints and QC decisions are preserved. Use separate terminals and the saved resource budgets:
+These local 3.0.0 candidate commands resume the saved studies with dynamic resources,
+compact storage and their saved budgets:
 
 ```bash
-oncotracer run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_Fresh/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
-oncotracer run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_FFPE/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
-oncotracer run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/ONT_Fresh/config/run.yml --backend docker --image carlosfarkas/oncotracer:3.0.0-candidate --cpu --resource-mode dynamic --storage-mode compact
+runner=/media/server/storage_disk4/oncotracer_benchmark_07_11_2026/artifacts-adae9e0/oncotracer
+"$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_Fresh/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
+"$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_FFPE/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
+"$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/ONT_Fresh/config/run.yml --backend docker --image carlosfarkas/oncotracer:3.0.0-candidate-adae9e0 --cpu --resource-mode dynamic --storage-mode compact
 ```
 
 Local measurements are retained in

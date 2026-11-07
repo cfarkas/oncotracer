@@ -1,0 +1,50 @@
+{
+  "schema": "oncotracer-aggregate-phase-benchmarks-v1",
+  "date": "2026-11-07",
+  "scope": "Individual validation phases under live load, existing operating-system caches retained; not an end-to-end speedup or physical disk measurement.",
+  "resume_validation": {
+    "sample_count": 2,
+    "serial": {
+      "elapsed_seconds": 134.07187029207125
+    },
+    "parallel": {
+      "elapsed_seconds": 78.62659564334899
+    },
+    "checked_files_per_sample": [
+      2791,
+      2791
+    ],
+    "phase_ratio": 1.7051720120278713,
+    "raw_receipt_sha256": "3d44652f4620e3fdb32d0f813619bbebb9e33ed66794d1076098b64b03739c93"
+  },
+  "quilt_reference_hashes": {
+    "controller_sha256": "62f4fcfc159ed5ba4517c6ba9cdf8701040c04223bd53c5dd77da86a39b98590",
+    "scientific_worker_sha256": "e059a3ef8fbd783c34edc32c68c8912e7a7064e4f515c5b7b779fa54c775fe99",
+    "manifest_sha256": "7a93cd8ccfc8767bb3a00c7eb085610c3c6e34279568c8e1d47ae1718483d551",
+    "passes": [
+      {
+        "pass": 1,
+        "seconds": 77.16600617906079,
+        "verified_chunks": 616,
+        "fully_hashed_files": 616,
+        "fully_hashed_bytes": 93797255265
+      },
+      {
+        "pass": 2,
+        "seconds": 0.07449497934430838,
+        "verified_chunks": 616,
+        "fully_hashed_files": 0,
+        "fully_hashed_bytes": 0
+      }
+    ],
+    "status": "complete",
+    "whole_pipeline_speedup": null,
+    "completed_utc": "2026-11-07T17:05:42.315338+00:00",
+    "controller_source_commit": "353e93a35711d5484e902f368048c39f5a23d92f",
+    "benchmark_script_sha256": "b852b9d11dabdd009a4f6cac3319adaef3801e33b90b44c3f58d1f5729a00d7e",
+    "reference_only_cache": true,
+    "patient_output_checksums_unchanged": true
+  },
+  "quilt_raw_receipt_sha256": "f95e71c80449ca1635dff832cbd5836f4753bb59b573215ffbe9e594f8209088",
+  "contains_patient_identifiers": false
+}
