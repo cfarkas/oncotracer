@@ -10,17 +10,6 @@ RUN /opt/micromamba/envs/clairs-to/bin/python -m venv --system-site-packages /op
 # CNA uses the native controller; complete short variants use bundled Nextflow.
 FROM condaforge/miniforge3:24.11.3-0
 
-ARG SOURCE_COMMIT
-ARG SOURCE_SHA256
-
-LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="3.0.0" \
-      org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
-      org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
-      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
-      org.opencontainers.image.source.sha256="${SOURCE_SHA256}" \
-      org.opencontainers.image.licenses="MIT"
-
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive \
     ONCOTRACER_HOME=/opt/oncotracer \
@@ -109,6 +98,19 @@ ENV ONCOTRACER_CONTAINER_RUNTIME=docker
 # preparation copies this read-only distribution into a verified generation.
 RUN echo 'a73e0d796932b9455cbef207dda4937b98b06b687b049acda46c152d1d25f2c9  /usr/local/bin/nextflow' | sha256sum -c - \
     && echo 'a0fc1d8cadedd6c8aae0532da04da06a3b642d910bc9a15718ba263ac9013a2b  /opt/nextflow/framework/26.04.2/nextflow-26.04.2-one.jar' | sha256sum -c -
+
+# Keep release identity after the expensive dependencies so metadata changes
+# can reuse their verified layers. Environment files still control their cache.
+ARG SOURCE_COMMIT
+ARG SOURCE_SHA256
+
+LABEL org.opencontainers.image.title="OncoTracer" \
+      org.opencontainers.image.version="3.0.0" \
+      org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
+      org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
+      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
+      org.opencontainers.image.source.sha256="${SOURCE_SHA256}" \
+      org.opencontainers.image.licenses="MIT"
 
 COPY . ${ONCOTRACER_HOME}/
 
