@@ -1,11 +1,58 @@
 """New concurrency must produce reusable chunks for the unchanged QUILT2 worker."""
 from pathlib import Path
-import json,os,shutil,tempfile,unittest
+import json,os,shutil,tempfile,time,unittest
 from unittest.mock import patch
 import pysam
-from oncotracer_cli.quilt_parallel import load_worker,prefetch,SUPPORTED_WORKER,configure_environment
+from oncotracer_cli.quilt_parallel import load_worker,prefetch,SUPPORTED_WORKER,configure_environment,identity_cached_sha
 from oncotracer_cli.resource_pool import DynamicResources
 from oncotracer_cli.runtime import sha256_file
+
+class WithinRunHashTests(unittest.TestCase):
+    def test_content_change_with_preserved_size_and_mtime_and_replacement_are_rehashed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'reference';path.write_bytes(b'original');before=path.stat()
+            with patch('oncotracer_cli.quilt_parallel.sha256_file',wraps=sha256_file) as digest, patch('oncotracer_cli.quilt_parallel.time.time_ns',return_value=before.st_ctime_ns+2_000_000_000):
+                cached=identity_cached_sha(digest,[path])
+                self.assertEqual(cached(path),sha256_file(path));self.assertEqual(cached(path),sha256_file(path))
+                self.assertEqual(digest.call_count,1)
+                time.sleep(.02);path.write_bytes(b'modified');os.utime(path,ns=(before.st_atime_ns,before.st_mtime_ns))
+                self.assertEqual(cached(path),sha256_file(path));self.assertEqual(digest.call_count,2)
+                time.sleep(.02);replacement=Path(folder)/'replacement';replacement.write_bytes(b'replaced');os.utime(replacement,ns=(before.st_atime_ns,before.st_mtime_ns));replacement.replace(path)
+                self.assertEqual(cached(path),sha256_file(path));self.assertEqual(digest.call_count,3)
+                self.assertEqual(cached(path),sha256_file(path));self.assertEqual(digest.call_count,3)
+
+    def test_change_during_hashing_is_rejected_and_never_cached(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'reference';path.write_bytes(b'original')
+            def changing_digest(value):
+                before=Path(value).stat();result=sha256_file(value);Path(value).write_bytes(b'modified');os.utime(value,ns=(before.st_atime_ns,before.st_mtime_ns+1));return result
+            cached=identity_cached_sha(changing_digest,[path])
+            with patch('oncotracer_cli.quilt_parallel.time.time_ns',return_value=path.stat().st_ctime_ns+2_000_000_000):
+                with self.assertRaisesRegex(ValueError,'changed while hashing'):cached(path)
+
+    def test_recent_files_and_patient_outputs_are_always_hashed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);reference=root/'reference';patient=root/'patient.vcf.gz'
+            reference.write_bytes(b'recent reference');patient.write_bytes(b'patient output')
+            with patch('oncotracer_cli.quilt_parallel.sha256_file',wraps=sha256_file) as digest:
+                cached=identity_cached_sha(digest,[reference])
+                now=max(reference.stat().st_ctime_ns,patient.stat().st_ctime_ns)
+                with patch('oncotracer_cli.quilt_parallel.time.time_ns',return_value=now):
+                    for path in [reference,reference]:self.assertEqual(cached(path),sha256_file(path))
+                with patch('oncotracer_cli.quilt_parallel.time.time_ns',return_value=now+2_000_000_000):
+                    for path in [patient,patient]:self.assertEqual(cached(path),sha256_file(path))
+                self.assertEqual(digest.call_count,4)
+
+    def test_retargeted_symlink_gets_the_new_digest(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);first=root/'first';second=root/'second';link=root/'link'
+            first.write_bytes(b'one');second.write_bytes(b'two');link.symlink_to(first)
+            cached=identity_cached_sha(sha256_file,[first])
+            with patch('oncotracer_cli.quilt_parallel.time.time_ns',return_value=first.stat().st_ctime_ns+2_000_000_000):
+                before=cached(link)
+                link.unlink();link.symlink_to(second)
+                self.assertNotEqual(cached(link),before);self.assertEqual(cached(link),sha256_file(second))
+
 
 @unittest.skipUnless(shutil.which('bcftools'),'bcftools required')
 class ParallelQuiltTests(unittest.TestCase):
@@ -35,6 +82,7 @@ class ParallelQuiltTests(unittest.TestCase):
             pysam.index(str(bam))
             reference=root/'synthetic.RData';reference.write_bytes(b'fixture only; imputation is stubbed')
             chunks=[dict(chr='chr1',regionStart=start,regionEnd=start+399,buffer=20,nGen=100,prepared_reference=str(reference),sha256=worker.sha(reference)) for start in (1,501)]
+            worker.sha=identity_cached_sha(worker.sha,[reference])
             manifest=root/'panel.json';manifest.write_text(json.dumps(dict(schema=worker.SCHEMA,version=worker.VERSION,chunks=chunks,contig_lengths={'chr1':1000})))
             config=dict(sample='S1',bam=str(bam),output=str(root/'output'),manifest=str(manifest),expected_chromosomes=['chr1'],threads=1,min_base_quality=20,tools={'bcftools':shutil.which('bcftools')},force=False)
             counts=[]

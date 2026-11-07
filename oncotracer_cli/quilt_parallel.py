@@ -6,6 +6,7 @@ chunk signatures remain valid because inputs and producer code are unchanged.
 from __future__ import annotations
 import argparse,importlib.util,json,os,re,sys,tempfile,time
 from pathlib import Path
+from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor,wait,FIRST_COMPLETED
 from .runtime import runtime_root,sha256_file,atomic_write_json
 from .resource_pool import read_budget
@@ -21,6 +22,28 @@ def load_worker(root=None):
     spec=importlib.util.spec_from_file_location('_oncotracer_quilt_worker',path)
     worker=importlib.util.module_from_spec(spec);spec.loader.exec_module(worker)
     return worker,path
+
+
+def identity_cached_sha(digest,paths):
+    """Share full hashes of stable reference files only within this process."""
+    allowed={str(Path(path).resolve()) for path in paths}
+    def identity(path):
+        path=Path(path).resolve();stat=path.stat()
+        return (str(path),stat.st_dev,stat.st_ino,stat.st_size,stat.st_mtime_ns,stat.st_ctime_ns)
+    @lru_cache(maxsize=4096)
+    def checked(key):
+        value=digest(Path(key[0]))
+        if identity(key[0])!=key:raise ValueError('QUILT2 file changed while hashing: '+key[0])
+        return value
+    def sha(path):
+        key=identity(path)
+        # Recent writes may share one filesystem clock tick. Never memoize
+        # those files, patient outputs, or paths outside the prepared panel.
+        stable=key[0] in allowed and max(key[-2:]) < time.time_ns()-1_000_000_000
+        value=checked(key) if stable else digest(Path(key[0]))
+        if identity(path)!=key:raise ValueError('QUILT2 file changed while validating: '+str(path))
+        return value
+    return sha
 
 
 def bounded_map(function,items,directory,maximum,stop,*,on_complete=None):
@@ -118,6 +141,11 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True);parser.add_argument('--resources',type=Path,required=True);parser.add_argument('--maximum-workers',type=int,required=True);parser.add_argument('--runtime-root',type=Path);args=parser.parse_args()
     config=json.loads(args.config.read_text());configure_environment(config);worker,path=load_worker(args.runtime_root)
     if sha256_file(path)==SUPPORTED_WORKER:
+        # The final worker rechecks the prepared references. Reuse their full
+        # digests only while identity is stable within this invocation. Patient
+        # output hashes and every receipt/header/index check still run in full.
+        chunks=json.loads(Path(config['manifest']).read_text())['chunks']
+        worker.sha=identity_cached_sha(worker.sha,[c['prepared_reference'] for c in chunks])
         prefetch(config,args.resources,args.maximum_workers,worker)
         # --force has already recomputed every chunk. The unchanged worker
         # verifies them and then performs its usual final output transaction.

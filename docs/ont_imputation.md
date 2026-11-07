@@ -141,6 +141,13 @@ Completed chunks retain their original integrity receipts and are checked before
 reuse. New work waits when RAM is scarce; controller loss stops new admission.
 Inspect `08_variants/resource_scheduler/*/status.json` for live allowances.
 
+Dynamic QUILT2 hashes each prepared reference before use, then reuses that digest
+for final verification in the same process while its path, device, inode, size,
+modification time and change time remain unchanged. Recently written files are
+always read in full. Patient VCF/index hashes and their structural checks also
+remain full checks. This in-memory cache is discarded on exit and cannot skip
+reference hashing in a later run. See the [measured reference checks](benchmarks/2026-11-07.md#repeated-quilt2-reference-checks).
+
 The configured budget applies to one analysis. Independent projects need separate
 budgets; the controller does not increase Docker limits or coordinate unrelated
 processes. GPU callers, ClairS-TO, alignment, GLIMPSE2 and final ligation retain
