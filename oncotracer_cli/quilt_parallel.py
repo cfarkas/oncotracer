@@ -23,7 +23,7 @@ def load_worker(root=None):
     return worker,path
 
 
-def bounded_map(function,items,directory,maximum,stop):
+def bounded_map(function,items,directory,maximum,stop,*,on_complete=None):
     pending=iter(items);results=[];exhausted=False
     with ThreadPoolExecutor(max_workers=maximum,thread_name_prefix='quilt-chunk') as pool:
         active=set()
@@ -40,6 +40,7 @@ def bounded_map(function,items,directory,maximum,stop):
                 done,_=wait(active,timeout=.2,return_when=FIRST_COMPLETED)
                 for future in done:
                     active.remove(future);results.append(future.result())
+                    if on_complete is not None:on_complete(results[-1])
         except BaseException:
             stop.set()
             for future in active:future.cancel()
@@ -85,7 +86,16 @@ def prefetch(config,directory,maximum,worker):
                 producer_worker_sha256=producer,execution_controller='dynamic-prefetch-v1',
                 files={p.name:worker.sha(p) for p in (final,Path(str(final)+'.tbi'))}))
             return 'computed'
-    counts=bounded_map(run,manifest['chunks'],directory,maximum,worker.STOP)
+    total=len(manifest['chunks']);finished={'reused':0,'computed':0};last_progress=time.monotonic()
+    print(f'[QUILT2 {sample}] Checking {total} chunks; up to {maximum} worker(s).',flush=True)
+    def progress(result):
+        nonlocal last_progress
+        finished[result]+=1;done=sum(finished.values());now=time.monotonic()
+        if done==total or now-last_progress>=30:
+            print(f'[QUILT2 {sample}] Chunks verified {done}/{total}: '
+                  f'{finished["reused"]} reused, {finished["computed"]} computed.',flush=True)
+            last_progress=now
+    counts=bounded_map(run,manifest['chunks'],directory,maximum,worker.STOP,on_complete=progress)
     if worker.identity(bam)!=before:raise ValueError('QUILT2 BAM changed during chunk execution')
     atomic_write_json(root/f'{sample}.quilt2.scheduling.json',{'mode':'dynamic','computed_chunks':counts.count('computed'),
         'reused_chunks':counts.count('reused'),'producer_worker_sha256':producer,'chunk_threads':1,'maximum_workers':maximum})
@@ -112,6 +122,8 @@ def main():
         # --force has already recomputed every chunk. The unchanged worker
         # verifies them and then performs its usual final output transaction.
         config={**config,'force':False}
+    print(f'[QUILT2 {config["sample"]}] Final validation, ligation and publication.',flush=True)
     worker.impute(config)
+    print(f'[QUILT2 {config["sample"]}] Final outputs verified and published.',flush=True)
 
 if __name__=='__main__':main()

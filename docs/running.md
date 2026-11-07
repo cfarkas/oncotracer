@@ -223,3 +223,9 @@ cohort progress JSON remain available after exit.
 
 Continuation also reports the saved stage currently undergoing integrity checks,
 the number checked, and elapsed time while hashing large intermediate files.
+
+Illumina continuation validates the first sample before checking the remaining
+samples concurrently, within the selected sample count and CPU/RAM allocation.
+It prints each sample and the number of resume checks completed. Analysis starts
+after every selected sample passes. Choose one parallel sample for serial
+validation; this keeps shared validation caches in one interpreter.

@@ -394,32 +394,84 @@ def _cohort(request,exports,root,tools,reference,threads,imputed,sample_statuses
     return json.loads(result.read_text())
 
 
-def preflight_jobs(jobs,runner,bundle,*,force=False):
-    """Check every selected sample and print reuse before scheduling any sample."""
-    checks=[];requests=[]
-    print('Checking completed outputs for every sample before analysis…',flush=True)
+def preflight_jobs(jobs,runner,bundle,*,force=False,parallel_samples=1,cancel=None):
+    """Validate the whole cohort before analysis, within its sample allocation."""
+    if not jobs:return []
+    if type(parallel_samples) is not int or parallel_samples<1:
+        raise OncoTracerError('Resume validation concurrency must be a positive integer')
+    workers=min(len(jobs),parallel_samples)
+    stop=cancel if cancel is not None else threading.Event()
+    print(f'Checking completed outputs: {len(jobs)} sample(s), up to {workers} validation worker(s).',flush=True)
+    requests=[]
     for sample,bam,sample_root,launch,params,row in jobs:
         if force:
             params['continue']=False
             params.pop('reuse_from',None)
         requests.append({'parameters':{**params,'preflight_only':True}})
-    if not jobs:return checks
-    launch=jobs[0][3].parent
-    request_path=launch/'preflight_request.json';response_path=launch/'preflight_response.json'
-    atomic_write_json(request_path,{'requests':requests})
-    with request_path.open() as request_file,response_path.open('w') as response_file:
-        runner.run('glimpse-resume-preflight',
-                   [jobs[0][4].get('python',sys.executable),'-B',bundle/'bin/nextflow_entry.py'],
-                   stdin=request_file,stdout=response_file,cwd=launch)
-    response=json.loads(response_path.read_text())
-    if len(response.get('samples',[]))!=len(jobs):raise OncoTracerError('Incomplete cohort preflight response')
-    for job,prepared in zip(jobs,response['samples']):
-        sample,bam,sample_root,launch,params,row=job
-        if prepared.get('run') is not False:
-            raise OncoTracerError('Expected a preflight-only response for '+sample)
-        row['reuse_validation']=prepared['reuse_validation']
-        checks.append(row['reuse_validation'])
-    print('All sample resume checks passed. Starting the remaining work.',flush=True)
+    cohort_launch=jobs[0][3].parent
+    # A failed new check must not leave the preceding cohort's success receipt.
+    (cohort_launch/'preflight_response.json').unlink(missing_ok=True)
+    atomic_write_json(cohort_launch/'preflight_request.json',{'requests':requests})
+
+    def validate(indices,launch,label):
+        if stop.is_set():raise _SampleCancelled('Stopped before resume validation')
+        request_path=launch/'preflight_request.json';response_path=launch/'preflight_response.json'
+        atomic_write_json(request_path,{'requests':[requests[i] for i in indices]})
+        child=_sample_runner(runner,launch/'preflight_commands.tsv',stop)
+        with request_path.open() as request_file,response_path.open('w') as response_file:
+            child.run(label,[jobs[indices[0]][4].get('python',sys.executable),'-B',bundle/'bin/nextflow_entry.py'],
+                      stdin=request_file,stdout=response_file,cwd=launch)
+        response=json.loads(response_path.read_text())
+        prepared=response.get('samples',[])
+        if len(prepared)!=len(indices):raise OncoTracerError('Incomplete cohort preflight response')
+        for index,value in zip(indices,prepared):
+            sample=jobs[index][0]
+            if value.get('run') is not False or value.get('sample')!=sample:
+                raise OncoTracerError('Expected a preflight-only response for '+sample)
+            if not isinstance(value.get('reuse_validation'),dict):
+                raise OncoTracerError('Missing resume validation for '+sample)
+        return prepared
+
+    if workers==1:
+        # Retain shared panel/hash caches in one interpreter for serial mode.
+        prepared=validate(list(range(len(jobs))),cohort_launch,'glimpse-resume-preflight')
+    else:
+        prepared=[None]*len(jobs)
+        # Finish the first sample's preparation before concurrent readers use
+        # shared resources. Every later worker owns a distinct sample/launch.
+        prepared[0]=validate([0],jobs[0][3],'glimpse-resume-preflight-'+jobs[0][0])[0]
+        print(f'Resume validation 1/{len(jobs)} passed: {jobs[0][0]}',flush=True)
+        pending=iter(range(1,len(jobs)));active={};completed=1
+        with ThreadPoolExecutor(max_workers=workers,thread_name_prefix='glimpse-validation') as pool:
+            def fill():
+                while len(active)<workers and not stop.is_set():
+                    index=next(pending,None)
+                    if index is None:break
+                    job=jobs[index]
+                    print(f'Validating saved outputs: {job[0]}',flush=True)
+                    active[pool.submit(validate,[index],job[3],'glimpse-resume-preflight-'+job[0])]=index
+            try:
+                fill()
+                while active:
+                    if stop.is_set():raise _SampleCancelled('Stopped during resume validation')
+                    done,_=wait(active,timeout=.2,return_when=FIRST_COMPLETED)
+                    for future in done:
+                        index=active.pop(future)
+                        prepared[index]=future.result()[0];completed+=1
+                        print(f'Resume validation {completed}/{len(jobs)} passed: {jobs[index][0]}',flush=True)
+                    fill()
+            except BaseException:
+                stop.set()
+                for future in active:future.cancel()
+                raise
+        if stop.is_set():raise _SampleCancelled('Stopped during resume validation')
+        atomic_write_json(cohort_launch/'preflight_response.json',{'run':False,'samples':prepared})
+    if stop.is_set():raise _SampleCancelled('Stopped during resume validation')
+    checks=[]
+    for job,value in zip(jobs,prepared):
+        job[5]['reuse_validation']=value['reuse_validation']
+        checks.append(value['reuse_validation'])
+    print(f'All {len(jobs)} sample resume checks passed. Starting the remaining work.',flush=True)
     return checks
 
 
@@ -496,7 +548,8 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
         for job in jobs[1:]:
             for key in ('llm_python','llm_model','clinvar'):
                 if key in first:job[4][key]=first[key]
-        status['reuse_validation']=preflight_jobs(jobs,bootstrap,bundle,force=force)
+        status['reuse_validation']=preflight_jobs(jobs,runner,bundle,force=force,
+            parallel_samples=allocation['parallel_samples'],cancel=stop)
         publish()
         resolved_ffpe=None
         if request.specimen_type=='ffpe':

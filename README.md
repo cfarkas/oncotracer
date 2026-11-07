@@ -38,7 +38,7 @@ The image is saved for later commands. See [installation](docs/installation.md) 
 
 Before setup, `oncotracer --detect-resources` (also `--detect_resources`) suggests [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) from this machine's CPU/RAM; choose the combination in new setup or **Review and run** for continuation.
 
-The [3.0.0 release candidate](docs/releases/3.0.0.md) defaults to dynamic ONT scheduling and compact storage. Select `--resource-mode fixed` to keep initial allocations or `--no-merge-vcfs` to skip cohort merging. Stable publication awaits study and parity validation.
+The [3.0.0 release candidate](docs/releases/3.0.0.md) defaults to dynamic ONT scheduling and compact storage. Select `--resource-mode fixed` to keep initial allocations or `--no-merge-vcfs` to skip cohort merging. Illumina resume checks also use the selected sample concurrency after shared preparation. Stable publication awaits study and parity validation.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 
