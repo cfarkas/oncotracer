@@ -134,7 +134,7 @@ function guidedVariantPayload(data){
     data.variant_engine='glimpse2';data.variant_callers='bcftools,mutect2';data.variant_annovar='auto';data.variant_varlociraptor='off';
     data.variant_ffperase=data.variant_specimen_type==='ffpe'?'required':'off';
     data.variant_merge_vcfs=get('variant_merge_vcfs').checked;
-    data.variant_storage_mode=get('variant_storage_mode').value||'full';
+    data.variant_storage_mode=get('variant_storage_mode').value||'compact';
     data.variant_confidence_gwas=get('variant_confidence_gwas').value||'medium';
     for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])data[key]=get(key).value.trim();
   }else data.variant_engine='legacy';

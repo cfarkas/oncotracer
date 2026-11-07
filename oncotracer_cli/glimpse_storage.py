@@ -85,7 +85,7 @@ def _validate_bcf(path, sample):
 class PhaseScratchCompactor:
     """One controller-owned sample; read-only audit is available with scan(False)."""
 
-    def __init__(self, sample_root, sample, bundle, *, mode='full', interval=30, cancel=None):
+    def __init__(self, sample_root, sample, bundle, *, mode='compact', interval=30, cancel=None):
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", sample):
             raise ValueError("Unsafe sample identifier")
         self.root = Path(sample_root).absolute()

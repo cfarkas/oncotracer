@@ -16,7 +16,7 @@ if str(BIN) not in sys.path:
 import glimpse_continuation as reuse
 import shared_reference
 from continuation import metadata
-import test_glimpse_shared_reference as shared_tests
+from tests import test_glimpse_shared_reference as shared_tests
 
 
 class MultisampleReuseTests(unittest.TestCase):

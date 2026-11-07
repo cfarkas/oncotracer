@@ -38,11 +38,7 @@ The image is saved for later commands. See [installation](docs/installation.md) 
 
 Before setup, `oncotracer --detect-resources` (also `--detect_resources`) suggests [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) from this machine's CPU/RAM; choose the combination in new setup or **Review and run** for continuation.
 
-The [2.3.1rc2 maintenance preview](docs/releases/2.3.1rc2.md) fixes ClinVar cohort provenance and reuses verified completed workflows across application updates.
-
-In the 2.3.1rc3 source candidate, cohort VCF merging can be disabled with `--no-merge-vcfs` or the browser checkbox. Per-sample VCFs and reports are retained. See the [optional-merge candidate](docs/releases/2.3.1rc3.md). The compact-storage source preview adds `--storage-mode compact` to retire completed GLIMPSE split-reference scratch while preserving resume; see [work storage](docs/variants.md#save-work-space-while-preserving-resume).
-
-Optional [QUILT2 imputation for ONT](docs/ont_imputation.md) provides research evidence alongside observed calls. Automated haplotype assessment was removed in 2.3.1rc1; [standalone experimental linkage](docs/haplotype_evidence.md) is separate from production runs.
+The [2.3.1 release candidate](docs/releases/2.3.1.md) defaults to compact storage while preserving resume. Select `--storage-mode full` to keep scratch or `--no-merge-vcfs` to skip cohort merging. Stable publication awaits complete study and parity validation.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 
@@ -130,7 +126,7 @@ oncotracer uninstall --conda --yes --purge
 docker image rm carlosfarkas/oncotracer:2.3.1-rc.2
 ```
 
-This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Image layers may remain.
+Removing the image preserves the pip application, saved settings, projects and results; shared image layers may remain.
 
 **Python application:** in the Python environment used for installation:
 

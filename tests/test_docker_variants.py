@@ -266,7 +266,7 @@ class DockerVariantTests(unittest.TestCase):
         cache=self.external/'shared-cache'
         clinvar=self.external/'clinvar.vcf.gz';clinvar.write_bytes(b'fixture')
         index=Path(str(clinvar)+'.tbi');index.write_bytes(b'index')
-        self.config.update(variant_workflow_source=str(workflow),variant_clinvar=str(clinvar),variant_resource_dir=str(cache))
+        self.config.update(variant_storage_mode="full",variant_workflow_source=str(workflow),variant_clinvar=str(clinvar),variant_resource_dir=str(cache))
         self.save()
         mounts=dict(docker_runtime.docker_mounts(self.config_path,environment={},create=True))
         for path in (workflow,clinvar,index):self.assertEqual(mounts[path],'ro')

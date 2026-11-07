@@ -366,7 +366,7 @@ def _glimpse_variant_values(args, specimen: str, *, interactive: bool) -> dict[s
     values["variant_storage_mode"] = validate_mode(_ask(
         getattr(args, "variant_storage_mode", None),
         "Work storage: compact saves space and preserves resume; full keeps all scratch (--storage-mode)",
-        default="full", choices=("full", "compact"), interactive=interactive))
+        default="compact", choices=("compact", "full"), interactive=interactive))
     parallel = getattr(args, "variant_parallel_samples", None)
     parallel = parallel_value(parallel if parallel is not None else 'auto')
     values["variant_parallel_samples"] = parallel

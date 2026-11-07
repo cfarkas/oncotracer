@@ -345,23 +345,29 @@ collisions are rejected; a failed publication restores the prior generation.
 
 ## Save work space while preserving resume
 
-The opt-in `compact` storage mode retires each GLIMPSE2 task's generated
+The default `compact` storage mode retires each GLIMPSE2 task's generated
 `split_*.bin` reference after successful phasing and validation of its BCF and
 CSI output. Cleanup runs while other tasks continue and once more when the
-sample controller exits. The default `full` mode retains existing behavior.
+sample controller exits. Select `full` to keep all scratch files.
 
 ```bash
-oncotracer run --config project/config/run.yml --storage-mode compact
-oncotracer variants --config variants.yml --storage-mode compact
-nextflow run cfarkas/oncotracer --analysis variants --config variants.yml --storage_mode compact
+oncotracer run --config project/config/run.yml
+oncotracer variants --config variants.yml
+nextflow run cfarkas/oncotracer --analysis variants --config variants.yml
+
+# Keep every work file when desired:
+oncotracer run --config project/config/run.yml --storage-mode full
+nextflow run cfarkas/oncotracer --analysis variants --config variants.yml --storage_mode full
 ```
 
-The equivalent YAML setting is `variant_storage_mode: compact`. Terminal setup
+An omitted setting defaults to `variant_storage_mode: compact`; an explicit
+`variant_storage_mode: full` is respected. Terminal setup
 asks for the storage mode, and both browser setup forms offer **Work storage →
-Save disk space and preserve resume**. Explicit CLI values override YAML for
+Save disk space and preserve resume (default)**. Explicit CLI values override YAML for
 that invocation without editing the saved configuration. Docker and Apptainer
 forward the choice to the same native controller. Custom GLIMPSE workflow
-bundles are not eligible for automatic retirement.
+bundles require `--storage-mode full` because their scratch cannot be verified
+against the bundled workflow.
 
 This mode retains raw reads, BAMs, normalized reference BCFs, phase BCF/CSI
 pairs, ligated chromosomes, annotations, reports, logs and Nextflow metadata.

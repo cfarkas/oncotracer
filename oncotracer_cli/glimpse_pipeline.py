@@ -67,7 +67,7 @@ def validate_options(config):
     from .storage_options import validate_mode
     result['storage_mode'] = validate_mode(config.get('variant_storage_mode'))
     if result['storage_mode'] == 'compact' and config.get('variant_workflow_source'):
-        raise OncoTracerError('Compact storage requires the bundled GLIMPSE2 workflow')
+        raise OncoTracerError('Compact storage requires the bundled GLIMPSE2 workflow; use --storage-mode full for a custom workflow')
     confidence=result.setdefault('confidence_gwas','medium')
     if confidence not in {'strict','medium','exploratory'}:raise OncoTracerError('variant_confidence_gwas must be strict, medium or exploratory')
     for key in PATH_KEYS & result.keys():
@@ -86,7 +86,7 @@ def validate_options(config):
 
 def plan(request):
     return {**request.as_dict(),'engine':'nextflow-glimpse2','nextflow_used':True,'glimpse2_required':True,
-        'storage_mode':(request.glimpse_config or {}).get('storage_mode','full'),
+        'storage_mode':(request.glimpse_config or {}).get('storage_mode','compact'),
         'cohort_merge_enabled':(request.glimpse_config or {}).get('merge_vcfs',True),
         'stages':['reuse-validated-bams','germline-and-somatic-candidates','glimpse2-reference-phase-ligate',
                   'clinvar-and-functional-annotation','germline-somatic-unconfirmed-evidence','traits-gwas-polygenic-models',
@@ -520,7 +520,7 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
             result={'command':list(map(str,command))}
             from .glimpse_storage import PhaseScratchCompactor
             compactor = PhaseScratchCompactor(sample_root, sample, workflow_bundle(),
-                mode=options.get('storage_mode', 'full'), cancel=stop)
+                mode=options.get('storage_mode', 'compact'), cancel=stop)
             if compactor.mode == 'compact':
                 result['storage_compaction'] = compactor.summary
             with compactor:

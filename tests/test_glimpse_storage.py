@@ -54,7 +54,7 @@ class CompactStorageTests(unittest.TestCase):
         self.binary.write_bytes(b'reproducible split reference'*1000)
         self.end = self.work/'.exitcode'
         self.end.write_text('0')
-        self.compactor = PhaseScratchCompactor(self.root, 'SAMPLE', BUNDLE, mode='compact', interval=.02)
+        self.compactor = PhaseScratchCompactor(self.root, 'SAMPLE', BUNDLE, interval=.02)
 
     def test_audit_is_read_only_and_apply_keeps_every_non_scratch_file(self):
         untouched = {p:(p.read_bytes(),p.stat().st_mtime_ns) for p in self.work.iterdir()
@@ -73,7 +73,7 @@ class CompactStorageTests(unittest.TestCase):
         self.assertEqual(self.compactor.summary['removed_files'],1)
 
     def test_full_mode_never_retires_scratch(self):
-        with PhaseScratchCompactor(self.root,'SAMPLE',BUNDLE):pass
+        with PhaseScratchCompactor(self.root,'SAMPLE',BUNDLE,mode='full'):pass
         self.assertTrue(self.binary.exists())
         self.assertFalse(self.compactor.audit_path.exists())
 
@@ -146,7 +146,7 @@ class CompactStorageTests(unittest.TestCase):
         self.assertTrue(self.binary.exists())
 
     def test_existing_continuation_keeps_phase_and_ligation_after_retirement(self):
-        from test_glimpse_multisample_reuse import MultisampleReuseTests
+        from tests.test_glimpse_multisample_reuse import MultisampleReuseTests
         helper=MultisampleReuseTests()
         with tempfile.TemporaryDirectory() as folder:
             fixture=helper.fixture(Path(folder))
@@ -186,8 +186,10 @@ class StorageChoiceTests(unittest.TestCase):
                 _run_host(config,args)
             self.assertEqual(native.call_args.kwargs['storage_mode'],'compact');self.assertEqual(config.read_bytes(),before)
 
-    def test_configuration_is_opt_in_and_strict(self):
-        self.assertEqual(validate_options({})['storage_mode'],'full')
+    def test_configuration_defaults_to_compact_and_explicit_full_is_preserved(self):
+        self.assertEqual(validate_options({})['storage_mode'],'compact')
+        self.assertEqual(validate_options({'variant_storage_mode':'full'})['storage_mode'],'full')
+        self.assertEqual(validate_options({'variant_storage_mode':'full','variant_workflow_source':'/custom'})['storage_mode'],'full')
         self.assertEqual(validate_options({'variant_storage_mode':'compact'})['storage_mode'],'compact')
         for value in (True,False,0,'zip','delete',{},[]):
             with self.subTest(value=value),self.assertRaises(OncoTracerError):
