@@ -138,8 +138,12 @@ def audit_intermediates(project):
     if isinstance(reference, str) and Path(reference).expanduser().is_absolute():
         from .reference_bundle import reference_paths
         reference_roots = reference_paths(Path(reference).expanduser())
+    from .reporting import status
+    from .terminal_progress import clean
     rows = []
+    total = len(ledger.data["stages"])
     for name, record in ledger.data["stages"].items():
+        status(f"Checking {clean(name)}", completed=len(rows), total=total)
         paths = []
         items = record.get("outputs", []) if isinstance(record, dict) else []
         valid = bool(items) and bool(record.get("signature")) if isinstance(record, dict) else False
@@ -160,6 +164,7 @@ def audit_intermediates(project):
             paths.append(path)
         valid = bool(valid and ledger.reusable(name, record["signature"], paths))
         rows.append({"stage": name, "integrity_passed": valid, "outputs": len(items)})
+    status("Saved intermediate audit finished", completed=total, total=total)
     passed = sum(row["integrity_passed"] for row in rows)
     return {"recorded_stages": len(rows), "integrity_passed": passed,
             "needs_recompute": len(rows) - passed, "stages": rows,

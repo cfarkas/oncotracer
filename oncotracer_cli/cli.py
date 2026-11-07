@@ -795,7 +795,9 @@ def _execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
         if config_path.name == "run.yml" and config_path.parent.name == "config" and has_recorded_outputs(config_path.parent.parent):
             result = resume_project(config_path.parent.parent, backend=getattr(args, "backend", None), image=getattr(args, "image", None))
             args.backend = result["backend"]
-            print(audit_summary(audit_intermediates(config_path.parent.parent)), flush=True)
+            with operation("Checking saved intermediate files", verbose=getattr(args, "verbose", False)):
+                audit = audit_intermediates(config_path.parent.parent)
+            print(audit_summary(audit), flush=True)
     backend = _backend_from(args)
     if backend in {"singularity", "apptainer"}:
         requested = load_flat_yaml(config_path).get("run_variants", False)

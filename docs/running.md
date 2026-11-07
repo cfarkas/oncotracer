@@ -220,3 +220,6 @@ The foreground command exits when analysis and final checks finish. An ordinary
 shell prompt or an open terminal window is not a running analysis. Progress
 threads stop on success, failure or interruption. The full run log and the
 cohort progress JSON remain available after exit.
+
+Continuation also reports the saved stage currently undergoing integrity checks,
+the number checked, and elapsed time while hashing large intermediate files.

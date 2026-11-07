@@ -5,7 +5,7 @@
   "files": {
     "oncotracer_cli/cli.py": {
       "base_commit": "7a4cdb7e9bd21e036adb9529c746d8dfa3bf4e11",
-      "current_sha256": "de7667b8db4617e0640cbaefdfac1456e0ebbe72f4d06be979b90d50aab05ca5",
+      "current_sha256": "902b5a0047125d3bd2abb32f742b4cb10a3a4493ffd7f13b9664cf77c181c32e",
       "recorded_sha256": "f6e5374c4e289da2066087a74166f63f6fbdcb70b11b2c698ce687e313ab6d21",
       "changes": [
         {
@@ -13,6 +13,12 @@
           "end": 1703,
           "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:3.0.0\"\n",
           "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:2.3.2\"\n"
+        },
+        {
+          "start": 33068,
+          "end": 33297,
+          "current": "            with operation(\"Checking saved intermediate files\", verbose=getattr(args, \"verbose\", False)):\n                audit = audit_intermediates(config_path.parent.parent)\n            print(audit_summary(audit), flush=True)\n",
+          "recorded": "            print(audit_summary(audit_intermediates(config_path.parent.parent)), flush=True)\n"
         }
       ]
     },
