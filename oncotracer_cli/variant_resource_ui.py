@@ -134,6 +134,7 @@ function guidedVariantPayload(data){
     data.variant_engine='glimpse2';data.variant_callers='bcftools,mutect2';data.variant_annovar='auto';data.variant_varlociraptor='off';
     data.variant_ffperase=data.variant_specimen_type==='ffpe'?'required':'off';
     data.variant_merge_vcfs=get('variant_merge_vcfs').checked;
+    data.variant_storage_mode=get('variant_storage_mode').value||'full';
     data.variant_confidence_gwas=get('variant_confidence_gwas').value||'medium';
     for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])data[key]=get(key).value.trim();
   }else data.variant_engine='legacy';
@@ -157,7 +158,7 @@ function guidedVariantPayload(data){
   }
   return data;
 }
-for(const id of ['variant-clair3-source','variant_merge_vcfs','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile','variant_ont_imputation','variant_quilt2_reference_dir','variant_quilt2_cache']){
+for(const id of ['variant-clair3-source','variant_merge_vcfs','variant_storage_mode','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile','variant_ont_imputation','variant_quilt2_reference_dir','variant_quilt2_cache']){
   for(const event of ['input','change'])document.getElementById(id).addEventListener(event,()=>{
     const get=key=>document.getElementById(key);
     if(id==='variant-clair3-source'){

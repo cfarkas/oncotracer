@@ -325,6 +325,7 @@ VARIANT_RESOURCE_FIELDS = (
 VARIANT_ASSESSMENT_FIELDS = ("variant_ffperase", "variant_varlociraptor", "variant_varlociraptor_fdr", "variant_varlociraptor_events", "variant_varlociraptor_sample")
 VARIANT_BOOLEAN_FIELDS = ("variant_merge_vcfs", "variant_download_resources", "variant_accept_ffperase_license", "variant_monte_carlo_linkage")
 VARIANT_GLIMPSE_FIELDS = (
+    "variant_storage_mode",
     "variant_engine", "variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir",
     "variant_parallel_samples", "variant_memory", "variant_confidence_gwas", "variant_patients", "variant_reuse_from", "variant_nextflow", "variant_workflow_source",
 )
@@ -361,6 +362,11 @@ def _glimpse_variant_values(args, specimen: str, *, interactive: bool) -> dict[s
         None if merge is None else ("yes" if merge else "no"),
         "Merge sample VCFs into cohort VCFs? (--merge-vcfs / --no-merge-vcfs)",
         default="yes", choices=("yes", "no"), interactive=interactive) == "yes"
+    from .storage_options import validate_mode
+    values["variant_storage_mode"] = validate_mode(_ask(
+        getattr(args, "variant_storage_mode", None),
+        "Work storage: compact saves space and preserves resume; full keeps all scratch (--storage-mode)",
+        default="full", choices=("full", "compact"), interactive=interactive))
     parallel = getattr(args, "variant_parallel_samples", None)
     parallel = parallel_value(parallel if parallel is not None else 'auto')
     values["variant_parallel_samples"] = parallel

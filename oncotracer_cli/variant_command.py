@@ -176,6 +176,9 @@ def _command_variants(args) -> int:
         raise OncoTracerError("Variant configuration changed while being read")
     if getattr(args, "variant_merge_vcfs", None) is not None:
         config["variant_merge_vcfs"] = args.variant_merge_vcfs
+    if getattr(args, "variant_storage_mode", None) is not None:
+        from .storage_options import validate_mode
+        config["variant_storage_mode"] = validate_mode(args.variant_storage_mode)
     parallel_samples = getattr(args, "parallel_samples", None)
     if getattr(args, 'gpu', None) is not None:
         config['gpu_usage'] = args.gpu

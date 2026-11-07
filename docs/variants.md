@@ -341,3 +341,54 @@ The results page links to these filenames. On a compatible resume, verified
 legacy native outputs receive the prefixes without rerunning variant calling
 or changing VCF records. Files edited by the user and unowned filename
 collisions are rejected; a failed publication restores the prior generation.
+
+
+## Save work space while preserving resume
+
+The opt-in `compact` storage mode retires each GLIMPSE2 task's generated
+`split_*.bin` reference after successful phasing and validation of its BCF and
+CSI output. Cleanup runs while other tasks continue and once more when the
+sample controller exits. The default `full` mode retains existing behavior.
+
+```bash
+oncotracer run --config project/config/run.yml --storage-mode compact
+oncotracer variants --config variants.yml --storage-mode compact
+nextflow run cfarkas/oncotracer --analysis variants --config variants.yml --storage_mode compact
+```
+
+The equivalent YAML setting is `variant_storage_mode: compact`. Terminal setup
+asks for the storage mode, and both browser setup forms offer **Work storage →
+Save disk space and preserve resume**. Explicit CLI values override YAML for
+that invocation without editing the saved configuration. Docker and Apptainer
+forward the choice to the same native controller. Custom GLIMPSE workflow
+bundles are not eligible for automatic retirement.
+
+This mode retains raw reads, BAMs, normalized reference BCFs, phase BCF/CSI
+pairs, ligated chromosomes, annotations, reports, logs and Nextflow metadata.
+It does not change the GLIMPSE workflow bundle, scientific parameters or cache
+keys. The retired binary is scratch created by `GLIMPSE2_split_reference`;
+it is neither a declared phase output nor an input needed by ligation or the
+continuation validator. Recomputing an invalidated phase regenerates its binary
+from the retained reference. No extra reconstruction is needed to resume a
+successfully completed phase.
+
+A task must have a successful exit receipt, the supported worker and workflow,
+a matching runtime identity, unmodified outputs from that task's lifetime, and
+a readable BGZF BCF with the correct sample plus a readable CSI index. Running,
+failed, corrupt, changed, shared/hardlinked or symlinked scratch is retained.
+Each deletion has a task-local `.oncotracer-storage.json` receipt. The sample
+summary is `pipeline_info/storage_compaction.json`; removed bytes and files also
+appear in that invocation's variant status. Storage errors leave uncertain
+files in place and are recorded separately from scientific completion.
+
+In one measured Fresh sample, split binaries occupied 47.7 GiB of 94.8 GiB.
+This is an illustrative measurement, not a guaranteed saving for every run.
+QUILT2 already removes its temporary imputation, ligation and concatenation
+workspaces after use. Compact mode retains its reusable prepared reference and
+chunk checkpoints; it does not change QUILT2 output or reference formats.
+
+BCF and BGZF VCF are already compressed, indexed formats used by the scientific
+tools. Parquet with Zstandard is useful for derived annotation tables, but it
+cannot replace GLIMPSE binary references, BCF/VCF or QUILT R data without changing
+their readers and resume contracts. This mode targets proven disposable scratch
+instead of converting scientific outputs or discarding genotype fields.

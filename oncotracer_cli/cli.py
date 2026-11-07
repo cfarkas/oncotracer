@@ -477,6 +477,7 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
                 threads=args.threads,
                 parallel_samples=getattr(args, "parallel_samples", None),
                 merge_vcfs=getattr(args, "variant_merge_vcfs", None),
+                storage_mode=getattr(args, "variant_storage_mode", None),
                 force=args.force if args.force else None,
                 dry_run=args.dry_run,
                 methylation=args.methylation,
@@ -587,6 +588,8 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--parallel-samples", str(args.parallel_samples)])
     if getattr(args, "variant_merge_vcfs", None) is not None:
         command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
+    if getattr(args, "variant_storage_mode", None) is not None:
+        command.extend(["--storage-mode", args.variant_storage_mode])
     if args.force:
         command.append("--force")
     if args.methylation:
@@ -669,6 +672,8 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--parallel-samples", str(args.parallel_samples)])
     if getattr(args, "variant_merge_vcfs", None) is not None:
         command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
+    if getattr(args, "variant_storage_mode", None) is not None:
+        command.extend(["--storage-mode", args.variant_storage_mode])
     if args.force:
         command.append("--force")
     if args.methylation:

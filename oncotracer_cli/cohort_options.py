@@ -1,4 +1,4 @@
-"""Shared command-line choice for the optional Illumina cohort VCF merge."""
+"""Shared non-scientific execution choices for Illumina variant workflows."""
 
 
 def add_arguments(parser):
@@ -13,3 +13,5 @@ def add_arguments(parser):
         dest='variant_merge_vcfs', action='store_false', default=None,
         help='skip the Illumina cohort merge; keep all per-sample VCFs and reports',
     )
+    from .storage_options import add_arguments as add_storage_arguments
+    add_storage_arguments(parser)

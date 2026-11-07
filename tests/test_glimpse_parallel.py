@@ -78,6 +78,22 @@ class ParallelSamplesTests(ResourceFixtureCase):
         by_sample={sample:[p for p in captured if p['sample']==sample] for sample in self.bams}
         self.assertTrue(all(rows[0]==rows[1]==rows[2] for rows in by_sample.values()))
 
+    def test_storage_mode_changes_do_not_change_scientific_sample_parameters(self):
+        captured=[]
+        class Runner:
+            def run(inner, stage, command, **kwargs):
+                captured.append(ParallelSamplesTests.complete(command))
+        for mode in ('full','compact','full'):
+            self.request=replace(self.request,glimpse_config={**self.request.glimpse_config,'storage_mode':mode})
+            status,_,_=self.run_pipeline(Runner())
+            self.assertEqual(status['overall_status'],'complete')
+            self.assertEqual(status['requested']['storage_mode'],mode)
+            self.assertTrue(all(('storage_compaction' in row)==(mode=='compact') for row in status['samples']))
+        for sample in self.bams:
+            records=[p for p in captured if p['sample']==sample]
+            self.assertEqual(records[0],records[1]);self.assertEqual(records[1],records[2])
+            self.assertNotIn('storage_mode',records[0])
+
     def test_disabled_merge_keeps_sample_failure_visible(self):
         self.request=replace(self.request, glimpse_config={**self.request.glimpse_config,'merge_vcfs':False})
         class Runner:

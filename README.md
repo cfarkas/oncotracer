@@ -40,7 +40,7 @@ Before setup, `oncotracer --detect-resources` (also `--detect_resources`) sugges
 
 The [2.3.1rc2 maintenance preview](docs/releases/2.3.1rc2.md) fixes ClinVar cohort provenance and reuses verified completed workflows across application updates.
 
-In the 2.3.1rc3 source candidate, cohort VCF merging can be disabled with `--no-merge-vcfs` or the browser checkbox. Per-sample VCFs and reports are retained. See the [optional-merge candidate](docs/releases/2.3.1rc3.md).
+In the 2.3.1rc3 source candidate, cohort VCF merging can be disabled with `--no-merge-vcfs` or the browser checkbox. Per-sample VCFs and reports are retained. See the [optional-merge candidate](docs/releases/2.3.1rc3.md). The compact-storage source preview adds `--storage-mode compact` to retire completed GLIMPSE split-reference scratch while preserving resume; see [work storage](docs/variants.md#save-work-space-while-preserving-resume).
 
 Optional [QUILT2 imputation for ONT](docs/ont_imputation.md) provides research evidence alongside observed calls. Automated haplotype assessment was removed in 2.3.1rc1; [standalone experimental linkage](docs/haplotype_evidence.md) is separate from production runs.
 
