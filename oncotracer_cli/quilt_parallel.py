@@ -13,8 +13,10 @@ from .resource_pool import read_budget
 SUPPORTED_WORKER = 'e059a3ef8fbd783c34edc32c68c8912e7a7064e4f515c5b7b779fa54c775fe99'
 
 
-def load_worker():
-    path=runtime_root()/'oncotracer_cli/lpwgs/bin/quilt2_worker.py'
+def load_worker(root=None):
+    # Standalone children import from the zipapp, but argv[0] is this module.
+    # Use the parent's verified, extracted payload instead of guessing its path.
+    path=(Path(root) if root is not None else runtime_root())/'oncotracer_cli/lpwgs/bin/quilt2_worker.py'
     sys.path.insert(0,str(path.parent))
     spec=importlib.util.spec_from_file_location('_oncotracer_quilt_worker',path)
     worker=importlib.util.module_from_spec(spec);spec.loader.exec_module(worker)
@@ -103,8 +105,8 @@ def configure_environment(config):
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True);parser.add_argument('--resources',type=Path,required=True);parser.add_argument('--maximum-workers',type=int,required=True);args=parser.parse_args()
-    config=json.loads(args.config.read_text());configure_environment(config);worker,path=load_worker()
+    parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True);parser.add_argument('--resources',type=Path,required=True);parser.add_argument('--maximum-workers',type=int,required=True);parser.add_argument('--runtime-root',type=Path);args=parser.parse_args()
+    config=json.loads(args.config.read_text());configure_environment(config);worker,path=load_worker(args.runtime_root)
     if sha256_file(path)==SUPPORTED_WORKER:
         prefetch(config,args.resources,args.maximum_workers,worker)
         # --force has already recomputed every chunk. The unchanged worker

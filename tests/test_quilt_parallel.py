@@ -9,6 +9,12 @@ from oncotracer_cli.runtime import sha256_file
 
 @unittest.skipUnless(shutil.which('bcftools'),'bcftools required')
 class ParallelQuiltTests(unittest.TestCase):
+    def test_child_uses_explicit_verified_payload_when_argv_is_not_the_zipapp(self):
+        root=Path(__file__).resolve().parents[1]
+        with patch('oncotracer_cli.quilt_parallel.runtime_root',side_effect=AssertionError('Do not infer child argv[0]')):
+            worker,path=load_worker(root)
+        self.assertEqual(worker.sha(path),SUPPORTED_WORKER)
+
     def test_dynamic_entry_uses_the_original_isolated_r_environment(self):
         with patch.dict(os.environ, {'R_HOME':'/wrong', 'R_LIBS_USER':'/wrong',
                                     'PYTHONPATH':'/wrong', 'OMP_NUM_THREADS':'64'}):

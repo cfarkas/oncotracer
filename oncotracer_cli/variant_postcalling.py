@@ -78,7 +78,7 @@ def impute_quilt(request,sample,bam,manifest,root,runner,threads,toolchain=None,
     if resources is not None:
         from .source_runtime import python_module
         command=python_module('oncotracer_cli.quilt_parallel');command[0]=core_python(toolchain)
-        command += ['--config',str(path),'--resources',str(resources),'--maximum-workers',str(maximum_workers)]
+        command += ['--config',str(path),'--resources',str(resources),'--maximum-workers',str(maximum_workers),'--runtime-root',str(runtime_root())]
     else:command=[core_python(toolchain),'-B',runtime_root()/'oncotracer_cli/lpwgs/bin/quilt2_worker.py','--config',path]
     runner.run('quilt2-'+sample,command)
     return json.loads((output/f'{sample}.quilt2.summary.json').read_text())
