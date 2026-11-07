@@ -16,6 +16,8 @@ class ReportResourceTests(ResourceFixtureCase):
             root=Path(temp);home=root/'original home';home.mkdir()
             bundle=root/'bundle';(bundle/'bin').mkdir(parents=True)
             (bundle/'main.nf').write_text('// controlled fixture\n')
+            # Compact mode authenticates the worker even when this fixture has no phase tasks.
+            (bundle/'bin/glimpse2.py').write_text('# controlled fixture worker\n')
             (bundle/'bin/llm_reporting.py').write_text(
                 'from pathlib import Path\n'
                 'def prepare(c):\n'
@@ -55,7 +57,7 @@ class ReportResourceTests(ResourceFixtureCase):
                  patch.object(pipeline,'preflight',return_value={'nextflow':'nextflow','bcftools':'bcftools','python':'/scientific/environment/bin/python'}), \
                  patch('oncotracer_cli.glimpse_joint.merge_cohort',return_value={'outputs':{}}):
                 result=pipeline.run(request,{'SAMPLE':bam},ref,root/'output',Runner(),None)
-            self.assertEqual(result['overall_status'],'complete')
+            self.assertEqual(result['overall_status'],'complete',result)
             self.assertEqual(len(seen),1)
             self.assertEqual(bam.read_bytes(),b'fixture BAM')
 
