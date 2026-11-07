@@ -73,6 +73,12 @@ class VariantBrowserTests(unittest.TestCase):
         self.assertFalse(Path(config['outdir']).exists())
         self.assertFalse(config['force'])
 
+    def test_resource_mode_roundtrips_without_launching_analysis(self):
+        prepared=self.prepare(variant_resource_mode='fixed')
+        config=load_flat_yaml(Path(prepared['config_path']))
+        self.assertEqual(config['variant_resource_mode'],'fixed')
+        self.assertFalse(Path(prepared['outdir']).exists())
+
     def test_parallel_resources_roundtrip_and_invalid_values(self):
         for value in (0, -1, True, 1.5, '3'):
             with self.subTest(value=value), self.assertRaisesRegex(OncoTracerError, 'positive integer'):

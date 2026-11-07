@@ -98,6 +98,33 @@ class SampleJobBrowserTests(unittest.TestCase):
         expect(self.page.locator('#review-card #resume-resources')).to_be_visible()
         expect(self.page.locator('#run')).to_be_enabled()
 
+    def test_ont_resource_mode_keeps_saved_choice_and_is_visible_with_local_models(self):
+        from oncotracer_cli.runtime import render_flat_yaml
+        (self.root/'sample.bam').write_bytes(b'path-only fixture; never processed')
+        (self.root/'reference.fa').write_text('>chr1\nACGT\n')
+        (self.root/'samples.tsv').write_text('sample\tbam\tstatus\nS1\tsample.bam\tnormal\n')
+        config=self.root/'ont.yml'
+        config.write_text(render_flat_yaml(dict(mode='ont',outdir='results',threads=4,
+            variant_reference='reference.fa',variant_bam_manifest='samples.tsv',
+            run_variants=True,variant_callers='clair3',variant_specimen_type='fresh',
+            variant_clair3_model='auto',variant_ont_profile='r1041_e82_400bps_sup_v500',
+            variant_resource_mode='fixed',variant_annovar='off')))
+        self.page.goto(self.server.origin+'/variants#'+self.state.token)
+        self.page.locator('#config-path').fill(str(config))
+        self.page.locator('#load-config').click()
+        expect(self.page.locator('#workflow')).to_be_visible()
+        control=self.page.locator('#variant_resource_mode')
+        expect(control).to_be_visible()
+        expect(control).to_have_value('fixed')
+        self.page.locator('#variant-clair3-source').select_option('local')
+        expect(self.page.locator('#variant-clair3-auto-fields')).to_be_hidden()
+        expect(control).to_be_visible()
+        control.select_option('dynamic')
+        self.assertEqual(self.page.evaluate('payload().variant_resource_mode'),'dynamic')
+        self.assertFalse((self.root/'results').exists())
+        self.assertEqual(self.runs,[])
+        self.assertFalse(self.errors,self.errors)
+
     def test_gpu_choice_is_visible_only_when_detected_and_is_saved(self):
         self.new_form()
         expect(self.page.locator('#sample-gpu-field')).to_be_hidden()

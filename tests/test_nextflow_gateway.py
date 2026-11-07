@@ -132,6 +132,15 @@ class NextflowGatewayTests(unittest.TestCase):
             argv, _, _ = gateway.command(self.args(*flags,'--storage-mode','compact'))
             self.assertEqual(parse_arguments(argv[3:]).variant_storage_mode,'compact')
 
+    def test_resource_mode_reaches_browser_variants_and_full_cli(self):
+        for flags in [('--interactive',), ('--analysis','variants','--config',self.config.name),
+                      ('--analysis','full','--config',self.config.name)]:
+            for mode in ('dynamic','fixed'):
+                argv, _, _ = gateway.command(self.args(*flags,'--resource-mode',mode))
+                self.assertEqual(parse_arguments(argv[3:]).variant_resource_mode,mode)
+            argv, _, _ = gateway.command(self.args(*flags))
+            self.assertIsNone(parse_arguments(argv[3:]).variant_resource_mode)
+
     def test_parallel_sample_override_reaches_visual_variants_and_full_cli(self):
         for flags in [('--interactive',), ('--analysis','variants','--config',self.config.name),
                       ('--analysis','full','--config',self.config.name)]:

@@ -69,13 +69,18 @@ def prepare_quilt(request,bams,fasta,root,runner,threads,toolchain=None):
     return manifest
 
 
-def impute_quilt(request,sample,bam,manifest,root,runner,threads,toolchain=None,*,force=False):
+def impute_quilt(request,sample,bam,manifest,root,runner,threads,toolchain=None,*,force=False,resources=None,maximum_workers=1):
     launch=root/'quilt2_launch';launch.mkdir(parents=True,exist_ok=True)
     output=root/'samples'/sample/'quilt2'
     config=dict(manifest=str(manifest),sample=sample,bam=str(bam),output=str(output),threads=threads,force=force,expected_chromosomes=[f'chr{i}' for i in range(1,23)],
                 min_base_quality=max(request.min_base_quality,request.min_mapping_quality),tools=quilt_tools(request))
     path=launch/f'{sample}.parameters.json';atomic_write_json(path,config)
-    runner.run('quilt2-'+sample,[core_python(toolchain),'-B',runtime_root()/'oncotracer_cli/lpwgs/bin/quilt2_worker.py','--config',path])
+    if resources is not None:
+        from .source_runtime import python_module
+        command=python_module('oncotracer_cli.quilt_parallel');command[0]=core_python(toolchain)
+        command += ['--config',str(path),'--resources',str(resources),'--maximum-workers',str(maximum_workers)]
+    else:command=[core_python(toolchain),'-B',runtime_root()/'oncotracer_cli/lpwgs/bin/quilt2_worker.py','--config',path]
+    runner.run('quilt2-'+sample,command)
     return json.loads((output/f'{sample}.quilt2.summary.json').read_text())
 
 

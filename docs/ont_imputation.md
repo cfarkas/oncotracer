@@ -113,3 +113,35 @@ and consult the [upstream documentation](https://github.com/rwdavies/QUILT/blob/
 Its published normal-sample benchmarks support choosing a read-aware imputer for
 ONT; they do not validate OncoTracer's tumor cohorts or imply clinical accuracy.
 The reference is from the [1000 Genomes high-coverage phased release](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/20201028_3202_phased/).
+
+## Share available CPU and RAM
+
+Dynamic scheduling is the default for ONT variants in every installation route.
+Clair3 CPU chunk queues and independent QUILT2 chunks receive capacity released
+by completed samples. The controller checks CPU affinity, container quotas and
+available RAM every five seconds, within the analysis CPU and memory budgets.
+It reserves 20% of available RAM and admits at most one chunk per 8 GiB. Running
+chunks finish before a reduced allowance takes full effect. These admission
+limits are estimates, not an operating-system memory cap.
+
+Choose **Resource scheduling** in browser setup, answer the terminal prompt, or
+set `variant_resource_mode: fixed` in YAML to retain initial allocations.
+An explicit CLI option overrides YAML for that invocation:
+
+```bash
+oncotracer run --config project/config/run.yml --resource-mode dynamic
+oncotracer variants --config variants.yml --resource-mode fixed
+nextflow run cfarkas/oncotracer --analysis variants --config variants.yml --resource_mode dynamic
+```
+
+Dynamic mode bounds the requested sample count by CPU and RAM. It expands CPU
+Clair3's supported GNU Parallel chunk queues and runs QUILT2 chunks with one
+thread each, preserving the existing seed, model, filters and validation.
+Completed chunks retain their original integrity receipts and are checked before
+reuse. New work waits when RAM is scarce; controller loss stops new admission.
+Inspect `08_variants/resource_scheduler/*/status.json` for live allowances.
+
+The configured budget applies to one analysis. Independent projects need separate
+budgets; the controller does not increase Docker limits or coordinate unrelated
+processes. GPU callers, ClairS-TO, alignment, GLIMPSE2 and final ligation retain
+their current scheduling. Existing running studies keep their pinned version.

@@ -43,6 +43,8 @@ workflow {
         }
         def storageMode = params.containsKey('storageMode') ? params.storageMode : params.storage_mode
         if (storageMode != null) argv.addAll(['--storage-mode', storageMode.toString()])
+        def resourceMode = params.containsKey('resourceMode') ? params.resourceMode : params.resource_mode
+        if (resourceMode != null) argv.addAll(['--resource-mode', resourceMode.toString()])
         def gpuWaitHours = params.containsKey('gpuWaitHours') ? params.gpuWaitHours : params.gpu_wait_hours
         if (gpuWaitHours != null) argv.addAll(['--gpu-wait-hours', gpuWaitHours.toString()])
         ['config', 'start_dir', 'backend', 'threads', 'parallel_samples', 'project', 'input_folder',

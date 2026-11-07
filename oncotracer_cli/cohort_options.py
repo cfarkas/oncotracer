@@ -15,3 +15,5 @@ def add_arguments(parser):
     )
     from .storage_options import add_arguments as add_storage_arguments
     add_storage_arguments(parser)
+    from .resource_options import add_arguments as add_resource_arguments
+    add_resource_arguments(parser)

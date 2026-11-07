@@ -50,7 +50,7 @@ def main():
     for key in list(os.environ):
         if key.startswith(("PYTHON", "CONDA_", "ONCOTRACER_")):
             os.environ.pop(key, None)
-    for key, name in [("HOME", "home"), ("XDG_CONFIG_HOME", "config"),
+    for key, name in [("XDG_CONFIG_HOME", "config"),
                       ("XDG_DATA_HOME", "data"), ("XDG_CACHE_HOME", "cache"),
                       ("TMPDIR", "tmp")]:
         folder = args.work_dir / "isolation" / name

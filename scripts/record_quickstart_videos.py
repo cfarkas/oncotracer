@@ -692,7 +692,6 @@ def main():
     isolation = args.work_dir / "isolation"
     isolated_env = os.environ.copy()
     for variable, relative in [
-        ("HOME", "home"),
         ("XDG_CONFIG_HOME", "config"),
         ("XDG_CACHE_HOME", "cache"),
         ("TMPDIR", "tmp"),

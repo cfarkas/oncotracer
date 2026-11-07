@@ -88,7 +88,10 @@ class NativeDocumentationTests(unittest.TestCase):
         return content
 
     def assert_recorded_source_matches(self, relative: str, expected: str) -> None:
-        content = self.before_gpu_queue_options(relative, (ROOT / relative).read_bytes())
+        content = (ROOT / relative).read_bytes()
+        if hashlib.sha256(content).hexdigest() == expected:
+            return
+        content = self.before_gpu_queue_options(relative, content)
         if hashlib.sha256(content).hexdigest() == expected:
             return
         from oncotracer_cli.cli import DEFAULT_IMAGE
@@ -298,7 +301,7 @@ class NativeDocumentationTests(unittest.TestCase):
         for relative, expected in record["source_files"].items():
             self.assertFalse(Path(relative).is_absolute())
             self.assertNotIn("..", Path(relative).parts)
-            content = self.before_gpu_queue_options(relative, (ROOT / relative).read_bytes())
+            content = (ROOT / relative).read_bytes()
             self.assertEqual(hashlib.sha256(content).hexdigest(), expected, relative)
         self.assertEqual([(row["sample_id"], row["classifier"]) for row in record["pointer_drags"]],
                          [(0, "marlin"), (1, "sturgeon"), (2, "marlin"), (2, "")])

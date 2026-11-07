@@ -67,6 +67,7 @@ class VariantRequest:
     glimpse_config: dict | None = None
     tool_prefix_source: str = "configured_or_host"
     tool_prefix_diagnostics: tuple[str, ...] = ()
+    resource_mode: str = 'dynamic'
     parallel_samples: int | str = 'auto'
     memory: str = 'auto'
     gpu_usage: bool = False
@@ -85,6 +86,7 @@ class VariantRequest:
         if not include_runtime_diagnostics:
             result.pop("tool_prefix_source", None)
             result.pop("tool_prefix_diagnostics", None)
+            result.pop("resource_mode", None)
             result.pop("parallel_samples", None)
             result.pop("memory", None)
         # Kept as a legacy constructor field; no pipeline schedules this stage.
@@ -211,6 +213,8 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
     from .variant_model_assets import resource_download_plan
     resource_download_plan(request)
     from .sample_resources import parallel_value, memory_gb
+    from .resource_options import validate_mode as resource_mode
+    request = replace(request, resource_mode=resource_mode(config.get('variant_resource_mode')))
     parallel = parallel_value(config.get('variant_parallel_samples', config.get('parallel_samples', 'auto')))
     memory = config.get('variant_memory', config.get('analysis_memory', 'auto'))
     memory_gb(memory)
@@ -529,7 +533,7 @@ def _clairsto_command_prefix(request, tools, directory: Path, bam: Path, ref: Pa
     return [*command, tools['clairs_to_sif'], '/opt/bin/run_clairs_to']
 
 
-def _call(request, caller, sample, bam, ref, directory, tools, runner, threads, env, targets, normal_bam=None):
+def _call(request, caller, sample, bam, ref, directory, tools, runner, threads, env, targets, normal_bam=None,parallel_wrapper=None):
     def run(label, argv, **kwargs):
         with (directory / f'{label}.stderr.log').open('w') as err:
             child_env = dict(kwargs.pop('env', env) or {})
@@ -593,6 +597,8 @@ def _call(request, caller, sample, bam, ref, directory, tools, runner, threads, 
         results = directory / 'clair3'
         cmd = [tools['clair3'], f'--bam_fn={bam}', f'--ref_fn={ref}', f'--threads={threads}', '--platform=ont',
                f'--model_path={request.clair3_model}', f'--output={results}', f'--sample_name={sample}']
+        if parallel_wrapper is not None and not request.gpu_usage and str(tools['clair3']).endswith('.sh'):
+            cmd.append('--parallel='+str(parallel_wrapper))
         if targets:
             cmd.append(f'--bed_fn={targets}')
         run('call', cmd)
@@ -642,6 +648,9 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
     from .sample_resources import allocate, announce
     from .sample_execution import run_jobs, SampleCancelled
     allocation = allocate(threads, len(bams), parallel=request.parallel_samples, memory=request.memory)
+    if request.mode=='ont' and request.resource_mode=='dynamic':
+        from .resource_pool import safe_allocation
+        allocation=safe_allocation(allocation)
     announce('variants', allocation)
     tools = preflight_variant_tools(request, toolchain)
     fasta = require_file(Path(reference['fasta'] if isinstance(reference, Mapping) else reference), 'Variant reference FASTA')
@@ -678,6 +687,11 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
     detection = ffperase.discover(request.ffperase_root, request.ffperase_models, request.ffperase_sif,
                                  request.ffperase_prefix) if request.ffperase != 'off' else None
     status['ffperase_detection'] = detection or {'status':'off'}
+    resources=None
+    if request.mode=='ont' and request.resource_mode=='dynamic':
+        from .resource_pool import DynamicResources
+        resources=DynamicResources(root,bams,allocation)
+        status['dynamic_resources']=str(resources.directory/'status.json')
     def execute(job, runner):
         sample, source_bam = job
         threads = allocation['threads_per_sample']
@@ -758,7 +772,8 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                     # only scheduling and published artifact names have changed.
                     # Retiring post-calling linkage and retaining failed scratch
                     # do not change caller inputs, filters, or published alleles.
-                    for digest in ('3c7844d3299f4f18add6d17fd7160a616c5343e04d6fac9a249efdb18d86dbc2',
+                    for digest in ('0f4708d6e7cdb9b1fdf4940da7f2845cf7a4f1b93d58f718e80e27b1bf282420',
+                                   '3c7844d3299f4f18add6d17fd7160a616c5343e04d6fac9a249efdb18d86dbc2',
                                    'c71529f4c2a04afc126fb0b00a39486b73aea022ab285eecde01beab2d3794c8',
                                    'd0dacffb5597528ac96d4c09debf9eb67493a551697c69e87d5ca958ba35b156'):
                         legacy_command = list(signature_command)
@@ -778,7 +793,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                     scratch = work/caller
                     scratch.mkdir()
                     try:
-                        final,evidence,count = _call(sample_request,caller,sample,bam,ref,scratch,tools,runner,threads,env,targets, **({"normal_bam": normal_bam} if caller == "strelka2_somatic" else {}))
+                        final,evidence,count = _call(sample_request,caller,sample,bam,ref,scratch,tools,runner,threads,env,targets, **({"normal_bam": normal_bam} if caller == "strelka2_somatic" else {}), **({"parallel_wrapper": resources.parallel_wrapper(sample)} if resources and caller=="clair3" else {}))
                         validate_vcf(final, expected_samples=accepted_samples)
                         assessments, assessment_files = {}, []
                         if sample_request.ffperase != 'off' or sample_request.varlociraptor != 'off':
@@ -862,7 +877,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                             shutil.copy2(p,logs/f'{sample}.{caller}.{p.name}')
                 states = [r['status'] for r in sample_result['callers'] if r['status']!='not_applicable']
                 if quilt_manifest is not None:
-                    sample_result['quilt2']=impute_quilt(request,sample,bam,quilt_manifest,root,runner,threads,toolchain,force=force)
+                    sample_result['quilt2']=impute_quilt(request,sample,bam,quilt_manifest,root,runner,threads,toolchain,force=force,resources=resources.sample_directory(sample) if resources else None,maximum_workers=allocation['total_threads'])
                     states.append(sample_result['quilt2']['status'])
                 sample_result['status'] = ('not_applicable' if not states else 'complete' if all(s=='complete' for s in states)
                                           else 'partial_failure' if any(s in {'complete','partial_failure'} for s in states) else 'failed')
@@ -874,6 +889,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
             for sample, bam in bams.items()}
     status['samples'] = list(rows.values())
     def update(sample, state, result):
+        if resources:resources.update(sample,state)
         if state == 'running':
             rows[sample]['status'] = 'running'
         elif state in {'failed', 'interrupted'}:
@@ -888,6 +904,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
         atomic_write_json(root/'variant_status.json', status)
     atomic_write_json(root/'variant_status.json', status)
     try:
+        if resources:resources.start()
         run_jobs([(sample, (sample, bam)) for sample, bam in bams.items()], execute,
                  allocation, runner, root/'sample_logs', update=update)
         any_success = any(r.get('status') in {'complete','partial_failure'} for s in status['samples'] for r in s['callers'])
@@ -906,6 +923,8 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
         status['finished_at'] = utc_now()
         atomic_write_json(root/'variant_status.json', status)
         raise
+    finally:
+        if resources:resources.close()
     status['finished_at'] = utc_now()
     atomic_write_json(root/'variant_status.json',status)
     atomic_write_json(root/'variant_provenance.json',{'schema':SCHEMA,'module_sha256':_module_digest(),

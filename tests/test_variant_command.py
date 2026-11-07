@@ -86,6 +86,18 @@ class VariantCommandTests(unittest.TestCase):
         self.assertFalse(self.outdir.exists())
         self.assertEqual(before,{str(p.relative_to(self.root)):p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
 
+    def test_resource_override_preserves_saved_configuration(self):
+        self.save(variant_resource_mode='fixed')
+        before=self.config.read_bytes()
+        for flags,expected in [((), 'fixed'), (('--resource-mode','dynamic'), 'dynamic')]:
+            original=variant_command.resolve_variant_request
+            with patch.object(variant_command,'resolve_variant_request',wraps=original) as resolve:
+                code,output=self.cli('--dry-run',*flags)
+            self.assertEqual(code,0,output)
+            self.assertEqual(resolve.call_args.args[0]['variant_resource_mode'],expected)
+            self.assertEqual(self.config.read_bytes(),before)
+            self.assertFalse(self.outdir.exists())
+
     def test_parallel_cli_override_reaches_request_without_rewriting_config(self):
         saved = self.config.read_bytes()
         original = variant_command.resolve_variant_request

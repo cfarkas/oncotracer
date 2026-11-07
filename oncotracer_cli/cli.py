@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:2.3.1"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:2.3.2"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -478,6 +478,7 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
                 parallel_samples=getattr(args, "parallel_samples", None),
                 merge_vcfs=getattr(args, "variant_merge_vcfs", None),
                 storage_mode=getattr(args, "variant_storage_mode", None),
+                resource_mode=getattr(args, "variant_resource_mode", None),
                 force=args.force if args.force else None,
                 dry_run=args.dry_run,
                 methylation=args.methylation,
@@ -590,6 +591,8 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
     if getattr(args, "variant_storage_mode", None) is not None:
         command.extend(["--storage-mode", args.variant_storage_mode])
+    if getattr(args, "variant_resource_mode", None) is not None:
+        command.extend(["--resource-mode", args.variant_resource_mode])
     if args.force:
         command.append("--force")
     if args.methylation:
@@ -674,6 +677,8 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
     if getattr(args, "variant_storage_mode", None) is not None:
         command.extend(["--storage-mode", args.variant_storage_mode])
+    if getattr(args, "variant_resource_mode", None) is not None:
+        command.extend(["--resource-mode", args.variant_resource_mode])
     if args.force:
         command.append("--force")
     if args.methylation:
@@ -1677,7 +1682,7 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
         "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
     )
     parser.add_argument("--threads", type=int, help="total CPU budget; shared across concurrent GLIMPSE2 samples")
-    parser.add_argument("--parallel-samples", type=parallel_argument, help="concurrent samples: auto recommends a fit; a positive integer overrides resource recommendations (may exhaust memory)")
+    parser.add_argument("--parallel-samples", type=parallel_argument, help="concurrent samples: auto recommends a fit; dynamic ONT scheduling bounds the requested maximum by CPU/RAM")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--root", help="Repository or extracted payload root")

@@ -329,7 +329,7 @@ VARIANT_GLIMPSE_FIELDS = (
     "variant_engine", "variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir",
     "variant_parallel_samples", "variant_memory", "variant_confidence_gwas", "variant_patients", "variant_reuse_from", "variant_nextflow", "variant_workflow_source",
 )
-VARIANT_FIELDS = ("variant_ont_imputation", *VARIANT_GLIMPSE_FIELDS, "variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", "variant_matched_normals", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
+VARIANT_FIELDS = ("variant_resource_mode", "variant_ont_imputation", *VARIANT_GLIMPSE_FIELDS, "variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", "variant_matched_normals", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
 
 
 def _postcalling_values(args, mode, *, interactive):
@@ -465,6 +465,9 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
                   "ANNOVAR annotation (--variant-annovar; auto uses an existing local installation)",
                   default="auto", choices=("auto", "off"), interactive=interactive)}
     values["variant_parallel_samples"] = parallel if parallel is not None else "auto"
+    from .resource_options import validate_mode as resource_mode
+    values["variant_resource_mode"] = resource_mode(_ask(getattr(args,"variant_resource_mode",None),
+        "ONT resource scheduling (--resource-mode)", default="dynamic", choices=("dynamic","fixed"), interactive=interactive))
     values["variant_memory"] = getattr(args, "variant_memory", None) or "auto"
     from .strelka2 import parse_matched_normals
     pairs = getattr(args, "variant_matched_normals", None)
@@ -1340,7 +1343,7 @@ def add_setup_commands(subparsers) -> None:
     variant = parser.add_argument_group("Optional native small-variant calling")
     from .cohort_options import add_arguments as add_cohort_arguments
     add_cohort_arguments(variant)
-    variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=parallel_argument, help="simultaneous alignment/variant samples: auto recommends a fit; a positive integer overrides resource recommendations (may exhaust memory)")
+    variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=parallel_argument, help="simultaneous samples: auto recommends a fit; dynamic ONT scheduling bounds the requested maximum by CPU/RAM")
     variant.add_argument("--variant-memory", help="total memory budget across concurrent samples, or auto (detected at Run)")
     variant.add_argument('--variant-monte-carlo-linkage','--monte-carlo-linkage',action='store_true',default=None,
                          help='Deprecated compatibility option; integrated haplotype assessment has been removed')

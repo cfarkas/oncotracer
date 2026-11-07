@@ -143,6 +143,8 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         argv.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
     if args.variant_storage_mode is not None:
         argv += ["--storage-mode", args.variant_storage_mode]
+    if args.variant_resource_mode is not None:
+        argv += ["--resource-mode", args.variant_resource_mode]
     if args.gpu is not None:
         argv.append('--gpu' if args.gpu else '--cpu')
     if args.gpu_wait_hours is not None:

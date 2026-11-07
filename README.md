@@ -6,7 +6,7 @@ Analyze Illumina and Oxford Nanopore (ONT) copy-number changes and small variant
 
 ## Quick start
 
-Use Linux and Python 3.10–3.13. Install the application in your Python environment:
+Use Linux and Python 3.10–3.13. No Git checkout is required. Install in your Python environment:
 
 ```bash
 python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.3.1-rc.2/oncotracer-2.3.1rc2-py3-none-any.whl"
@@ -38,7 +38,7 @@ The image is saved for later commands. See [installation](docs/installation.md) 
 
 Before setup, `oncotracer --detect-resources` (also `--detect_resources`) suggests [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) from this machine's CPU/RAM; choose the combination in new setup or **Review and run** for continuation.
 
-The [2.3.1 release candidate](docs/releases/2.3.1.md) defaults to compact storage while preserving resume. Select `--storage-mode full` to keep scratch or `--no-merge-vcfs` to skip cohort merging. Stable publication awaits complete study and parity validation.
+The [2.3.2 release candidate](docs/releases/2.3.2.md) defaults to dynamic ONT scheduling and compact storage. Select `--resource-mode fixed` to keep initial allocations or `--no-merge-vcfs` to skip cohort merging. Stable publication awaits study and parity validation.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 

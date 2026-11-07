@@ -147,6 +147,7 @@ function guidedVariantPayload(data){
   if(String(data.variant_callers||'').split(',').includes('clair3')&&get('variant-clair3-source').value==='auto'){
     data.variant_clair3_model='auto';data.variant_ont_profile=get('variant_ont_profile').value;
   }else data.variant_ont_profile='';
+  data.variant_resource_mode=get('variant_resource_mode')?.value||'dynamic';
   data.variant_matched_normals=variantPairPayload();
   const ffpe=data.variant_ffperase==='required';
   data.variant_download_resources=ffpe&&get('variant_download_resources').checked;
@@ -158,7 +159,7 @@ function guidedVariantPayload(data){
   }
   return data;
 }
-for(const id of ['variant-clair3-source','variant_merge_vcfs','variant_storage_mode','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile','variant_ont_imputation','variant_quilt2_reference_dir','variant_quilt2_cache']){
+for(const id of ['variant-clair3-source','variant_merge_vcfs','variant_storage_mode','variant_resource_mode','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile','variant_ont_imputation','variant_quilt2_reference_dir','variant_quilt2_cache']){
   for(const event of ['input','change'])document.getElementById(id).addEventListener(event,()=>{
     const get=key=>document.getElementById(key);
     if(id==='variant-clair3-source'){
@@ -175,6 +176,7 @@ function syncVariantLayout(){
   const docker=document.getElementById('backend')?.value==='docker',runtime=document.getElementById('variant-ffperase-runtime');
   if(!runtime)return;
   syncVariantModelControls();renderVariantPairing();
+  show('variant-resource-mode-controls',typeof mode!=='undefined'&&mode==='ont');
   if(!runtime.dataset.chosen)runtime.value=document.getElementById('variant_ffperase_sif').value.trim()?'sif':'native';
   show('variant-tool-prefix-fields',!docker);show('variant-clairsto-sif-fields',!docker);show('variant-ffperase-runtime-fields',!docker);
   show('variant-ffperase-prefix-fields',!docker&&runtime.value==='native');show('variant-ffperase-sif-fields',!docker&&runtime.value==='sif');

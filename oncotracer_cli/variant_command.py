@@ -179,6 +179,9 @@ def _command_variants(args) -> int:
     if getattr(args, "variant_storage_mode", None) is not None:
         from .storage_options import validate_mode
         config["variant_storage_mode"] = validate_mode(args.variant_storage_mode)
+    if getattr(args, "variant_resource_mode", None) is not None:
+        from .resource_options import validate_mode as validate_resource_mode
+        config["variant_resource_mode"] = validate_resource_mode(args.variant_resource_mode)
     parallel_samples = getattr(args, "parallel_samples", None)
     if getattr(args, 'gpu', None) is not None:
         config['gpu_usage'] = args.gpu

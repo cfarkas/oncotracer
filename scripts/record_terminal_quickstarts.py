@@ -80,7 +80,6 @@ def isolated_env(base):
         ):
             env.pop(key, None)
     for key, name in (
-        ("HOME", "home"),
         ("XDG_CONFIG_HOME", "config"),
         ("XDG_CACHE_HOME", "cache"),
         ("XDG_DATA_HOME", "data"),

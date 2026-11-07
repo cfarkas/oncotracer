@@ -15,7 +15,7 @@ RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str
 
 COPY . /opt/oncotracer/
 RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
-    && PATH="${ONCOTRACER_VARIANTS_PREFIX}/bin:${PATH}" /opt/conda/bin/python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_variant_postcalling tests.test_glimpse_joint tests.test_glimpse_resume tests.test_optional_cohort tests.test_glimpse_storage -q \
+    && PATH="${ONCOTRACER_VARIANTS_PREFIX}/bin:/opt/micromamba/envs/clairs-to/bin:${PATH}" /opt/conda/bin/python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_variant_postcalling tests.test_glimpse_joint tests.test_glimpse_resume tests.test_optional_cohort tests.test_glimpse_storage tests.test_dynamic_resources tests.test_quilt_parallel -q \
     && build_dir="$(mktemp -d /tmp/oncotracer-build.XXXXXXXX)" \
     && python -B scripts/build_native_binary.py --root /opt/oncotracer \
        --output "${build_dir}/oncotracer" --source-commit "${SOURCE_COMMIT}" --source-sha256 "${SOURCE_SHA256}" \
@@ -25,7 +25,7 @@ RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
     && oncotracer provenance --json \
     && nextflow -version
 
-LABEL org.opencontainers.image.version="2.3.1" \
+LABEL org.opencontainers.image.version="2.3.2" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
       org.opencontainers.image.source.sha256="${SOURCE_SHA256}"
 

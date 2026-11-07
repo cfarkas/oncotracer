@@ -3818,6 +3818,7 @@ def run_native(
     parallel_samples: int | None = None,
     merge_vcfs: bool | None = None,
     storage_mode: str | None = None,
+    resource_mode: str | None = None,
     force: bool | None = None,
     dry_run: bool = False,
     methylation: bool | None = None,
@@ -3835,6 +3836,7 @@ def run_native(
         parallel_samples=parallel_samples,
         merge_vcfs=merge_vcfs,
         storage_mode=storage_mode,
+        resource_mode=resource_mode,
         force=force,
         dry_run=dry_run,
         methylation=methylation,
@@ -3858,6 +3860,7 @@ def _run_native_impl(
     parallel_samples: int | None,
     merge_vcfs: bool | None,
     storage_mode: str | None,
+    resource_mode: str | None,
     force: bool | None,
     dry_run: bool,
     methylation: bool | None,
@@ -3899,6 +3902,9 @@ def _run_native_impl(
     if storage_mode is not None:
         from .storage_options import validate_mode
         config["variant_storage_mode"] = validate_mode(storage_mode)
+    if resource_mode is not None:
+        from .resource_options import validate_mode as validate_resource_mode
+        config["variant_resource_mode"] = validate_resource_mode(resource_mode)
     _reject_local_sample_panel(config)
     if methylation_only is not None:
         config["methylation_only"] = methylation_only
@@ -3963,6 +3969,7 @@ def _run_native_impl(
                 parallel_samples=parallel_samples,
                 merge_vcfs=merge_vcfs,
                 storage_mode=storage_mode,
+                resource_mode=resource_mode,
                 force=force,
                 dry_run=False,
                 methylation=methylation,
