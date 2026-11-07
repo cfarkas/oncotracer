@@ -101,10 +101,16 @@ class CnaQualityTests(unittest.TestCase):
             runner.run.assert_not_called()
             summary=json.loads((root/"06_workflow_summary/workflow_summary.json").read_text())
             self.assertEqual(summary["cna_status"],"not_assessable")
-            run_native_classifier(ROOT,{"run_pdf_reports":False,"run_clinician_reports":False},root,root/"reference",
+            run_native_classifier(ROOT,{"run_pdf_reports":False,"run_clinician_reports":False,
+                                       "run_gistic":True,"gistic_required":True},root,root/"reference",
                 runner,StageLedger(root/"state.json"),tools,force=False)
             runner.run.assert_not_called()
             self.assertIn("NOT ASSESSABLE",(root/"05_cna_classifier/final_report.html").read_text())
+            summary=json.loads((root/"06_workflow_summary/workflow_summary.json").read_text())
+            self.assertEqual(summary["gistic_status"],"skipped")
+            self.assertEqual(summary["gistic_eligibility"]["eligible_count"],0)
+            self.assertEqual(summary["cna_classifier_status"],"not_assessable")
+            self.assertEqual(summary["cna_status"],"not_assessable")
 
     def test_unassessable_notice_has_no_fabricated_event_counts_in_pdf(self):
         import sys

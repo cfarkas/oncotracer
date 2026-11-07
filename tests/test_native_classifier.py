@@ -63,6 +63,8 @@ class NativeClassifierTests(unittest.TestCase):
             (1, {}, "--run_gistic false"),
             (2, {}, "--run_gistic false"),
             (1, {"run_gistic": True}, "not_enough_samples_for_gistic_n=1_min=2"),
+            (0, {"run_gistic": True, "gistic_required": True}, "not_enough_samples_for_gistic_n=0_min=2"),
+            (1, {"run_gistic": True, "gistic_required": True}, "not_enough_samples_for_gistic_n=1_min=2"),
         ]
         for count, config, reason in cases:
             with self.subTest(samples=count, config=config), tempfile.TemporaryDirectory() as directory:
@@ -70,7 +72,8 @@ class NativeClassifierTests(unittest.TestCase):
                 prepared = base / "prepared"
                 prepared.mkdir()
                 for name in ("gistic_full.seg", "gistic_events.seg", "gistic_markers.tsv"):
-                    (prepared / name).write_text("fixture\n")
+                    (prepared / name).write_text("Sample\tChromosome\tStart\tEnd\tNum_Probes\tSegment_Mean\n"
+                                                 + "".join(f"S{i}\t1\t1\t100\t2\t0\n" for i in range(count)))
                 (prepared / "prepare_metrics.json").write_text(json.dumps({"samples_total": count}))
                 runner = Mock()
                 toolchain = Mock()
@@ -290,6 +293,59 @@ class NativeClassifierTests(unittest.TestCase):
             self.assertEqual(result["workflow_status"], "complete")
             self.assertEqual(result["gistic_status"], "skipped")
             self.assertTrue(result["cna_classifier_completed"])
+
+    def test_required_gistic_with_one_eligible_sample_finishes_reports_and_preserves_qc(self):
+        from oncotracer_cli.cna_quality import summary_fields
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            analysis = base / "analysis"
+            codification = analysis / "03_cna_codification"
+            summary_dir = analysis / "06_workflow_summary"
+            codification.mkdir(parents=True)
+            summary_dir.mkdir()
+            for target, fixture in (("cna_events.tsv", "mini_cna_events.tsv"),
+                                    ("cna_cytogenomic_notation.tsv", "mini_cna_cytogenomic_notation.tsv")):
+                (codification / target).write_bytes((ROOT / "bin/cna_classifier_nf/test" / fixture).read_bytes())
+            assessment = {"schema": "oncotracer-cna-assessment-v1", "qc_policy": "coverage-v2", "samples": [
+                {"sample": "S1", "assessment": "assessable", "bin_size_kb": 50},
+                {"sample": "S2", "assessment": "not_assessable", "reason": "Too few reads", "bin_size_kb": 50},
+                {"sample": "S3", "assessment": "not_assessable", "reason": "Too few reads", "bin_size_kb": 50}]}
+            (summary_dir / "cna_assessment.json").write_text(json.dumps(assessment))
+            (summary_dir / "workflow_summary.json").write_text(json.dumps({
+                "engine": "native", "workflow_status": "partial_failure", "cna_status": "partial_failure",
+                "input_samples": ["S1", "S2", "S3"], "requested_branches": ["cna", "reports"],
+                "completed_samples": ["S1"], "failed_samples": ["S2", "S3"], **summary_fields(assessment)}))
+            runner = _RecordingRunner(analysis / ".oncotracer-native/trace.tsv", echo=False)
+            ledger = StageLedger(analysis / ".oncotracer-native/state.json")
+            config = {"run_gistic": True, "gistic_required": True,
+                      "cna_classifier_samples": "S1,S2,S3",
+                      "knowledge_web": False, "knowledge_literature_llm": False,
+                      "knowledge_deep_literature": False, "knowledge_deep_enable_llm_ranker": False,
+                      "knowledge_literature_reference_llm_selection": False, "knowledge_catalog_llm": False,
+                      "pathology_use_biomed_models": False, "run_pdf_reports": True, "run_clinician_reports": True}
+            toolchain = Toolchain(classifier_prefix=Path(sys.prefix), runtime_cache=base / "cache")
+            classifier = run_native_classifier(ROOT, config, analysis, base / "reference",
+                                               runner, ledger, toolchain, force=False)
+            summary = json.loads((summary_dir / "workflow_summary.json").read_text())
+            self.assertEqual(summary["gistic_status"], "skipped")
+            self.assertEqual(summary["gistic_eligibility"]["eligible_samples"], ["S1"])
+            self.assertEqual(len(summary["gistic_eligibility"]["excluded_samples"]), 2)
+            self.assertEqual(summary["cna_classifier_status"], "complete")
+            self.assertTrue(summary["cna_reports_completed"])
+            self.assertEqual(summary["workflow_status"], "partial_failure")
+            self.assertEqual(summary["completion"]["completed_samples"], ["S1"])
+            self.assertEqual(summary["cna_not_assessable_samples"], ["S2", "S3"])
+            self.assertTrue((classifier / "final_report.pdf").stat().st_size)
+            self.assertIn("NOT ASSESSABLE", (classifier / "cohort_report.html").read_text())
+            rows = (classifier / "tables/classification/cna_patient_classification.tsv").read_text().splitlines()
+            self.assertEqual(len(rows), 2)
+            self.assertTrue(rows[1].startswith("S1\t"))
+            self.assertFalse(any(stage in {"classifier-gistic", "classifier-gistic-refgene", "classifier-gistic-version"}
+                                 for stage, _, _ in runner.containment_calls))
+            before = len(runner.containment_calls)
+            run_native_classifier(ROOT, config, analysis, base / "reference",
+                                  runner, ledger, toolchain, force=False)
+            self.assertEqual(len(runner.containment_calls), before)
 
     def test_complete_offline_classifier_graph_without_nextflow(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

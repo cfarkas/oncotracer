@@ -326,8 +326,8 @@ The classifier is not invoked for a sample with zero usable modified-CpG calls. 
 | `pathology_use_biomed_models` | `false` recommended initially | Optional biomedical model assistance |
 | `pathology_biomed_local_files_only` | `true` recommended initially | Restrict models to local cache |
 | `run_gistic` | `false` unless enabled | Optional cohort recurrence branch |
-| `gistic_required` | `false` | Make GISTIC2 failure fatal only when justified |
-| `gistic_min_samples` | `2` | Minimum cohort size for requested recurrence analysis |
+| `gistic_required` | `false` | Make tool/result failures fatal for eligible cohorts; eligibility skips remain non-fatal |
+| `gistic_min_samples` | `2` | Minimum eligible samples in the selected SEG after coverage QC and report selection; effective minimum is at least 2 |
 | `knowledge_web` | `false` recommended | Optional network enrichment |
 | `knowledge_literature_llm` | `false` recommended | Optional model-assisted literature synthesis |
 | `knowledge_literature_llm_models` | model IDs or absolute model paths | Comma-separated generation fallbacks; Hub IDs accept `@commit` |

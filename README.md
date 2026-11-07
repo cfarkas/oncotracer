@@ -38,7 +38,7 @@ The image is saved for later commands. See [installation](docs/installation.md) 
 
 Before setup, `oncotracer --detect-resources` (also `--detect_resources`) suggests [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) from this machine's CPU/RAM; choose the combination in new setup or **Review and run** for continuation.
 
-The [2.3.2 release candidate](docs/releases/2.3.2.md) defaults to dynamic ONT scheduling and compact storage. Select `--resource-mode fixed` to keep initial allocations or `--no-merge-vcfs` to skip cohort merging. Stable publication awaits study and parity validation.
+The [3.0.0 release candidate](docs/releases/3.0.0.md) defaults to dynamic ONT scheduling and compact storage. Select `--resource-mode fixed` to keep initial allocations or `--no-merge-vcfs` to skip cohort merging. Stable publication awaits study and parity validation.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 
@@ -51,6 +51,23 @@ nextflow run main.nf --interactive --backend conda
 ```
 
 Use the full path to `main.nf` from another directory, or `--backend docker` for Docker. Analysis starts only after **Run analysis**. [Nextflow and concurrent projects](docs/nextflow_entry.md).
+
+## Recorded study commands
+
+The 3.0.0 validation resumes the saved studies with dynamic resources and compact
+storage. Existing checkpoints and QC decisions are preserved. Use separate terminals and the saved resource budgets:
+
+```bash
+oncotracer run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_Fresh/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
+oncotracer run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_FFPE/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
+oncotracer run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/ONT_Fresh/config/run.yml --backend docker --image carlosfarkas/oncotracer:3.0.0-candidate --cpu --resource-mode dynamic --storage-mode compact
+```
+
+Local measurements are retained in
+`/media/server/storage_disk4/oncotracer_benchmark_07_11_2026`.
+See [measured performance and its limits](docs/benchmarks/2026-11-07.md).
+The candidate is locally built; stable installation commands will be updated after
+study validation and both GitHub scientific parity checks pass.
 
 ## Set up your analysis
 
@@ -110,31 +127,7 @@ oncotracer run --backend conda --config "$PWD/my-study/config/run.yml"
 
 For Docker, use `--backend docker`. Terminal setup and SSH are covered in the [headless guide](docs/headless.md).
 
-## Uninstall
-
-Remove the backend you installed, then the Python application.
-
-**Conda tools:** permanently remove the managed environments and their matching extra global command:
-
-```bash
-oncotracer uninstall --conda --yes --purge
-```
-
-**Docker image:** remove the selected image/tag:
-
-```bash
-docker image rm carlosfarkas/oncotracer:2.3.1-rc.2
-```
-
-Removing the image preserves the pip application, saved settings, projects and results; shared image layers may remain.
-
-**Python application:** in the Python environment used for installation:
-
-```bash
-python -m pip uninstall oncotracer
-```
-
-If an extra OncoTracer-owned global launcher remains, [remove it before the Python application](docs/uninstall.md#global-command). Pip removes its own console entry. See [component removal](docs/uninstall.md) for custom installations. User data and results remain.
+Remove installed components with the [uninstall guide](docs/uninstall.md).
 
 ## Guides and examples
 

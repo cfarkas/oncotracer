@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from functools import wraps
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,31 @@ JOURNAL = ".oncotracer-native/terminal-progress.json"
 def clean(value):
     """Keep sample names and tool messages from controlling the terminal."""
     return "".join(c if c.isprintable() else " " for c in str(value))
+
+
+def command_activity(method):
+    """Bounded plain-log heartbeats that stop on success, error or interruption."""
+    @wraps(method)
+    def wrapped(runner, stage, *args, **kwargs):
+        if not runner.echo or runner.dry_run:
+            return method(runner, stage, *args, **kwargs)
+        stopped = threading.Event()
+        started = time.monotonic()
+        def refresh():
+            while not stopped.wait(30):
+                try:
+                    print(f"[{clean(stage)}] running | elapsed {elapsed(time.monotonic() - started)}",
+                          file=sys.stderr, flush=True)
+                except (OSError, ValueError):
+                    return
+        thread = threading.Thread(target=refresh, name="oncotracer-command-progress", daemon=True)
+        thread.start()
+        try:
+            return method(runner, stage, *args, **kwargs)
+        finally:
+            stopped.set()
+            thread.join(timeout=2)
+    return wrapped
 
 
 class ProgressJournal:
@@ -67,18 +93,30 @@ class ProgressJournal:
             row = self.data["jobs"].get(str(sample)) if sample is not None else None
             if row is not None:
                 row["task"] = str(stage)
+                row["task_started"] = time.time()
             else:
                 self.data["task"] = str(stage)
+                self.data["task_started"] = time.time()
             self._save()
 
-    def command_done(self, sample, returncode):
-        if sample is None or returncode != 0:
-            return
+    def command_done(self, sample, returncode, stage=None):
         with self.lock:
-            row = self.data["jobs"].get(str(sample))
+            row = self.data["jobs"].get(str(sample)) if sample is not None else None
             if row is not None:
-                row["commands"] += 1
-                self._save()
+                if returncode == 0:
+                    row["commands"] += 1
+                current = row
+            elif stage and self.data.get("task") == stage:
+                current = self.data
+            else:
+                return
+            history = self.data.setdefault("recent_steps", [])
+            history.append({"stage": str(stage or current.get("task", "")), "sample": sample,
+                            "returncode": returncode, "finished": time.time(),
+                            "seconds": max(0, time.time() - current.get("task_started", time.time()))})
+            del history[:-5]
+            self.data["finished_steps"] = self.data.get("finished_steps", 0) + 1
+            self._save()
 
     def interrupted(self):
         with self.lock:
@@ -135,7 +173,21 @@ def progress_lines(snapshot, *, now=None, tick=0):
             lines.append("No sample workers active; preparing or finalizing cohort work.")
         lines.append("Queue progress is for this stage; final sample results appear below when the run ends.")
     if snapshot.get("task"):
-        lines.append("Current cohort task: " + clean(snapshot["task"]))
+        lines.append("Current cohort task: " + clean(snapshot["task"])
+                     + " | elapsed " + elapsed(now - snapshot.get("task_started", now)))
+    if snapshot.get("finished_steps"):
+        lines.append(f"Tool steps finished: {snapshot['finished_steps']}")
+    cohort = snapshot.get("cohort_merge")
+    if cohort:
+        counts = cohort.get("counts", {})
+        lines.append("Cohort merge: " + clean(cohort.get("stage", "")))
+        lines.append(f"All-evidence variants: {counts.get('all_evidence_records', 0):,} | "
+                     f"population variants: {counts.get('germline_population_records', 0):,}")
+        if cohort.get("validated_records") is not None:
+            lines.append(f"Records validated in current VCF: {cohort['validated_records']:,}")
+    for item in snapshot.get("recent_steps", [])[-2:]:
+        verdict = "complete" if item["returncode"] == 0 else f"exit {item['returncode']}"
+        lines.append(f"Last step: {clean(item['stage'])} | {verdict} | {elapsed(item['seconds'])}")
     return lines
 
 
@@ -155,6 +207,13 @@ class TerminalDisplay:
             data = json.loads((self.outdir / JOURNAL).read_text())
             if data["started_ns"] >= self.started_ns:
                 self.latest = data
+                cohort_path = self.outdir / "08_variants/glimpse2/cohort/progress.json"
+                try:
+                    cohort = json.loads(cohort_path.read_text())
+                    if cohort.get("started_ns", 0) >= self.started_ns:
+                        self.latest["cohort_merge"] = cohort
+                except (OSError, ValueError, TypeError):
+                    pass
         except (OSError, ValueError, KeyError, TypeError):
             pass
         return self.latest
@@ -212,6 +271,10 @@ class TerminalDisplay:
         if error:
             message = str(error).strip() or type(error).__name__
             lines.append("Reason: " + clean(message.splitlines()[0])[:400])
+        if snapshot and snapshot.get("cohort_merge"):
+            counts = snapshot["cohort_merge"].get("counts", {})
+            lines.append(f"Cohort variants: {counts.get('all_evidence_records', 0):,} all-evidence; "
+                         f"{counts.get('germline_population_records', 0):,} population.")
         lines.append("Full log: " + str(self.log_path))
         lines.append("Outputs retained: " + str(self.outdir))
         self.stream.write("\n".join(lines) + "\n")

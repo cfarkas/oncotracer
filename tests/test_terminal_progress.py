@@ -23,6 +23,30 @@ ALLOCATION = {'parallel_samples': 2, 'threads_per_sample': 2, 'memory_per_sample
 
 
 class TerminalProgressTests(unittest.TestCase):
+    def test_stage_completion_and_merge_counts_are_visible_and_threads_exit(self):
+        from oncotracer_cli.cohort_progress import CohortProgress
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output = io.StringIO()
+            runner = CommandRunner(root / 'trace.tsv')
+            journal = runner.progress = ProgressJournal(root)
+            with contextlib.redirect_stderr(output):
+                runner.run('fixture-step', [sys.executable, '-c', 'pass'])
+                with CohortProgress(root / 'cohort', 2, interval=.01) as progress:
+                    progress.update(stage='Merging normalized alleles', prepared_samples=2,
+                                    counts={'all_evidence_records': 12500, 'germline_population_records': 3400})
+                    progress.finish({'all_evidence_records': 12500, 'germline_population_records': 3400})
+            self.assertIn('[fixture-step] complete | elapsed', output.getvalue())
+            self.assertFalse(progress.thread.is_alive())
+            self.assertFalse(any(t.name == 'oncotracer-command-progress' for t in threading.enumerate()))
+            snapshot = json.loads(journal.path.read_text())
+            snapshot['cohort_merge'] = json.loads((root / 'cohort/progress.json').read_text())
+            rendered = '\n'.join(progress_lines(snapshot))
+            self.assertIn('12,500', rendered)
+            self.assertIn('3,400', rendered)
+            self.assertIn('Tool steps finished: 1', rendered)
+            self.assertIn('fixture-step | complete', rendered)
+
     def test_concurrent_subprocesses_have_distinct_current_tasks(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

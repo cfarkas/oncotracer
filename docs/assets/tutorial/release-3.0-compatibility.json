@@ -1,0 +1,249 @@
+{
+  "schema": 1,
+  "base_commit": "7a4cdb7e9bd21e036adb9529c746d8dfa3bf4e11",
+  "scope": "Exact reversible source audit back to the retained tutorials: CLI additions since 2.1.1 (variant, GPU, resource, storage and image options), and GISTIC eligibility guidance. Videos and their capture hashes remain unchanged; these videos do not demonstrate later features and have not been rerecorded. Each source revision and every reversal are checked exactly.",
+  "files": {
+    "oncotracer_cli/cli.py": {
+      "base_commit": "7a4cdb7e9bd21e036adb9529c746d8dfa3bf4e11",
+      "current_sha256": "de7667b8db4617e0640cbaefdfac1456e0ebbe72f4d06be979b90d50aab05ca5",
+      "recorded_sha256": "f6e5374c4e289da2066087a74166f63f6fbdcb70b11b2c698ce687e313ab6d21",
+      "changes": [
+        {
+          "start": 1655,
+          "end": 1703,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:3.0.0\"\n",
+          "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:2.3.2\"\n"
+        }
+      ]
+    },
+    "oncotracer_cli/wizard.py": {
+      "current_sha256": "cff01faf8070ea19b47fdf13cacedeb723435a410a5dd7c16d6a358a494e2984",
+      "recorded_sha256": "65da72ad8f2365481c11985911ea503212b265342f930bcdd71a8db251e2cd0b",
+      "changes": [
+        {
+          "start": 11078,
+          "end": 11262,
+          "current": "            if values[\"run_gistic\"]:\n                print(\"GISTIC runs only if at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.\")\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/web_ui.py": {
+      "current_sha256": "9517cc76380ba6591151dcf7f7f76380861177ac4318a750bb528dc3f507731f",
+      "recorded_sha256": "aea58175d17e17511e7f9558044d51da4bb0301a3d2117354cdae563e5541378",
+      "changes": [
+        {
+          "start": 43402,
+          "end": 44952,
+          "current": "function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'If enabled, GISTIC runs when at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.';invalidate();}\n",
+          "recorded": "function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'GISTIC is available for this cohort; leave it off unless recurrence analysis is needed.';invalidate();}\n"
+        }
+      ]
+    },
+    "PAGE": {
+      "current_sha256": "737094add11aa7fc7c6aa2ec1c321fdd8cd5ef6030a8c6b664410c830563ae74",
+      "recorded_sha256": "0bf11d3716a606fa170eee75d056ca5d9f2c550669f58f6399601caa10cc5eda",
+      "changes": [
+        {
+          "current": "If enabled, GISTIC runs when at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.",
+          "recorded": "GISTIC is available for this cohort; leave it off unless recurrence analysis is needed.",
+          "start": 90303,
+          "end": 90433
+        }
+      ]
+    },
+    "CLI_BEFORE_RESUME": {
+      "base_commit": "13fac1c923a5e996c114ede1f7fc34d0fd6e82c0",
+      "current_sha256": "f6e5374c4e289da2066087a74166f63f6fbdcb70b11b2c698ce687e313ab6d21",
+      "recorded_sha256": "6feb06be46d5ba6098ca916a5b2e66076eb886c3f92cd054888a9fd5cd553a7f",
+      "changes": [
+        {
+          "start": 1655,
+          "end": 1703,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:2.3.2\"\n",
+          "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:2.1.1\"\n"
+        },
+        {
+          "start": 4572,
+          "end": 4617,
+          "current": "            gpu=getattr(args, 'gpu', False),\n",
+          "recorded": ""
+        },
+        {
+          "start": 5009,
+          "end": 5162,
+          "current": "    for name in ('gpu-reports', 'gpu-clair3'):\n        if name in prefixes:\n            result[name.replace('-', '_') + '_prefix'] = str(prefixes[name])\n",
+          "recorded": ""
+        },
+        {
+          "start": 6504,
+          "end": 6568,
+          "current": "        else (_data_home() / \"images\" / \"oncotracer-2.3.0.sif\")\n",
+          "recorded": "        else (_data_home() / \"images\" / \"oncotracer-2.1.1.sif\")\n"
+        },
+        {
+          "start": 7691,
+          "end": 7736,
+          "current": "            gpu=getattr(args, 'gpu', False),\n",
+          "recorded": ""
+        },
+        {
+          "start": 7968,
+          "end": 8062,
+          "current": "        **{f\"{name.replace('-', '_')}_prefix\": str(path) for name, path in prefixes.items()},\n",
+          "recorded": "        **{f\"{name}_prefix\": str(path) for name, path in prefixes.items()},\n"
+        },
+        {
+          "start": 8824,
+          "end": 8876,
+          "current": "        \"--gpu\": bool(getattr(args, 'gpu', False)),\n",
+          "recorded": ""
+        },
+        {
+          "start": 8898,
+          "end": 9074,
+          "current": "        \"conda\": {\"--prefix\", \"--force\", \"--root\", \"--gpu\"},\n        \"poetry\": {\"--prefix\", \"--force\", \"--root\", \"--gpu\"},\n        \"docker\": {\"--image\", \"--no-pull\", \"--gpu\"},\n",
+          "recorded": "        \"conda\": {\"--prefix\", \"--force\", \"--root\"},\n        \"poetry\": {\"--prefix\", \"--force\", \"--root\"},\n        \"docker\": {\"--image\", \"--no-pull\"},\n"
+        },
+        {
+          "start": 9443,
+          "end": 9677,
+          "current": "    if getattr(args, 'gpu', False) and not args.dry_run:\n        from .gpu_runtime import inventory\n        if not inventory():\n            raise OncoTracerError('GPU installation requires a visible NVIDIA GPU with a working driver')\n",
+          "recorded": ""
+        },
+        {
+          "start": 10687,
+          "end": 11080,
+          "current": "            if getattr(args, 'gpu', False) and not args.dry_run:\n                from .gpu_runtime import doctor_gpu\n                gpu_check = doctor_gpu(backend, result, image=result.get('image'))\n                if not gpu_check['success']:\n                    raise OncoTracerError('GPU installation checks failed: ' + str(gpu_check))\n                result['gpu_validation'] = gpu_check\n",
+          "recorded": ""
+        },
+        {
+          "start": 16148,
+          "end": 16334,
+          "current": "    for name in ('gpu_reports', 'gpu_clair3'):\n        if config.get(name + '_prefix'):\n            environment['ONCOTRACER_' + name.upper() + '_PREFIX'] = str(config[name + '_prefix'])\n",
+          "recorded": ""
+        },
+        {
+          "start": 17264,
+          "end": 17798,
+          "current": "    with lock, variant_runtime_backend(backend), variants_lock, contextlib.ExitStack() as gpu_locks:\n        from .gpu_runtime import enabled as gpu_enabled\n        if not args.dry_run and managed_backend and gpu_enabled(selection_config, args.gpu) and selection_config.get('run_variants'):\n            from .install_safety import managed_gpu_runtime_lock\n            family = 'gpu-reports' if selection_config.get('mode') == 'illumina' else 'gpu-clair3'\n            gpu_locks.enter_context(managed_gpu_runtime_lock(install, family))\n",
+          "recorded": "    with lock, variant_runtime_backend(backend), variants_lock:\n"
+        },
+        {
+          "start": 18159,
+          "end": 18379,
+          "current": "                merge_vcfs=getattr(args, \"variant_merge_vcfs\", None),\n                storage_mode=getattr(args, \"variant_storage_mode\", None),\n                resource_mode=getattr(args, \"variant_resource_mode\", None),\n",
+          "recorded": ""
+        },
+        {
+          "start": 22235,
+          "end": 22361,
+          "current": "    from .gpu_runtime import docker_arguments\n    command.extend(docker_arguments(config, args.gpu, create=not args.dry_run))\n",
+          "recorded": ""
+        },
+        {
+          "start": 23721,
+          "end": 24143,
+          "current": "    if getattr(args, \"variant_merge_vcfs\", None) is not None:\n        command.append(\"--merge-vcfs\" if args.variant_merge_vcfs else \"--no-merge-vcfs\")\n    if getattr(args, \"variant_storage_mode\", None) is not None:\n        command.extend([\"--storage-mode\", args.variant_storage_mode])\n    if getattr(args, \"variant_resource_mode\", None) is not None:\n        command.extend([\"--resource-mode\", args.variant_resource_mode])\n",
+          "recorded": ""
+        },
+        {
+          "start": 24510,
+          "end": 24699,
+          "current": "    elif args.gpu is False:\n        command.append(\"--cpu\")\n    if getattr(args, 'gpu_wait_hours', None) is not None:\n        command.extend(['--gpu-wait-hours', str(args.gpu_wait_hours)])\n",
+          "recorded": ""
+        },
+        {
+          "start": 26010,
+          "end": 26240,
+          "current": "    from .gpu_runtime import enabled\n    if enabled(load_flat_yaml(config_path), args.gpu):\n        raise OncoTracerError('Reserved GPU execution requires Docker or native Conda/Poetry tools; use --cpu for Apptainer/Singularity')\n",
+          "recorded": ""
+        },
+        {
+          "start": 26752,
+          "end": 26839,
+          "current": "        Path(str(sif_value or \"/path/to/oncotracer-2.3.0.sif\")).expanduser().resolve()\n",
+          "recorded": "        Path(str(sif_value or \"/path/to/oncotracer-2.1.1.sif\")).expanduser().resolve()\n"
+        },
+        {
+          "start": 27676,
+          "end": 28098,
+          "current": "    if getattr(args, \"variant_merge_vcfs\", None) is not None:\n        command.append(\"--merge-vcfs\" if args.variant_merge_vcfs else \"--no-merge-vcfs\")\n    if getattr(args, \"variant_storage_mode\", None) is not None:\n        command.extend([\"--storage-mode\", args.variant_storage_mode])\n    if getattr(args, \"variant_resource_mode\", None) is not None:\n        command.extend([\"--resource-mode\", args.variant_resource_mode])\n",
+          "recorded": ""
+        },
+        {
+          "start": 29028,
+          "end": 29028,
+          "current": "",
+          "recorded": "            \"gpu\",\n"
+        },
+        {
+          "start": 31910,
+          "end": 32366,
+          "current": "    from .gpu_runtime import queue_wait, wait_hours\n    config = load_flat_yaml(require_file(config_path, 'OncoTracer YAML config'))\n    try:\n        hours = wait_hours(config.get('gpu_wait_hours', 120) if getattr(args, 'gpu_wait_hours', None) is None else args.gpu_wait_hours)\n    except ValueError as error:\n        raise OncoTracerError(str(error)) from error\n    with queue_wait(config, hours), terminal_session(config_path, enabled=not args.dry_run):\n",
+          "recorded": "    with terminal_session(config_path, enabled=not args.dry_run):\n"
+        },
+        {
+          "start": 65351,
+          "end": 65590,
+          "current": "    if getattr(args, 'gpu', False):\n        from .gpu_runtime import doctor_gpu\n        checks['gpu'] = doctor_gpu(backend, _load_install_config(), image=getattr(args, 'image', None))\n        success = success and checks['gpu']['success']\n",
+          "recorded": ""
+        },
+        {
+          "start": 65844,
+          "end": 65927,
+          "current": "        for name in (\"source\", \"managed_install\", \"managed_sif\", \"docker\", \"gpu\"):\n",
+          "recorded": "        for name in (\"source\", \"managed_install\", \"managed_sif\", \"docker\"):\n"
+        },
+        {
+          "start": 67753,
+          "end": 67933,
+          "current": "    from .cohort_options import add_arguments as add_cohort_arguments\n    add_cohort_arguments(parser)\n    from .gpu_runtime import add_wait_argument\n    add_wait_argument(parser)\n",
+          "recorded": ""
+        },
+        {
+          "start": 68161,
+          "end": 68345,
+          "current": "    parser.add_argument(\"--parallel-samples\", type=parallel_argument, help=\"concurrent samples: auto recommends a fit; dynamic ONT scheduling bounds the requested maximum by CPU/RAM\")\n",
+          "recorded": "    parser.add_argument(\"--parallel-samples\", type=parallel_argument, help=\"concurrent samples: auto recommends a fit; a positive integer overrides resource recommendations (may exhaust memory)\")\n"
+        },
+        {
+          "start": 69967,
+          "end": 70060,
+          "current": "        help=\"use reserved GPU memory for supported variant, report and methylation stages\",\n",
+          "recorded": "        help=\"use GPU for methylation Dorado and expose it to MARLIN\",\n"
+        },
+        {
+          "start": 70180,
+          "end": 70259,
+          "current": "        help=\"use CPU only, overriding gpu_usage and methylation_gpu in YAML\",\n",
+          "recorded": "        help=\"keep methylation on CPU, overriding methylation_gpu in YAML\",\n"
+        },
+        {
+          "start": 71607,
+          "end": 71702,
+          "current": "    from .haplotype_command import add_haplotype_command\n    add_haplotype_command(subparsers)\n",
+          "recorded": ""
+        },
+        {
+          "start": 72395,
+          "end": 72536,
+          "current": "    install.add_argument(\"--gpu\", action=\"store_true\", help=\"install and verify compatible optional CUDA runtimes (requires an NVIDIA GPU)\")\n",
+          "recorded": ""
+        },
+        {
+          "start": 74478,
+          "end": 74604,
+          "current": "    doctor.add_argument(\"--gpu\", action=\"store_true\", help=\"also verify real CUDA computation and the reserved GPU runtimes\")\n",
+          "recorded": ""
+        },
+        {
+          "start": 76000,
+          "end": 76034,
+          "current": "            \"haplotype-evidence\",\n",
+          "recorded": ""
+        }
+      ]
+    }
+  }
+}

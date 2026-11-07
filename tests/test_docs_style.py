@@ -229,7 +229,7 @@ REQUIRED_TEXT = {
         "all three HCC1143 libraries",
         "six checksum-validated FASTQs",
         "same exact current",
-        "oncotracer-v2.3.2-parity-audit.tar.gz",
+        "oncotracer-v3.0.0-parity-audit.tar.gz",
         "SHA256SUMS",
     ),
     "docs/citation_research_use.md": (

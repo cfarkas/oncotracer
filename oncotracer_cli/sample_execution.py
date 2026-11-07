@@ -12,6 +12,7 @@ import time
 
 from .runtime import CommandRunner, CommandResult, OncoTracerError, utc_now
 from .sample_resources import worker_environment
+from .terminal_progress import command_activity
 
 class SampleCancelled(Exception):
     pass
@@ -59,6 +60,7 @@ class SampleRunner(CommandRunner):
                     return
                 time.sleep(.1)
 
+    @command_activity
     def run(self,stage,command,*,cwd=None,env=None,containment=None,stdout=None,stderr=None,stdin=None,check=True):
         if self.stop.is_set():raise SampleCancelled('Stopped before launching '+stage)
         if self.dry_run:return super().run(stage,command,cwd=cwd,env=env,containment=containment,stdout=stdout,stderr=stderr,stdin=stdin,check=check)

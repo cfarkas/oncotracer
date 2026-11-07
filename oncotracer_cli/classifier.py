@@ -210,25 +210,92 @@ def _stage(
         ledger.complete(name, signature, outputs)
 
 
-def _write_gistic_skip(directory: Path, reason: str, segmentation: str) -> tuple[Path, Path, Path]:
-    def write_if_changed(path: Path, text: str) -> None:
-        # Skip status is an input to downstream stages; preserve its mtime on resume.
-        if not path.is_file() or path.read_text(encoding="utf-8") != text:
-            atomic_write_text(path, text)
+def _write_if_changed(path: Path, text: str) -> None:
+    # Eligibility/skip records are inputs to downstream stages; preserve resume.
+    if not path.is_file() or path.read_text(encoding="utf-8") != text:
+        atomic_write_text(path, text)
 
+
+def _record_gistic_eligibility(directory: Path, config: Mapping[str, object],
+                               samples: set[str], *, assessment=None) -> dict:
+    """Audit the selected SEG cohort before any GISTIC tool or reference access."""
+    import re
+    minimum = max(2, int(_value(config, "gistic_min_samples") or 2))
+    segmentation = _string(config, "gistic_seg_type") or "full"
+    if segmentation not in {"full", "events"}:
+        raise OncoTracerError("gistic_seg_type must be full or events")
+    selected = sample_filter(config)
+    if selected.lower() in {"all", "none", "null", "false"}:
+        selected = ""
+    requested = set(filter(None, re.split(r"[,;\s]+", selected))) if selected else None
+    excluded = []
+    if assessment is not None:
+        allowed = set()
+        for row in assessment.get("samples", []):
+            name = row["sample"]
+            if requested is not None and name not in requested:
+                reason = "not_selected_for_reports"
+            elif row.get("assessment") != "assessable":
+                reason = row.get("reason") or "CNA not assessable"
+            else:
+                allowed.add(name)
+                reason = "no_segments_in_selected_gistic_input" if name not in samples else ""
+            if reason:
+                excluded.append({"sample": name, "reason": reason})
+        if samples - allowed:
+            raise OncoTracerError("GISTIC input contains samples excluded by CNA coverage or report selection; regenerate classifier inputs")
+    elif requested is not None and samples - requested:
+        raise OncoTracerError("GISTIC input contains samples outside the report selection; regenerate classifier inputs")
+    enabled = _bool(config, "run_gistic")
+    reason = ("--run_gistic false" if not enabled else
+              f"not_enough_samples_for_gistic_n={len(samples)}_min={minimum}" if len(samples) < minimum else
+              "eligible_sample_count_met")
+    record = {"schema": "oncotracer-gistic-eligibility-v1", "requested": enabled,
+              "status": "eligible" if enabled and len(samples) >= minimum else "skipped",
+              "reason": reason, "segmentation": segmentation, "minimum_samples": minimum,
+              "eligibility_checked": enabled,
+              "eligible_count": len(samples) if enabled else None, "eligible_samples": sorted(samples),
+              "coverage_assessment_available": assessment is not None,
+              "excluded_samples": sorted(excluded, key=lambda row: row["sample"])}
+    _write_if_changed(directory / "gistic_eligibility.json", json.dumps(record, sort_keys=True, indent=2) + "\n")
+    return record
+
+
+def _gistic_segment_samples(path: Path) -> set[str]:
+    with path.open(encoding="utf-8") as handle:
+        reader = csv.reader(handle, delimiter="\t")
+        header = next(reader, [])
+        if len(header) != 6 or header[0].lower() not in {"sample", "id"}:
+            raise OncoTracerError(f"Invalid GISTIC SEG header: {path}")
+        samples = set()
+        for row in reader:
+            if not row:
+                continue
+            if len(row) != 6 or not row[0].strip():
+                raise OncoTracerError(f"Invalid GISTIC SEG row: {path}")
+            samples.add(row[0])
+        return samples
+
+
+def _write_gistic_skip(directory: Path, reason: str, segmentation: str) -> tuple[Path, Path, Path]:
     output = directory / "gistic2_out"
     output.mkdir(parents=True, exist_ok=True)
     status = directory / "gistic2_status.tsv"
     command = directory / "gistic2_command.txt"
     versions = directory / "gistic2_versions.txt"
-    write_if_changed(
+    _write_if_changed(
         status,
         "status\treason\tsegmentation\tcommand\texecutable\trefgene\n"
         f"skipped\t{reason}\t{segmentation}\tNA\tNA\tNA\n",
     )
-    write_if_changed(command, "")
-    write_if_changed(versions, "")
-    write_if_changed(output / "GISTIC_NOT_RUN.txt", f"GISTIC2 was skipped: {reason}.\n")
+    _write_if_changed(command, "")
+    _write_if_changed(versions, "")
+    _write_if_changed(output / "GISTIC_NOT_RUN.txt", f"GISTIC2 was skipped: {reason}.\n")
+    for current, previous in ((".oncotracer-complete", ".oncotracer-previous-complete"),
+                              ("GISTIC_FAILED.txt", "GISTIC_PREVIOUS_FAILURE.txt")):
+        marker = output / current
+        if marker.exists():
+            marker.replace(output / previous)
     return output, status, command
 
 
@@ -280,6 +347,7 @@ def _run_gistic(
     toolchain: ToolchainLike,
     *,
     force: bool,
+    assessment=None,
 ) -> tuple[Path, Path, Path]:
     output.mkdir(parents=True, exist_ok=True)
     gistic_out = output / "gistic2_out"
@@ -287,7 +355,11 @@ def _run_gistic(
     ref_dir = lpwgs_root / ".oncotracer" / "classifier" / "gistic2_refgene"
     gistic_out.mkdir(parents=True, exist_ok=True)
     inputs_dir.mkdir(parents=True, exist_ok=True)
-    ref_dir.mkdir(parents=True, exist_ok=True)
+    segmentation = _string(config, "gistic_seg_type") or "full"
+    required = _bool(config, "gistic_required")
+    if not _bool(config, "run_gistic"):
+        _record_gistic_eligibility(output, config, set(), assessment=assessment)
+        return _write_gistic_skip(output, "--run_gistic false", segmentation)
 
     prepared_files = {
         "full": require_file(prepared / "gistic_full.seg", "GISTIC full SEG"),
@@ -304,23 +376,12 @@ def _run_gistic(
         }[key]
         shutil.copy2(source, inputs_dir / target_name)
 
-    segmentation = _string(config, "gistic_seg_type") or "full"
-    required = _bool(config, "gistic_required")
-    if not _bool(config, "run_gistic"):
-        return _write_gistic_skip(output, "--run_gistic false", segmentation)
-
-    try:
-        metrics = json.loads(prepared_files["metrics"].read_text(encoding="utf-8"))
-        sample_count = int(metrics.get("samples_total", 0))
-    except (OSError, ValueError, json.JSONDecodeError):
-        sample_count = 0
-    minimum_samples = int(_value(config, "gistic_min_samples") or 2)
-    if sample_count < minimum_samples:
-        reason = f"not_enough_samples_for_gistic_n={sample_count}_min={minimum_samples}"
-        skipped = _write_gistic_skip(output, reason, segmentation)
-        if required:
-            raise OncoTracerError(reason)
-        return skipped
+    seg = prepared_files["events"] if segmentation == "events" else prepared_files["full"]
+    samples = _gistic_segment_samples(seg)
+    eligibility = _record_gistic_eligibility(output, config, samples, assessment=assessment)
+    if eligibility["status"] == "skipped":
+        # Requiring a tool to succeed cannot make an undersized cohort eligible.
+        return _write_gistic_skip(output, eligibility["reason"], segmentation)
 
     if toolchain.gistic_prefix is not None:
         executable_available = (toolchain.gistic_prefix / "bin" / "gistic2").is_file()
@@ -333,6 +394,7 @@ def _run_gistic(
             raise OncoTracerError(reason)
         return skipped
     gistic_environment = toolchain.environment("gistic")
+    ref_dir.mkdir(parents=True, exist_ok=True)
 
     ref_value = str(config.get("gistic_refgene") or "auto")
     if ref_value and ref_value != "auto":
@@ -361,7 +423,6 @@ def _run_gistic(
     status = output / "gistic2_status.tsv"
     command_file = output / "gistic2_command.txt"
     versions = output / "gistic2_versions.txt"
-    seg = prepared_files["events"] if segmentation == "events" else prepared_files["full"]
     command: list[str | Path] = [
         "gistic2",
         "-b",
@@ -412,8 +473,6 @@ def _run_gistic(
     sentinel = gistic_out / ".oncotracer-complete"
     confidence = int(float(_value(config, "gistic_conf")) * 100 + 0.5)
     lesions = gistic_out / f"all_lesions.conf_{confidence}.txt"
-    with seg.open(encoding="utf-8") as handle:
-        samples = {row[0] for row in list(csv.reader(handle, delimiter="\t"))[1:] if row}
     expected_outputs = [status, sentinel, lesions]
     if force or _gistic_result_problem(lesions, samples) or not ledger.reusable("classifier-gistic", signature, expected_outputs):
         previous = lesions.stat() if lesions.is_file() else None
@@ -442,6 +501,7 @@ def _run_gistic(
             failed_marker = gistic_out / "GISTIC_FAILED.txt"
             if failed_marker.exists():
                 failed_marker.replace(gistic_out / "GISTIC_PREVIOUS_FAILURE.txt")
+            (gistic_out / "GISTIC_NOT_RUN.txt").unlink(missing_ok=True)
             ledger.complete("classifier-gistic", signature, expected_outputs)
         else:
             atomic_write_text(
@@ -455,7 +515,7 @@ def _run_gistic(
     return gistic_out, require_file(status, "GISTIC status"), require_file(command_file, "GISTIC command")
 
 
-def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_reports: Path | None = None, gistic_requested: bool = False, reports_completed: bool = True) -> None:
+def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_reports: Path | None = None, gistic_requested: bool = False, reports_completed: bool = True, reports_not_assessable: bool = False) -> None:
     summary_dir = require_directory(analysis_outdir / "06_workflow_summary", "workflow summary")
     json_path = require_file(summary_dir / "workflow_summary.json", "workflow summary JSON")
     value = json.loads(json_path.read_text(encoding="utf-8"))
@@ -470,9 +530,21 @@ def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_re
     value["gistic_requested"] = gistic_requested
     value["gistic_status"] = gistic_status
     value["gistic_reason"] = gistic_reason
+    eligibility_path = status_file.with_name("gistic_eligibility.json")
+    if eligibility_path.is_file():
+        value["gistic_eligibility"] = json.loads(eligibility_path.read_text())
     value["cna_reports_completed"] = reports_completed
     value["cna_classifier_completed"] = not incomplete
-    value["cna_classifier_status"] = "partial_failure" if incomplete else "complete"
+    value["cna_classifier_status"] = ("not_assessable" if reports_not_assessable else
+                                      "partial_failure" if incomplete else "complete")
+    if not incomplete:
+        value.pop("cna_classifier_error", None)
+        if (value.get("workflow_status") == "partial_failure"
+                and value.get("cna_status") == "complete"
+                and not value.get("failed_samples")
+                and all(value.get(key, "complete") in {"complete", "not_requested"}
+                        for key in ("variant_status", "methylation_status"))):
+            value["workflow_status"] = "complete"
     if incomplete:
         value.setdefault("cna_status", value.get("workflow_status", "complete"))
         value["workflow_status"] = "partial_failure"
@@ -521,6 +593,8 @@ def run_native_classifier(
     assessment = load_assessment(analysis_outdir)
     selected = eligible_classifier_samples(analysis_outdir, sample_filter(config))
     if assessment and not selected:
+        eligibility = _record_gistic_eligibility(gistic, config, set(), assessment=assessment)
+        _write_gistic_skip(gistic, eligibility["reason"], eligibility["segmentation"])
         message = '<!doctype html><meta charset="utf-8"><title>CNA not assessable</title>' + assessment_html(assessment)
         for name in ("cohort_report.html", "final_report.html", "clinician_report.html"):
             atomic_write_text(classifier_out / name, message)
@@ -529,7 +603,8 @@ def run_native_classifier(
                 "python", scripts / "cna_assessment_reports.py", "--assessment",
                 analysis_outdir / "06_workflow_summary/cna_assessment.json", "--outdir", classifier_out]),
                 cwd=root, containment=classifier_environment)
-        _update_summary(analysis_outdir, classifier_out, reports_completed=False)
+        _update_summary(analysis_outdir, classifier_out, reports_completed=False,
+                        gistic_requested=_bool(config, "run_gistic"), reports_not_assessable=True)
         return classifier_out
 
     cna_input = require_directory(analysis_outdir / "03_cna_codification", "CNA classifier input")
@@ -579,7 +654,8 @@ def run_native_classifier(
 
     try:
         gistic_dir, gistic_status, gistic_command = _run_gistic(
-            root, config, lpwgs_root, prepared, gistic, runner, ledger, toolchain, force=force
+            root, config, lpwgs_root, prepared, gistic, runner, ledger, toolchain,
+            force=force, assessment=assessment
         )
     except (OSError, OncoTracerError, ValueError):
         _update_summary(analysis_outdir, classifier_out,
@@ -885,7 +961,8 @@ def run_native_classifier(
         "classifier_outdir": str(classifier_out),
         "knowledge_report_index": str(classifier_out / "final_report.html") if _bool(config, "run_pdf_reports") else None,
         "knowledge_evidence": str(knowledge),
-        "gistic_status": gistic_status.read_text(encoding="utf-8", errors="replace").splitlines()[-1].split("\t", 1)[0],
+        "gistic_status": _read_gistic_status(gistic_status)[0],
+        "gistic_eligibility": json.loads((gistic / "gistic_eligibility.json").read_text()),
         "completed_at": utc_now(),
     }
     atomic_write_json(classifier_out / "native_classifier_summary.json", summary)

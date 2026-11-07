@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 # Complete GitHub Actions parity driver for OncoTracer native v2.
 set -Eeuo pipefail
+
+# Preserve the pinned image identity while tolerating transient registry outages.
+pull_with_retry() {
+  local image="$1" attempt
+  for attempt in 1 2 3; do
+    if docker pull "$image"; then return 0; fi
+    if (( attempt < 3 )); then
+      printf 'Registry pull failed (attempt %s/3): %s; retrying in 15 seconds\n' "$attempt" "$image" >&2
+      sleep 15
+    fi
+  done
+  return 1
+}
 umask 022
 
 usage() {
@@ -786,7 +799,7 @@ v1_created_by_job=1
 if docker image inspect "$V1_DOCKER_IMAGE" >/dev/null 2>&1; then
   v1_created_by_job=0
 fi
-docker pull "$V1_DOCKER_IMAGE"
+pull_with_retry "$V1_DOCKER_IMAGE"
 v1_image_id="$(docker image inspect "$V1_DOCKER_IMAGE" --format '{{.Id}}')"
 record_image_ownership "$V1_DOCKER_IMAGE" "$v1_image_id" "$v1_created_by_job"
 docker image inspect "$V1_DOCKER_IMAGE" \
@@ -910,7 +923,7 @@ while IFS=$'\t' read -r container digest; do
   if docker image inspect "$immutable" >/dev/null 2>&1; then
     immutable_created_by_job=0
   fi
-  docker pull "$immutable"
+  pull_with_retry "$immutable"
   expected_id="$(docker image inspect "$immutable" --format '{{.Id}}')"
   record_image_ownership "$immutable" "$expected_id" "$immutable_created_by_job"
   mutable_created_by_job=1

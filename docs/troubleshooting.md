@@ -349,7 +349,7 @@ find "$OUT/05_cna_classifier" -maxdepth 3 -type f -print | sort | head -100
 cat "$OUT/05_cna_classifier/native_classifier_summary.json"
 ```
 
-Keep `gistic_required: false` unless the study requires a fatal GISTIC2 branch. Start with deterministic offline settings before enabling model/network enrichment.
+Enabling `gistic_required` makes tool/result failures fatal for eligible cohorts. Insufficient eligible samples always produce a documented skip, allowing reports to continue. Start with deterministic offline settings before enabling model/network enrichment.
 
 A completed GISTIC2 run can produce an `all_lesions.conf_90.txt` containing only
 the header: no significant focal lesions passed the selected thresholds. This is
@@ -360,7 +360,15 @@ the parser retains the analyzed sample count even when `n_lesions` is zero.
 GISTIC2 is off by default. Browser setup disables it for fewer than two assigned
 samples, and terminal setup saves `run_gistic: false` for a single sample. Native
 YAML runs also require explicit opt-in and skip cohorts below `gistic_min_samples`
-(default: `2`) before looking for GISTIC2 or downloading its reference.
+(default and lower bound: 2) before looking for GISTIC2 or downloading its reference.
+The count comes from unique samples in the selected full/events SEG after
+coverage QC and report selection, rather than the number originally assigned.
+The classifier's diagnostics/gistic/gistic_eligibility.json records the decision,
+eligible samples and exclusions; gistic2_status.tsv records the skip reason.
+For example, 22 inputs with only one assessable CNA profile skip GISTIC and
+continue reports for that profile. The other 21 remain not assessable; this
+does not turn insufficient CNA evidence into successful scientific assessments.
+Completed calling and imputation checkpoints remain reusable.
 
 For a failed variant branch, run `oncotracer check --variant-tools --config /path/to/run.yml`.
 The browser and `setup --run` perform this executable check automatically.

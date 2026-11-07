@@ -26,6 +26,7 @@ from pathlib import Path, PurePosixPath
 from typing import Callable, Iterable, Iterator, Mapping, Sequence, TextIO
 
 from . import __version__
+from .terminal_progress import command_activity
 
 
 class OncoTracerError(RuntimeError):
@@ -935,7 +936,12 @@ class CommandRunner:
         with self._trace_lock:
             self._record_unlocked(stage, started, finished, returncode, cwd, command)
         if self.progress is not None:
-            self.progress.command_done(self.sample_name, returncode)
+            self.progress.command_done(self.sample_name, returncode, stage)
+        if self.echo and getattr(self, "parent_runner", None) is None:
+            from .terminal_progress import clean, elapsed
+            duration = (dt.datetime.fromisoformat(finished) - dt.datetime.fromisoformat(started)).total_seconds()
+            verdict = "complete" if returncode == 0 else f"failed (exit {returncode})"
+            print(f"[{clean(stage)}] {verdict} | elapsed {elapsed(duration)}", file=sys.stderr, flush=True)
 
     def progress_task(self, stage):
         if self.progress is not None:
@@ -955,6 +961,7 @@ class CommandRunner:
                 ]
             )
 
+    @command_activity
     def run(
         self,
         stage: str,
@@ -1008,6 +1015,7 @@ class CommandRunner:
             )
         return CommandResult(completed.returncode, argv, started, finished)
 
+    @command_activity
     def pipeline(
         self,
         stage: str,
@@ -1154,7 +1162,7 @@ class StageLedger:
                 # failure retention, not any scientific stage contract. Keep
                 # the exact previous cache version; future versions invalidate
                 # normally unless separately reviewed for compatibility.
-                "version": {"2.3.1rc1": "2.3.0", "2.3.1rc2": "2.3.0", "2.3.1rc3": "2.3.0", "2.3.1": "2.3.0", "2.3.2": "2.3.0"}.get(__version__, __version__),
+                "version": {"2.3.1rc1": "2.3.0", "2.3.1rc2": "2.3.0", "2.3.1rc3": "2.3.0", "2.3.1": "2.3.0", "3.0.0": "2.3.0"}.get(__version__, __version__),
             },
             sort_keys=True,
         )

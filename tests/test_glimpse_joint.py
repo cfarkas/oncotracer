@@ -1,6 +1,10 @@
 """Real two-sample VCF fixtures exercising missingness and allele evidence."""
 from pathlib import Path
 import gzip
+import contextlib
+import io
+import json
+from unittest.mock import patch
 import hashlib
 import os
 import shutil
@@ -91,6 +95,38 @@ class GlimpseJointTests(unittest.TestCase):
                          '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n'
                          'chr1\t10\t1\tA\tG\t.\t.\tCLNSIG=' + annotation + '\n')
         return path, hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def test_progress_reports_counts_and_preserves_verified_predecessor_merge(self):
+        a = self.vcf('A', [('chr1', 10, 'A', 'G', (0, 1))])
+        b = self.vcf('B', [('chr1', 20, 'A', 'T', (0, 1))])
+        output = io.StringIO()
+        with contextlib.redirect_stderr(output):
+            first = self.merge({'A': a, 'B': b})
+        progress = json.loads((self.root / 'cohort/progress.json').read_text())
+        self.assertEqual(progress['status'], 'complete')
+        self.assertEqual(progress['counts'], first['counts'])
+        self.assertIn('merged 2 variants', output.getvalue())
+        self.assertIn('Validating cohort.all_evidence.vcf.gz', output.getvalue())
+        from oncotracer_cli.glimpse_joint import _PROGRESS_PREDECESSOR
+        manifest_path = self.root / 'cohort/cohort.manifest.json'
+        previous = json.loads(manifest_path.read_text())
+        previous['inputs']['implementation_sha256'] = _PROGRESS_PREDECESSOR
+        previous['input_fingerprint'] = hashlib.sha256(json.dumps(previous['inputs'], sort_keys=True).encode()).hexdigest()
+        manifest_path.write_text(json.dumps(previous))
+        protected = {Path(path): Path(path).read_bytes() for path in first['outputs'].values()}
+        with patch('oncotracer_cli.glimpse_joint._run', side_effect=AssertionError('unnecessary merge')):
+            resumed = self.merge({'A': a, 'B': b})
+        self.assertTrue(resumed['reused'])
+        self.assertEqual(protected, {p: p.read_bytes() for p in protected})
+        self.assertTrue(json.loads((self.root / 'cohort/progress.json').read_text())['reused'])
+        # A different scientific predecessor is never accepted merely to resume.
+        previous['inputs']['implementation_sha256'] = 'f' * 64
+        previous['input_fingerprint'] = hashlib.sha256(json.dumps(previous['inputs'], sort_keys=True).encode()).hexdigest()
+        manifest_path.write_text(json.dumps(previous))
+        with patch('oncotracer_cli.glimpse_joint._run', side_effect=RuntimeError('must rebuild')):
+            with self.assertRaisesRegex(RuntimeError, 'must rebuild'):
+                self.merge({'A': a, 'B': b})
+        self.assertEqual(json.loads((self.root / 'cohort/progress.json').read_text())['status'], 'failed')
 
     def test_clinvar_history_differences_merge_only_with_verified_content(self):
         ca, ha = self.clinvar('A', history='Monday')

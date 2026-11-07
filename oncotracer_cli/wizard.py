@@ -205,6 +205,8 @@ def command_wizard(original_args) -> int:
                 run_gistic=(len(entries) >= 2 and _ask(None, "Add GISTIC recurrence analysis?", default="no", choices=("yes", "no")) == "yes"),
             )
             values["gistic_required"] = values["run_gistic"]
+            if values["run_gistic"]:
+                print("GISTIC runs only if at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.")
             if len(entries) < 2:
                 print("GISTIC is unavailable for one sample; it needs at least two selected samples. Continuing with your CNA reports.")
     backend = args.backend or str(cli._load_install_config().get("backend") or "conda")

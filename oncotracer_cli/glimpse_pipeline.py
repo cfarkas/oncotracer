@@ -390,7 +390,7 @@ def _cohort(request,exports,root,tools,reference,threads,imputed,sample_statuses
     environment={'PYTHONPATH':os.pathsep.join(filter(None,[str(Path(__file__).parent.parent),os.environ.get('PYTHONPATH','')]))}
     with (root/'cohort.log').open('a') as log:
         _sample_runner(runner,root/'cohort_commands.tsv',stop).run('glimpse-cohort',[tools.get('python',sys.executable),*python_code(code)[1:],spec,result],
-            env=environment,stdout=log,stderr=log)
+            env=environment,stdout=log,stderr=None)
     return json.loads(result.read_text())
 
 

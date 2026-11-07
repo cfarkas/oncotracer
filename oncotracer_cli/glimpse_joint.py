@@ -20,6 +20,11 @@ import tempfile
 from collections import Counter
 
 VERSION = 'glimpse-cohort-v2'
+# 2.3.1/2.3.2 merger + ClinVar implementation, before progress-only instrumentation.
+# Remove this compatibility entry if normalization, genotype/annotation semantics
+# or validation change. Input identity and all output hashes must still match.
+_PROGRESS_PREDECESSOR = '823632f28f5964207d73c4eaf64edeb3a072e9113dcb755517c70fb4e3e3e9f0'
+
 IMPUTED_MIN_GP = 0.90
 IMPUTED_MIN_INFO = 0.80
 _COMMON_INFO = {'ALLELEID', 'GENEINFO', 'MC', 'RS', 'ORIGIN', 'NEAND_MARKER',
@@ -325,6 +330,19 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
                  sample_roles: dict[str, str] | None = None,
                  population_excluded_samples: dict[str, str] | None = None,
                  clinvar_by_sample: dict[str, str] | None = None) -> dict:
+    from .cohort_progress import CohortProgress
+    with CohortProgress(output_dir, len(samples)) as progress:
+        return _merge_cohort(samples, output_dir, bcftools, reference, threads,
+                             imputed_by_sample, sample_roles, population_excluded_samples,
+                             clinvar_by_sample, progress=progress)
+
+
+def _merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
+                 reference: Path, threads: int = 1,
+                 imputed_by_sample: dict[str, list[Path]] | None = None,
+                 sample_roles: dict[str, str] | None = None,
+                 population_excluded_samples: dict[str, str] | None = None,
+                 clinvar_by_sample: dict[str, str] | None = None, *, progress) -> dict:
     """Create indexed all-evidence and germline population VCFs, returning a manifest.
 
     Output rows are normalized, exact biallelic alleles. Splitting a multiallelic
@@ -387,6 +405,8 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
         'clinvar_provenance': clinvar,
     }
     fingerprint = hashlib.sha256(json.dumps(input_identity, sort_keys=True).encode()).hexdigest()
+    prior_identity = dict(input_identity, implementation_sha256=_PROGRESS_PREDECESSOR)
+    compatible_fingerprints = {fingerprint, hashlib.sha256(json.dumps(prior_identity, sort_keys=True).encode()).hexdigest()}
     output_dir = Path(output_dir).resolve()
     filenames = {'all_evidence': 'cohort.all_evidence.vcf.gz', 'germline_population': 'cohort.germline_population.vcf.gz'}
     if any(output_dir / name in samples.values() for name in filenames.values()):
@@ -394,11 +414,12 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
     manifest_path = output_dir / 'cohort.manifest.json'
     if manifest_path.is_file():
         previous = json.loads(manifest_path.read_text())
-        if previous.get('input_fingerprint') == fingerprint and all(
+        if previous.get('input_fingerprint') in compatible_fingerprints and all(
             (output_dir / name).is_file() and Path(str(output_dir / name) + '.tbi').is_file()
             and previous.get('output_checksums', {}).get(name) == _sha256(output_dir / name)
             and previous.get('output_checksums', {}).get(name + '.tbi') == _sha256(str(output_dir / name) + '.tbi')
             for name in filenames.values()):
+            progress.finish(previous.get('counts', {}), reused=True)
             return dict(previous, reused=True)
     order = {chrom: index for index, chrom in enumerate(lengths)}
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -408,6 +429,7 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
         work = Path(work)
         prepared = {}
         for index, (sample, path) in enumerate(samples.items()):
+            progress.update(stage=f"Normalizing sample {sample}", prepared_samples=index, announce=True)
             normalized = work / f'{index}.normalized.bcf'
             ordered = work / f'{index}.sorted.bcf'
             declared_order = [order[chrom] for chrom in headers[sample].contigs]
@@ -421,12 +443,15 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
                         writer.write(record)
             _run([bcftools, 'norm', '-f', reference, '-c', 'e', '-m', '-any',
                   '--multi-overlaps', '.', '-Ob', '--threads', str(threads), '-o', normalized, canonical or path], commands)
+            progress.update(stage=f"Sorting sample {sample}", announce=True)
             _run([bcftools, 'sort', '-Ob', '-o', ordered, '-T', work / f'sort-{index}', normalized], commands)
+            progress.update(stage=f"Indexing sample {sample}", announce=True)
             _run([bcftools, 'index', '-f', ordered], commands)
             normalized.unlink()
             if canonical:
                 canonical.unlink()
             prepared[sample] = ordered
+        progress.update(stage="Merging normalized alleles", prepared_samples=len(samples), announce=True)
         readers = {sample: pysam.VariantFile(str(path)) for sample, path in prepared.items()}
         imputed = {sample: iter(_imputed_stream(pysam, paths, sample, order, lengths))
                    for sample, paths in imputed_by_sample.items()}
@@ -489,6 +514,8 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
                     _recount(record)
                     all_writer.write(record)
                     counts['all_evidence_records'] += 1
+                    if counts['all_evidence_records'] % 10000 == 0:
+                        progress.update(counts=dict(counts), locus=f"{template.contig}:{template.pos}")
                     population = record.copy()
                     for sample, call in population.samples.items():
                         excluded_reason = population_excluded_samples.get(sample)
@@ -521,9 +548,13 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
                 reader.close()
             for stream in imputed.values():
                 stream.close()
+        progress.update(counts=dict(counts), announce=True)
         for name in filenames.values():
+            progress.update(stage=f"Indexing {name}", validated_records=None, announce=True)
             _run([bcftools, 'index', '-f', '-t', '--threads', str(threads), work / name], commands)
             # Full parser pass catches sample/allele/schema corruption before publication.
+            progress.update(stage=f"Validating {name}", validated_records=0, announce=True)
+            validated = 0
             with pysam.VariantFile(str(work / name)) as reader:
                 if list(reader.header.samples) != list(samples):
                     raise ValueError('Merged sample columns changed')
@@ -531,6 +562,11 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
                     expected_an = sum(x is not None for call in record.samples.values() for x in (call.get('GT') or ()))
                     if record.info.get('AN') != expected_an:
                         raise ValueError('Merged AN does not match primary genotypes')
+                    validated += 1
+                    if validated % 10000 == 0:
+                        progress.update(validated_records=validated)
+            progress.update(validated_records=validated, announce=True)
+        progress.update(stage="Hashing and publishing verified VCFs", announce=True)
         manifest = {
             'schema': VERSION, 'input_fingerprint': fingerprint, 'inputs': input_identity,
             'samples': list(samples), 'sample_roles': sample_roles,
@@ -553,4 +589,5 @@ def merge_cohort(samples: dict[str, Path], output_dir: Path, bcftools: str,
         temporary_manifest = work / 'manifest.json'
         temporary_manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
         os.replace(temporary_manifest, manifest_path)
+    progress.finish(counts)
     return manifest

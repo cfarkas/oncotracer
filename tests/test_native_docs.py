@@ -33,6 +33,20 @@ ACTIVE = [
 
 
 class NativeDocumentationTests(unittest.TestCase):
+    def before_release_3_0(self, relative, content):
+        record = json.loads((ROOT / "docs/assets/tutorial/release-3.0-compatibility.json").read_text())
+        transition = record["files"].get(relative)
+        if not transition:
+            return content
+        self.assertEqual(transition["current_sha256"], hashlib.sha256(content).hexdigest())
+        value = content.decode()
+        for change in reversed(transition["changes"]):
+            self.assertEqual(value[change["start"]:change["end"]], change["current"])
+            value = value[:change["start"]] + change["recorded"] + value[change["end"]:]
+        content = value.encode()
+        self.assertEqual(transition["recorded_sha256"], hashlib.sha256(content).hexdigest())
+        return content
+
     def before_gpu_queue_options(self, relative, content):
         record = json.loads((ROOT / 'docs/assets/tutorial/gpu-queue-compatibility.json').read_text())
         self.assertEqual(record['schema'], 1)
@@ -91,7 +105,13 @@ class NativeDocumentationTests(unittest.TestCase):
         content = (ROOT / relative).read_bytes()
         if hashlib.sha256(content).hexdigest() == expected:
             return
-        content = self.before_gpu_queue_options(relative, content)
+        content = self.before_release_3_0(relative, content)
+        if hashlib.sha256(content).hexdigest() == expected:
+            return
+        if relative == "oncotracer_cli/cli.py":
+            content = self.before_release_3_0("CLI_BEFORE_RESUME", content)
+        else:
+            content = self.before_gpu_queue_options(relative, content)
         if hashlib.sha256(content).hexdigest() == expected:
             return
         from oncotracer_cli.cli import DEFAULT_IMAGE
@@ -141,7 +161,7 @@ class NativeDocumentationTests(unittest.TestCase):
         })
         # This receipt describes the earlier image change in the reconstructed
         # recording source. Later defaults are covered by the resume deltas.
-        recorded_cli = self.before_resume_controls("oncotracer_cli/cli.py", (ROOT / "oncotracer_cli/cli.py").read_bytes()).decode()
+        recorded_cli = self.before_resume_controls("oncotracer_cli/cli.py", self.before_release_3_0("CLI_BEFORE_RESUME", self.before_release_3_0("oncotracer_cli/cli.py", (ROOT / "oncotracer_cli/cli.py").read_bytes()))).decode()
         base_image = re.search(r'^DEFAULT_IMAGE = "([^"]+)"$', recorded_cli, re.M).group(1)
         self.assertEqual(compatibility["current_image"], base_image)
         transition = compatibility["files"].get(relative)
@@ -247,11 +267,11 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIs(record["passed"], True)
         self.assertIs(record["analysis_started"], False)
         self.assertIs(record["real_reads_downloaded"], False)
-        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(PAGE.encode()).hexdigest())
+        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(self.before_release_3_0("PAGE", PAGE.encode())).hexdigest())
         self.assertEqual(record["mock_api_sha256"], hashlib.sha256(
             (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes()).hexdigest())
         for relative, expected in record["source_files"].items():
-            self.assertEqual(expected, hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), relative)
+            self.assertEqual(expected, hashlib.sha256(self.before_release_3_0(relative, (ROOT / relative).read_bytes())).hexdigest(), relative)
         pages = {"quick-start-illumina-ont": None,
                  "quick-start-illumina": "docs/quick_start.md",
                  "quick-start-ont": "docs/quick_start.md",
@@ -289,7 +309,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("real loopback WebServer", record["api"])
         self.assertEqual(record["entrypoint"],
                          "oncotracer --interactive --cpg-from /path/to/ONT-project")
-        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(PAGE.encode()).hexdigest())
+        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(self.before_release_3_0("PAGE", PAGE.encode())).hexdigest())
         self.assertTrue({"oncotracer_cli/web.py", "oncotracer_cli/web_ui.py",
                          "oncotracer_cli/setup.py", "oncotracer_cli/cpg_setup.py",
                          "scripts/record_post_ont_cpg_video.py"
@@ -301,7 +321,7 @@ class NativeDocumentationTests(unittest.TestCase):
         for relative, expected in record["source_files"].items():
             self.assertFalse(Path(relative).is_absolute())
             self.assertNotIn("..", Path(relative).parts)
-            content = (ROOT / relative).read_bytes()
+            content = self.before_release_3_0(relative, (ROOT / relative).read_bytes())
             self.assertEqual(hashlib.sha256(content).hexdigest(), expected, relative)
         self.assertEqual([(row["sample_id"], row["classifier"]) for row in record["pointer_drags"]],
                          [(0, "marlin"), (1, "sturgeon"), (2, "marlin"), (2, "")])

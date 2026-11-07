@@ -107,8 +107,10 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 <p>Preservation: <strong id="variant-preservation-value">Choose in step 2</strong> <button type="button" id="change-preservation">Change</button></p>
 <p id="variant-preservation-note" class="hint" role="status">Choose Fresh or FFPE from your specimen records.</p>
 <div id="variant-glimpse-settings" hidden>
-<p class="notice"><strong>Complete GLIMPSE2 analysis</strong> · Sequencing calls, mandatory germline imputation, ClinVar and available ANNOVAR annotation, traits, polygenic scores, ancestry, homozygosity, interpretation reports and an annotated cohort VCF. Available completed work is verified before reuse.</p>
+<p class="notice"><strong>Complete GLIMPSE2 analysis</strong> · Sequencing calls, mandatory germline imputation, ClinVar and available ANNOVAR annotation, traits, polygenic scores, ancestry, homozygosity, interpretation reports and annotated sample VCFs. Available completed work is verified before reuse.</p>
 <p class="hint">Imputation adds germline evidence. Absence from the reference panel does not establish somatic origin. FFPE damage flags remain visible, including when imputation supports the allele.</p>
+<label for="variant_merge_vcfs"><input id="variant_merge_vcfs" type="checkbox" checked> Merge sample VCFs into cohort VCFs</label><p class="hint">Optional cohort export. Per-sample annotated VCFs and reports are produced with either choice.</p>
+<label for="variant_storage_mode">Work storage</label><select id="variant_storage_mode"><option value="compact">Save disk space and preserve resume (default)</option><option value="full">Keep all work files</option></select><p class="hint">Compact mode removes temporary reference chunks after each successful imputation task. Results and files needed to resume stay available.</p>
 <div class="variant-path"><label for="variant_patients">Patient metadata TSV (optional)</label>
 <div class="variant-path-row"><input id="variant_patients" spellcheck="false" autocomplete="off" placeholder="sample, name, age and sex; unknown age/sex allowed">
 <div class="variant-path-actions"><button type="button" data-browse="variant_patients" data-kind="asset">Browse</button></div></div>
@@ -117,10 +119,6 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 </div>
 <div id="variant-caller-settings" hidden><h4>Variant callers</h4><div id="variant-callers" class="variant-caller-list" role="group" aria-label="Variant callers"></div>
 <div id="variant-strelka-pairing" hidden><h4>Matched normals for Strelka2 somatic</h4><p class="hint">Select the normal specimen from the same patient for each tumor. Normal/control group membership alone does not establish a match. The matched normal does not inherit the tumor’s FFPE setting.</p><div id="variant-pair-rows"></div><p id="variant-pair-note" class="hint" role="status"></p></div><details class="variant-explainer"><summary>How caller results are used</summary><p class="hint">Mutect2 and ClairS-TO produce tumor-only candidates. Strelka2 somatic uses your explicitly matched tumor–normal pairs. Strelka2 germline, FreeBayes, bcftools and Clair3 run independently per sample. Group assignments never create matched pairs automatically.</p></details></div>
-</section>
-<section class="variant-section" id="variant-linkage-settings">
-<h4>Read-backed linkage</h4><label class="check"><input id="variant_monte_carlo_linkage" type="checkbox"> Add Monte Carlo linkage testing (experimental)</label>
-<p class="hint">Checks whether nearby observed SNVs share independent read fragments. Reports linkage p-values and corrected q-values, never a probability of germline origin. Sparse evidence is reported as unassessable. Whole-genome tables use compressed TSV files.</p>
 </section>
 <section class="variant-section" id="variant-quilt2-settings" hidden>
 <h4>ONT population imputation</h4><label for="variant_ont_imputation">Imputation method</label><select id="variant_ont_imputation"><option value="off">Off</option><option value="quilt2">QUILT2 · research diploid SNP imputation</option></select>
@@ -147,6 +145,7 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 <p id="variant-install-overview" class="hint" role="status" aria-live="polite" hidden></p><button id="variant-install-review" type="button" hidden>View installation progress</button></div>
 <p id="variant-tool-note" class="hint"></p>
 <div id="variant-parallel-controls"><h4>Parallel sample resources</h4><div class="grid"><div><label for="variant_parallel_samples">Samples running at once</label><input id="variant_parallel_samples" value="auto" placeholder="auto or a positive integer"></div><div><label for="variant_memory">Total analysis memory</label><input id="variant_memory" value="auto" placeholder="auto or 64GB"></div></div><p class="hint">CPU and RAM budgets are shared across samples. Auto checks CPU affinity, container limits and available RAM before running. Illumina complete variant analysis needs at least 32 GiB per simultaneous sample. Saved explicit limits are retained.</p></div>
+<div id="variant-resource-mode-controls" hidden><label for="variant_resource_mode">Resource scheduling</label><select id="variant_resource_mode"><option value="dynamic">Share freed CPU and RAM (default)</option><option value="fixed">Keep initial allocations</option></select><p class="hint">Dynamic scheduling starts more independent tasks as samples finish, within your CPU and memory limits.</p></div>
 <div id="variant-glimpse-resources" hidden>
 <div class="variant-path"><label for="variant_glimpse_reference_dir">GLIMPSE2 reference cache</label>
 <div class="variant-path-row"><input id="variant_glimpse_reference_dir" spellcheck="false" autocomplete="off" placeholder="Automatic project cache">
@@ -178,7 +177,8 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 <div class="variant-path-row"><input id="variant_strelka_prefix" spellcheck="false" autocomplete="off" placeholder="Autodetect or choose a path">
 <div class="variant-path-actions"><button type="button" data-variant-detect="variant_strelka_prefix" aria-label="Autodetect Strelka2 tool environment">Autodetect</button><button type="button" data-browse="variant_strelka_prefix" data-kind="folder">Browse</button></div></div>
 <p id="variant_strelka_prefix-status" class="variant-path-status hint" aria-live="polite"></p><p class="hint">Autodetect the separate Strelka2 environment. Docker includes this runtime.</p></div></details></div>
-<div id="variant-clair3-field" class="variant-tool-block" hidden><h4>Clair3 model</h4><label for="variant-clair3-source">Model preparation</label><select id="variant-clair3-source"><option value="auto">Automatic · download and verify when the run starts</option><option value="local">Use an existing model folder</option></select><div id="variant-clair3-auto-fields"><label for="variant_ont_profile">Flow cell and basecalling model used for these reads</label><select id="variant_ont_profile"><option value="r1041_e82_400bps_sup_v500">R10.4.1 E8.2 / Dorado SUP v5.0.0 / 400 bps / 5 kHz</option><option value="r1041_e82_400bps_hac_v500">R10.4.1 E8.2 / Dorado HAC v5.0.0 / 400 bps / 5 kHz</option><option value="r1041_e82_400bps_hac_v520">R10.4.1 E8.2 / Dorado HAC v5.2.0 / 400 bps / 5 kHz</option><option value="r1041_e82_400bps_sup_v420">R10.4.1 E8.2 / Dorado SUP v4.2.0 / 400 bps / 5 kHz</option><option value="r1041_e82_400bps_sup_v410">R10.4.1 E8.2 / Dorado SUP v4.1.0 / 400 bps / 4 kHz</option><option value="r1041_e82_400bps_hac_v410">R10.4.1 E8.2 / Dorado HAC v4.1.0 / 400 bps / 4 kHz</option></select><p class="hint">Check this selection against your sequencing records. Fresh/FFPE does not determine the flow cell or basecaller. The matching model is about 75 MB, downloaded once and reused.</p></div><div id="variant-clair3-local-fields" hidden><div class="variant-path"><label for="variant_clair3_model">Clair3 model folder</label>
+<div id="variant-clair3-field" class="variant-tool-block" hidden><h4>Clair3 model</h4><label for="variant-clair3-source">Model preparation</label><select id="variant-clair3-source"><option value="auto">Automatic · download and verify when the run starts</option><option value="local">Use an existing model folder</option></select><div id="variant-clair3-auto-fields">
+<label for="variant_ont_profile">Flow cell and basecalling model used for these reads</label><select id="variant_ont_profile"><option value="r1041_e82_400bps_sup_v500">R10.4.1 E8.2 / Dorado SUP v5.0.0 / 400 bps / 5 kHz</option><option value="r1041_e82_400bps_hac_v500">R10.4.1 E8.2 / Dorado HAC v5.0.0 / 400 bps / 5 kHz</option><option value="r1041_e82_400bps_hac_v520">R10.4.1 E8.2 / Dorado HAC v5.2.0 / 400 bps / 5 kHz</option><option value="r1041_e82_400bps_sup_v420">R10.4.1 E8.2 / Dorado SUP v4.2.0 / 400 bps / 5 kHz</option><option value="r1041_e82_400bps_sup_v410">R10.4.1 E8.2 / Dorado SUP v4.1.0 / 400 bps / 4 kHz</option><option value="r1041_e82_400bps_hac_v410">R10.4.1 E8.2 / Dorado HAC v4.1.0 / 400 bps / 4 kHz</option></select><p class="hint">Check this selection against your sequencing records. Fresh/FFPE does not determine the flow cell or basecaller. The matching model is about 75 MB, downloaded once and reused.</p></div><div id="variant-clair3-local-fields" hidden><div class="variant-path"><label for="variant_clair3_model">Clair3 model folder</label>
 <div class="variant-path-row"><input id="variant_clair3_model" spellcheck="false" autocomplete="off" placeholder="Choose a model compatible with your reads">
 <div class="variant-path-actions"><button type="button" data-variant-detect="variant_clair3_model" aria-label="Autodetect Clair3 model folder">Autodetect</button><button type="button" data-browse="variant_clair3_model" data-kind="folder">Browse</button></div></div>
 <p id="variant_clair3_model-status" class="variant-path-status hint" aria-live="polite"></p></div></div></div>
@@ -236,11 +236,11 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 <p id="resume-resource-note" class="hint" role="status">Detect resources to compare sample-job combinations. Cores here mean CPU threads available to this process; other analyses share this server.</p>
 <div id="resume-gpu-field" hidden><label for="resume-gpu">GPU usage</label><select id="resume-gpu"><option value="false">No · CPU</option><option value="true">Yes · accelerate supported stages</option></select><p id="resume-gpu-note" class="hint"></p></div>
 <div id="resume-gpu-unavailable" class="notice" hidden>Saved settings request a GPU, but no NVIDIA GPU is visible. Restore GPU access or <button id="resume-use-cpu" type="button">Use CPU for this analysis</button>.</div>
-<section id="resume-postcalling" hidden><h3>Additional variant evidence</h3><label class="check"><input id="resume-monte-carlo" type="checkbox"> Add Monte Carlo read linkage (experimental)</label><div id="resume-quilt2-field" hidden><label for="resume-quilt2">ONT population imputation</label><select id="resume-quilt2"><option value="off">Off</option><option value="quilt2">QUILT2 · research diploid SNP imputation</option></select></div><p class="hint">Uses observed reads for linkage. QUILT2 imputed SNPs remain separate. Neither establishes germline origin; tumor admixture and CNA can invalidate diploid assumptions. Completed stages are checked before reuse.</p></section>
+<section id="resume-postcalling" hidden><h3>Additional variant evidence</h3><div id="resume-quilt2-field" hidden><label for="resume-quilt2">ONT population imputation</label><select id="resume-quilt2"><option value="off">Off</option><option value="quilt2">QUILT2 · research diploid SNP imputation</option></select></div><p class="hint">QUILT2 imputed SNPs remain separate from observed calls and do not establish germline origin; tumor admixture and CNA can invalidate diploid assumptions. Completed stages are checked before reuse.</p></section>
 <button id="resume-detect-resources" type="button">Detect sample-job options</button>
 <button id="resume-apply-resources" type="button">Apply resources and check</button><p class="hint">Run analysis also applies and checks these choices before starting.</p>
 </section><div class="actions"><button id="run" class="primary">Simulate Run</button><button id="stop" hidden>Stop simulation</button><span id="job-status" role="status"></span><a id="open-results" class="result-link" target="_blank" rel="noopener noreferrer" hidden>Open simulated results</a><button id="new-analysis" hidden>Set up another analysis</button></div><div id="run-progress" hidden><div class="hardware"><div><strong id="run-elapsed">0s</strong><span>Elapsed</span></div><div><strong id="run-step-eta">Waiting for progress</strong><span>Current step ETA</span></div><div><strong id="run-overall-eta">Not yet known</strong><span>Overall analysis ETA</span></div></div><p id="run-stage"></p><p id="run-eta-note" class="hint"></p></div><p id="log-path" class="folderpath"></p><pre id="logs" class="logs" hidden></pre></section>
-</div><section id="demo-results" class="card demo-result-card" hidden><span class="demo-chip">Illustrative results</span><h2 id="demo-results-heading" tabindex="-1">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id="demo-result-summary"></dl><p class="notice">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href="../../installation/">Install OncoTracer →</a></section><footer class="demo-footer">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>3f2cc41b5ed6</code>.</footer></main>
+</div><section id="demo-results" class="card demo-result-card" hidden><span class="demo-chip">Illustrative results</span><h2 id="demo-results-heading" tabindex="-1">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id="demo-result-summary"></dl><p class="notice">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href="../../installation/">Install OncoTracer →</a></section><footer class="demo-footer">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>6eba1caa32a3</code>.</footer></main>
 <dialog id="variant-resource-dialog" aria-labelledby="variant-resource-title">
 <div class="variant-dialog-heading"><div><span class="eyebrow">Tools, models and annotation</span><h2 id="variant-resource-title">Detected resources</h2></div><button id="variant-resource-close" type="button" autofocus>Close</button></div>
 <p id="variant-resource-dialog-status" class="hint" role="status" aria-live="polite"></p><section id="variant-install-panel" class="variant-install-panel" hidden>
@@ -567,7 +567,7 @@ function makeDraggable(row){
   };
   row.onpointercancel=clear;row.onlostpointercapture=clear;
 }
-function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'GISTIC is available for this cohort; leave it off unless recurrence analysis is needed.';invalidate();}
+function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'If enabled, GISTIC runs when at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.';invalidate();}
 function renderFastqInventory(){
   if(!scan){show('fastq-preview',false);return;}
   const query=$('fastq-filter').value.trim().toLowerCase();let total=0,matches=0;
@@ -991,8 +991,8 @@ function showResumedProject(){
   $('resume-threads').value=choices?.threads||prepared.reviewed_summary.config.threads||1;
   $('resume-memory').value=choices?.memory||'auto';
   const savedVariants=prepared.reviewed_summary.config;
-  show('resume-postcalling',Boolean(savedVariants.run_variants));show('resume-quilt2-field',savedVariants.mode==='ont');
-  $('resume-monte-carlo').checked=Boolean(savedVariants.variant_monte_carlo_linkage);$('resume-quilt2').value=savedVariants.variant_ont_imputation||'off';
+  show('resume-postcalling',Boolean(savedVariants.run_variants)&&savedVariants.mode==='ont');show('resume-quilt2-field',savedVariants.mode==='ont');
+  $('resume-quilt2').value=savedVariants.variant_ont_imputation||'off';
   showResourceChoices('resume',choices,true);
   $('run').disabled=!prepared.valid||Boolean(choices&&!resumeResourcesReady);$('run').hidden=false;
   show('workflow',true);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});
@@ -1097,12 +1097,12 @@ async function applyResumeResources(){
   const resources=resourceSelection('resume');
   await loadResume(project,{backend:$('resume-backend').value,
     image:$('resume-backend').value==='conda'?'':$('resume-image').value.trim(),resources,
-    variant_options:prepared?.reviewed_summary?.config?.run_variants?{variant_monte_carlo_linkage:$('resume-monte-carlo').checked,variant_ont_imputation:prepared.reviewed_summary.config.mode==='ont'?$('resume-quilt2').value:'off'}:null});
+    variant_options:prepared?.reviewed_summary?.config?.run_variants?{variant_monte_carlo_linkage:false,variant_ont_imputation:prepared.reviewed_summary.config.mode==='ont'?$('resume-quilt2').value:'off'}:null});
 }
-for(const id of ['resume-monte-carlo','resume-quilt2'])$(id).addEventListener('change',()=>{$('check-badge').textContent='Settings changed · checked again at Run';});
+for(const id of ['resume-quilt2'])$(id).addEventListener('change',()=>{$('check-badge').textContent='Settings changed · checked again at Run';});
 $('resume-apply-resources').onclick=()=>busy($('resume-apply-resources'),applyResumeResources);
 
-(async()=>{try{if(!token)throw Error('Open the complete URL printed by oncotracer web, including the session code after #.');const system=await api('/api/system');hardware=system.hardware;binsizes=system.qdnaseq_binsizes;for(const place of system.locations||[]){const button=node('button',place.name);button.title=place.path;button.onclick=()=>browse(place.path);$('browser-shortcuts').append(button);}$('input-folder').value=system.start_dir;$('project-parent').value=system.start_dir;$('project-name').value=system.suggested_project_name||'oncotracer-analysis';$('threads').value=system.suggested_threads;$('threads').max=hardware.cpu_workers_available;const ram=bytes=>bytes===null||bytes===undefined?'Unknown':(bytes/1073741824).toFixed(1)+' GiB';for(const [value,label]of[[hardware.cpu_workers_available,'CPU workers available'],[ram(hardware.ram_available_bytes),'RAM available'],[ram(hardware.ram_total_bytes),'RAM total'],[String((hardware.gpus||[]).length),'GPUs detected']]){const item=node('div');item.append(node('strong',String(value)),node('span',label));$('hardware').append(item);}$('gpu-note').textContent=(hardware.gpus||[]).map(gpu=>gpu.name+(gpu.memory_total_bytes?' · '+ram(gpu.memory_total_bytes)+' VRAM':'')).join('; ')+' '+(hardware.gpu_note||'CNA analysis uses CPU.');const defaults=system.defaults||{};entryDefaults=defaults;for(const key of ['variant_parallel_samples','variant_memory','variant_patients','variant_confidence_gwas','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])if(defaults[key])$(key).value=defaults[key];
+(async()=>{try{if(!token)throw Error('Open the complete URL printed by oncotracer web, including the session code after #.');const system=await api('/api/system');hardware=system.hardware;binsizes=system.qdnaseq_binsizes;for(const place of system.locations||[]){const button=node('button',place.name);button.title=place.path;button.onclick=()=>browse(place.path);$('browser-shortcuts').append(button);}$('input-folder').value=system.start_dir;$('project-parent').value=system.start_dir;$('project-name').value=system.suggested_project_name||'oncotracer-analysis';$('threads').value=system.suggested_threads;$('threads').max=hardware.cpu_workers_available;const ram=bytes=>bytes===null||bytes===undefined?'Unknown':(bytes/1073741824).toFixed(1)+' GiB';for(const [value,label]of[[hardware.cpu_workers_available,'CPU workers available'],[ram(hardware.ram_available_bytes),'RAM available'],[ram(hardware.ram_total_bytes),'RAM total'],[String((hardware.gpus||[]).length),'GPUs detected']]){const item=node('div');item.append(node('strong',String(value)),node('span',label));$('hardware').append(item);}$('gpu-note').textContent=(hardware.gpus||[]).map(gpu=>gpu.name+(gpu.memory_total_bytes?' · '+ram(gpu.memory_total_bytes)+' VRAM':'')).join('; ')+' '+(hardware.gpu_note||'CNA analysis uses CPU.');const defaults=system.defaults||{};entryDefaults=defaults;$('variant_merge_vcfs').checked=defaults.variant_merge_vcfs??true;$('variant_storage_mode').value=defaults.variant_storage_mode??'compact';$('variant_resource_mode').value=defaults.variant_resource_mode??'dynamic';for(const key of ['variant_parallel_samples','variant_memory','variant_patients','variant_confidence_gwas','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])if(defaults[key])$(key).value=defaults[key];
 if(defaults.mode)choose(defaults.mode);
 if(defaults.image)$('docker_image').value=defaults.image;
 if(defaults.project){const split=defaults.project.lastIndexOf('/');$('project-parent').value=defaults.project.slice(0,split)||'/';$('project-name').value=defaults.project.slice(split+1);}
@@ -1195,13 +1195,13 @@ function configureVariantModelControls(config={}){
   if(config.variant_ont_profile)get('variant_ont_profile').value=config.variant_ont_profile;
   if(config.variant_clairsto_platform)get('variant_clairsto_platform').value=config.variant_clairsto_platform;
   get('variant-scenario-mode').value=config.variant_varlociraptor_scenario?'custom':'standard';
-  for(const key of ['variant_download_resources','variant_accept_ffperase_license','variant_monte_carlo_linkage']){
+  for(const key of ['variant_download_resources','variant_accept_ffperase_license']){
     if(config[key]!==undefined)get(key).checked=config[key]===true||String(config[key]).toLowerCase()==='true';
   }
 }
 function syncVariantChoices(platform,preservation){
   const ready=Boolean(preservation),glimpse=platform==='illumina';
-  show('variant-quilt2-settings',ready&&!glimpse);show('variant-linkage-settings',ready);
+  show('variant-quilt2-settings',ready&&!glimpse);
   show('variant-caller-settings',ready&&!glimpse);show('variant-glimpse-settings',ready&&glimpse);show('variant-glimpse-resources',ready&&glimpse);show('variant-parallel-controls',ready);
   show('variant-target-settings',!glimpse);show('variant-extra-filter-settings',!glimpse);
   for(const nav of document.querySelectorAll('.variant-nav'))nav.hidden=glimpse;
@@ -1238,10 +1238,12 @@ function guidedVariantPayload(data){
   if(typeof mode!=='undefined'&&mode==='illumina'){
     data.variant_engine='glimpse2';data.variant_callers='bcftools,mutect2';data.variant_annovar='auto';data.variant_varlociraptor='off';
     data.variant_ffperase=data.variant_specimen_type==='ffpe'?'required':'off';
+    data.variant_merge_vcfs=get('variant_merge_vcfs').checked;
+    data.variant_storage_mode=get('variant_storage_mode').value||'compact';
     data.variant_confidence_gwas=get('variant_confidence_gwas').value||'medium';
     for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])data[key]=get(key).value.trim();
   }else data.variant_engine='legacy';
-  data.variant_monte_carlo_linkage=get('variant_monte_carlo_linkage').checked;
+  data.variant_monte_carlo_linkage=false;
   data.variant_ont_imputation=typeof mode!=='undefined'&&mode==='ont'?get('variant_ont_imputation').value:'off';
   for(const key of ['variant_quilt2_reference_dir','variant_quilt2_cache'])data[key]=data.variant_ont_imputation==='quilt2'?get(key).value.trim():'';
   const parallel=get('variant_parallel_samples').value.trim();
@@ -1250,6 +1252,7 @@ function guidedVariantPayload(data){
   if(String(data.variant_callers||'').split(',').includes('clair3')&&get('variant-clair3-source').value==='auto'){
     data.variant_clair3_model='auto';data.variant_ont_profile=get('variant_ont_profile').value;
   }else data.variant_ont_profile='';
+  data.variant_resource_mode=get('variant_resource_mode')?.value||'dynamic';
   data.variant_matched_normals=variantPairPayload();
   const ffpe=data.variant_ffperase==='required';
   data.variant_download_resources=ffpe&&get('variant_download_resources').checked;
@@ -1261,7 +1264,7 @@ function guidedVariantPayload(data){
   }
   return data;
 }
-for(const id of ['variant-clair3-source','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile','variant_ont_imputation','variant_monte_carlo_linkage','variant_quilt2_reference_dir','variant_quilt2_cache']){
+for(const id of ['variant-clair3-source','variant_merge_vcfs','variant_storage_mode','variant_resource_mode','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile','variant_ont_imputation','variant_quilt2_reference_dir','variant_quilt2_cache']){
   for(const event of ['input','change'])document.getElementById(id).addEventListener(event,()=>{
     const get=key=>document.getElementById(key);
     if(id==='variant-clair3-source'){
@@ -1278,6 +1281,7 @@ function syncVariantLayout(){
   const docker=document.getElementById('backend')?.value==='docker',runtime=document.getElementById('variant-ffperase-runtime');
   if(!runtime)return;
   syncVariantModelControls();renderVariantPairing();
+  show('variant-resource-mode-controls',typeof mode!=='undefined'&&mode==='ont');
   if(!runtime.dataset.chosen)runtime.value=document.getElementById('variant_ffperase_sif').value.trim()?'sif':'native';
   show('variant-tool-prefix-fields',!docker);show('variant-clairsto-sif-fields',!docker);show('variant-ffperase-runtime-fields',!docker);
   show('variant-ffperase-prefix-fields',!docker&&runtime.value==='native');show('variant-ffperase-sif-fields',!docker&&runtime.value==='sif');
@@ -1308,7 +1312,7 @@ function variantResourceValues(){
   const keys=[...variantPathKeys,'variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_patients','variant_reuse_from','variant_clairsto_platform','variant_ffperase','variant_varlociraptor','variant_annovar','variant_ont_profile'];
   const values=Object.fromEntries(keys.map(key=>[key,document.getElementById(key).value.trim()]));
   values.variant_engine=typeof mode!=='undefined'&&mode==='illumina'?'glimpse2':'legacy';
-  values.variant_monte_carlo_linkage=document.getElementById('variant_monte_carlo_linkage').checked;
+  values.variant_monte_carlo_linkage=false;
   values.variant_ont_imputation=typeof mode!=='undefined'&&mode==='ont'?document.getElementById('variant_ont_imputation').value:'off';
   for(const key of ['variant_quilt2_reference_dir','variant_quilt2_cache'])values[key]=document.getElementById(key).value.trim();
   values.variant_download_resources=document.getElementById('variant_download_resources').checked;

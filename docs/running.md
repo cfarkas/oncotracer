@@ -201,3 +201,22 @@ On Linux, resource detection distinguishes clean inactive file cache left by
 completed tasks from memory still in use. Host available RAM, all visible
 cgroup limits and the system reserve continue to cap the next stage's budget.
 Dirty/writeback pages and swap do not increase the estimate.
+
+
+## Terminal progress and completion
+
+Long commands print a progress message every 30 seconds, followed by their exit
+status and elapsed time. The interactive terminal also shows the current step,
+recent completed steps and finished tool-step count. Sample completion is
+separate from stage completion.
+
+Cohort VCF export reports normalization, sorting, merging, indexing, full-record
+validation and checksum/publication steps. While merging, it shows all-evidence
+and population variant counts; validation has its own record counter. These are
+observed counts, not a predicted percentage or an ETA. A reused merge is labelled
+as reused only after its stored checksums pass.
+
+The foreground command exits when analysis and final checks finish. An ordinary
+shell prompt or an open terminal window is not a running analysis. Progress
+threads stop on success, failure or interruption. The full run log and the
+cohort progress JSON remain available after exit.
