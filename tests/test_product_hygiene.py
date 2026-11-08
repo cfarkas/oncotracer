@@ -245,7 +245,7 @@ def without_authorized_benchmark_examples(relative: str, text: str) -> str:
     study = root + "/STORAGE/" + "LPWGS" + "_2025/Paper/oncotracer_outputs/"
     benchmark = root + "/storage_disk4/oncotracer_benchmark_07_11_2026"
     allowed = {
-        "README.md": [benchmark, *(study + name + "/config/run.yml" for name in
+        "README.md": [benchmark, benchmark + "/artifacts-adae9e0/oncotracer", *(study + name + "/config/run.yml" for name in
                                   ("Illumina_Fresh", "Illumina_FFPE", "ONT_Fresh"))],
         "docs/benchmarks/2026-11-07.md": [benchmark],
     }

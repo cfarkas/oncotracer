@@ -238,7 +238,7 @@ class VariantSetupTests(unittest.TestCase):
     def test_docker_image_prefill_and_non_docker_rejection(self):
         args = build_parser().parse_args(["setup", "--backend", "docker", "--image", "oncotracer:local-test"])
         self.assertEqual(WebState(self.root, args).system()["defaults"]["image"], "oncotracer:local-test")
-        with self.assertRaisesRegex(OncoTracerError, "requires the Docker backend"):
+        with self.assertRaisesRegex(OncoTracerError, "requires the Docker or Podman backend"):
             self.prepare(self.state(), backend="host", docker_image="oncotracer:local-test")
         code, output = self.cli("--backend", "host", "--image", "oncotracer:local-test")
         self.assertEqual(code, 2, output)
