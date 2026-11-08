@@ -363,4 +363,3 @@ For NVIDIA GPUs, configure [NVIDIA CDI](https://docs.nvidia.com/datacenter/cloud
 and validate with `oncotracer doctor --backend podman --gpu`. Podman receives
 the selected host GPU indexes through CDI; UUID visibility masks and shared
 native admission locks retain the selected device identities. CPU runs need no CDI. ONT methylation still requires native licensed tools.
-

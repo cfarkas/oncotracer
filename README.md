@@ -54,14 +54,14 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 
 ## Recorded study commands
 
-These local 3.0.0 candidate commands resume the saved studies with dynamic resources,
-compact storage and their saved budgets:
+These local 3.0.0 candidate commands resumed the saved studies on 8 November 2026
+with dynamic resources, compact storage and their saved budgets:
 
 ```bash
-runner=/media/server/storage_disk4/oncotracer_benchmark_07_11_2026/artifacts-adae9e0/oncotracer
+runner=/media/server/storage_disk4/oncotracer_benchmark_07_11_2026/artifacts-395f2e3/oncotracer
 "$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_Fresh/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
 "$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_FFPE/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
-"$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/ONT_Fresh/config/run.yml --backend docker --image carlosfarkas/oncotracer:3.0.0-candidate-adae9e0 --cpu --resource-mode dynamic --storage-mode compact
+"$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/ONT_Fresh/config/run.yml --backend docker --image carlosfarkas/oncotracer:3.0.0-candidate-395f2e3 --cpu --resource-mode dynamic --storage-mode compact
 ```
 
 Local measurements are retained in
