@@ -84,4 +84,65 @@ class ReportTests(unittest.TestCase):
             render_ffpe_review(root, 'TEST', vote)
             self.assertNotIn('oncotracer-ffpe-adjudication', page.read_text())
 
+
+class ReportInventoryResumeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        import sys
+        source = Path(__file__).resolve().parents[1] / "oncotracer_cli/lpwgs/bin/reporting.py"
+        spec = importlib.util.spec_from_file_location("inventory_resume_reporting", source)
+        cls.reporting = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules), patch.object(sys, "path", [str(source.parent), *sys.path]):
+            spec.loader.exec_module(cls.reporting)
+
+    def fixture(self, root):
+        source = root / "ancestry/TEST.qc.html"
+        source.parent.mkdir(parents=True)
+        source.write_text("<html><body>Sequencing quality</body></html>")
+        folder = root / "deliverables"
+        self.reporting.inventory(root, folder, "TEST")
+        return source, folder, folder / "02_ancestry/ancestry/TEST.qc.html"
+
+    def test_resume_preserves_actual_ffpe_review_banner_and_redirect_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source, folder, destination = self.fixture(root)
+            vote = {"counts": {"records": 10, "accepted": 8, "ffpe_filtered": 2}}
+            for key in ("all_vcf", "accepted_vcf", "evidence_tsv"):
+                path = root / key
+                path.write_text("synthetic fixture")
+                vote[key] = str(path)
+            render_ffpe_review(root, "TEST", vote)
+            before = destination.read_bytes(), destination.stat().st_mtime_ns
+            source_before = source.read_bytes()
+            self.assertIn(b"ONCOTRACER_FFPE_REVIEW_BEGIN", before[0])
+            for _ in range(2):
+                entries = self.reporting.inventory(root, folder, "TEST")
+                self.assertTrue(any(row["source_relative_to_output"] == "ancestry/TEST.qc.html" for row in entries))
+                self.assertEqual((destination.read_bytes(), destination.stat().st_mtime_ns), before)
+                self.assertEqual(source.read_bytes(), source_before)
+
+    def test_unrecognized_or_altered_regular_file_is_retained_and_rejected(self):
+        for altered_redirect in (False, True):
+            with self.subTest(altered_redirect=altered_redirect), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                source, folder, destination = self.fixture(root)
+                text = destination.read_text().replace("../../../ancestry/TEST.qc.html", "different.html") if altered_redirect else "User-owned report"
+                destination.write_text("<!-- review note -->" + text)
+                before = destination.read_bytes()
+                with self.assertRaisesRegex(ValueError, "Refusing to replace"):
+                    self.reporting.inventory(root, folder, "TEST")
+                self.assertEqual(destination.read_bytes(), before)
+
+    def test_unchanged_generated_redirect_is_not_rewritten(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _, folder, destination = self.fixture(root)
+            import os
+            os.utime(destination, ns=(1_600_000_000_000_000_000, 1_600_000_000_000_000_000))
+            before = destination.read_bytes(), destination.stat().st_mtime_ns
+            self.reporting.inventory(root, folder, "TEST")
+            self.assertEqual((destination.read_bytes(), destination.stat().st_mtime_ns), before)
+
 if __name__ == '__main__': unittest.main()

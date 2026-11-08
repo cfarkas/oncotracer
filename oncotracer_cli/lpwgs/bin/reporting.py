@@ -135,11 +135,23 @@ def inventory(output, folder, sample):
             target = os.path.relpath(source, destination.parent)
             if source.suffix=='.html':
                 marker='<!-- generated report redirect -->'
-                if destination.is_symlink():destination.unlink()
-                elif destination.exists() and not destination.read_text().startswith(marker):
-                    raise ValueError(f'Refusing to replace a regular file: {destination}')
                 href=esc(quote(target,safe='/'))
-                destination.write_text(marker+'<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url='+href+'"><a href="'+href+'">Open report</a>')
+                redirect=marker+'<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url='+href+'"><a href="'+href+'">Open report</a>'
+                if destination.is_symlink():
+                    destination.unlink()
+                    destination.write_text(redirect)
+                elif destination.exists():
+                    previous=destination.read_text()
+                    # FFPE adjudication prepends its review warning. Preserve
+                    # the whole file when its exact generated link still matches.
+                    if previous.endswith(redirect):
+                        pass
+                    elif previous.startswith(marker):
+                        destination.write_text(redirect)
+                    else:
+                        raise ValueError(f'Refusing to replace a regular file: {destination}')
+                else:
+                    destination.write_text(redirect)
             elif destination.is_symlink():
                 if os.readlink(destination) != target:
                     destination.unlink(); destination.symlink_to(target)
