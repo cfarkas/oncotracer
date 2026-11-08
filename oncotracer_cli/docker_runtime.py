@@ -44,7 +44,7 @@ def host_preview_runtime_identity():
     return _HOST_PREVIEW_IDENTITY.get() if _HOST_PREVIEW.get() else None
 
 
-def output_runtime_identity(config: Mapping[str, object], *, image=None):
+def output_runtime_identity(config: Mapping[str, object], *, image=None, backend=None):
     """Authenticate an existing output against the selected image, never the host.
 
     An empty/new output needs no image probe during configuration-only checks.
@@ -60,7 +60,7 @@ def output_runtime_identity(config: Mapping[str, object], *, image=None):
     selected = dict(config)
     if image:
         selected["docker_image"] = str(image)
-    return _runtime("docker", selected)
+    return _runtime(backend or str(config.get("execution_backend") or "docker"), selected)
 
 
 def variants_enabled(config: Mapping[str, object]) -> bool:
@@ -110,7 +110,7 @@ def container_variant_config(config: Mapping[str, object]) -> dict[str, object]:
     result = dict(config)
     if _HOST_PREVIEW.get():
         result["_docker_skip_host_tools"] = True
-    elif os.environ.get("ONCOTRACER_CONTAINER_RUNTIME") == "docker":
+    elif os.environ.get("ONCOTRACER_CONTAINER_RUNTIME") in {"docker", "podman"}:
         result["variant_tool_prefix"] = os.environ.get("ONCOTRACER_VARIANTS_PREFIX", "/opt/oncotracer-envs/variants")
         result["variant_strelka_prefix"] = os.environ.get("ONCOTRACER_STRELKA_PREFIX", "/opt/oncotracer-envs/strelka2")
         result["variant_ffperase_prefix"] = os.environ.get("ONCOTRACER_FFPERASE_PREFIX", "/opt/oncotracer-envs/ffperase")
@@ -121,9 +121,9 @@ def container_variant_config(config: Mapping[str, object]) -> dict[str, object]:
     return result
 
 
-def docker_resource_environment(config: Mapping[str, object]) -> dict[str, str]:
+def docker_resource_environment(config: Mapping[str, object], *, backend="docker") -> dict[str, str]:
     """Carry autodetected optional host assets into the image, never host tools."""
-    result = {"ONCOTRACER_CONTAINER_RUNTIME": "docker"}
+    result = {"ONCOTRACER_CONTAINER_RUNTIME": backend}
     if not variants_enabled(config):
         return result
     if str(config.get('mode','')).lower() == 'illumina':
@@ -154,7 +154,7 @@ def docker_resource_environment(config: Mapping[str, object]) -> dict[str, str]:
 
 
 def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: bool = False,
-                  image=None) -> list[tuple[Path, str]]:
+                  image=None, backend="docker") -> list[tuple[Path, str]]:
     """Return read-only inputs plus writable output and reference cache.
 
     The output directory is precreated empty; ownership remains with the native
@@ -275,7 +275,7 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
                 raise OncoTracerError(f'Docker writable cache overlaps a read-only input/resource: {source}')
     if create:
         from .output_safety import inspect_output_target
-        inspect_output_target(outdir, identity=output_runtime_identity(config, image=image))
+        inspect_output_target(outdir, identity=output_runtime_identity(config, image=image, backend=backend))
         for directory in (project, outdir, cache, *writable_caches):
             if directory.is_symlink():
                 raise OncoTracerError(f"Docker writable directory must not be a symlink: {directory}")

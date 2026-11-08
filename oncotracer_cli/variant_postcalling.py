@@ -22,7 +22,7 @@ def core_python(toolchain=None):
 def quilt_tools(request):
     # GPU caller environments intentionally do not own imputation tools.
     prefix=os.environ.get('ONCOTRACER_VARIANTS_PREFIX')
-    if not prefix and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME')!='docker':
+    if not prefix and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') not in {'docker', 'podman'}:
         from .cli import _load_install_config
         install=_load_install_config()
         if install.get('backend') in ('conda','poetry'):

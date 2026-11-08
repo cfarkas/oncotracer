@@ -93,7 +93,7 @@ def inventory():
                 # injection variable to void to prevent a second injection.
                 # CUDA's mask and our explicit UUID selection still apply.
                 if (key == 'NVIDIA_VISIBLE_DEVICES' and os.environ[key] == 'void'
-                        and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') == 'docker'):
+                        and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'}):
                     continue
                 ids = [v.strip() for v in os.environ[key].split(',')]
                 visible &= index in ids or any(uuid.startswith(v) for v in ids if v.startswith('GPU-'))

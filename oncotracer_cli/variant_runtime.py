@@ -44,9 +44,9 @@ def select_variant_runtime(config: Mapping[str, object], *, mode: str,
     """Authenticate managed selection without probing or executing caller tools."""
     env = os.environ if environment is None else environment
     requested = backend or _ACTIVE_BACKEND.get() or str(config.get("execution_backend") or "")
-    if (mode != "illumina" or requested in {"docker", "singularity", "apptainer"}
+    if (mode != "illumina" or requested in {"docker", "podman", "singularity", "apptainer"}
             or config.get("_docker_skip_host_tools")
-            or env.get("ONCOTRACER_CONTAINER_RUNTIME") == "docker"):
+            or env.get("ONCOTRACER_CONTAINER_RUNTIME") in {"docker", "podman"}):
         return VariantRuntimeSelection()
     if install_config is None:
         from .cli import _load_install_config

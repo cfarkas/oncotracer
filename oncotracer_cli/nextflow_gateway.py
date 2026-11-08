@@ -48,7 +48,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--config', help='OncoTracer YAML configuration; required without --interactive')
     p.add_argument('--port', type=int, help='fixed browser port; default: 8888 or an available port')
     p.add_argument('--start_dir', '--start-dir', help='initial browser folder; defaults to the Nextflow launch directory')
-    p.add_argument('--backend', choices=('host', 'conda', 'poetry', 'docker', 'singularity'))
+    p.add_argument('--backend', choices=('host', 'conda', 'poetry', 'docker', 'podman', 'singularity'))
     p.add_argument('--threads', type=int, help='total CPU budget shared across concurrent samples')
     p.add_argument('--parallel_samples', '--parallel-samples', type=parallel_argument,
                    help='maximum concurrent samples: auto or a positive integer; total CPU/RAM budgets are shared')

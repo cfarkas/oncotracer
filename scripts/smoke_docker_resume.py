@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify real Docker resume dispatch; substitute dry-run only at analysis entry.
+"""Verify real Docker/Podman resume dispatch; substitute dry-run only at analysis entry.
 
 Uses synthetic ONT reads and a new, explicitly selected test directory. Docker
 identity queries, output checks, mounts and caller preflight execute normally.
@@ -9,6 +9,7 @@ import argparse
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import sys
 from unittest.mock import patch
@@ -23,6 +24,7 @@ from oncotracer_cli.runtime import StageLedger, render_flat_yaml
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--image', required=True)
+    parser.add_argument('--engine', choices=('docker', 'podman'), default='docker')
     parser.add_argument('--work-dir', type=Path, required=True)
     args = parser.parse_args()
     root = args.work_dir.absolute()
@@ -35,7 +37,7 @@ def main():
     reads.mkdir(parents=True)
     fastq = reads / 'reads.fastq'
     fastq.write_text('@synthetic\nACGT\n+\nIIII\n')
-    config = dict(mode='ont', execution_backend='docker', docker_image=args.image,
+    config = dict(mode='ont', execution_backend=args.engine, docker_image=args.image,
                   lpwgs_root=str(project / 'reference'), outdir=str(output),
                   ont_folder=str(reads.parents[1]), ont_named_samples=True,
                   ont_barcodes='SYNTHETIC', ont_sample_names='SYNTHETIC',
@@ -45,7 +47,7 @@ def main():
                   variant_clairsto_platform='ont_r10_dorado_sup_5khz_ssrs')
     config_path = project / 'config/run.yml'
     config_path.write_text(render_flat_yaml(config))
-    identity = _runtime('docker', config)
+    identity = _runtime(args.engine, config)
     _create_owner(output, identity)
     product = output / 'counts.txt'
     product.write_text('synthetic completed counts\n')
@@ -78,9 +80,9 @@ def main():
         return dispatch(command, **kwargs)
 
     with patch.object(cli, '_run', side_effect=safe_dispatch):
-        code = cli.main(['setup', '--project', str(project), '--backend', 'docker',
+        code = cli.main(['setup', '--project', str(project), '--backend', args.engine,
                          '--image', args.image, '--run'])
-    assert code == 0, 'Saved setup failed before Docker dispatch'
+    assert code == 0, 'Saved setup failed before container dispatch'
     assert calls == ['real-container-preflight', 'container-analysis-dry-run'], calls
     assert ledger.path.read_bytes() == recorded, 'Recorded stage state changed'
     assert product.read_text() == 'synthetic completed counts\n'
@@ -89,7 +91,7 @@ def main():
     # The ordinary dry-run path must also work without rewriting the owner.
     owner = (output / OUTPUT_OWNER_RELATIVE).read_bytes()
     with contextlib.redirect_stdout(io.StringIO()):
-        code = cli.main(['run', '--config', str(config_path), '--backend', 'docker', '--dry-run'])
+        code = cli.main(['run', '--config', str(config_path), '--backend', args.engine, '--dry-run'])
     assert code == 0
     assert (output / OUTPUT_OWNER_RELATIVE).read_bytes() == owner
     assert ledger.path.read_bytes() == recorded
@@ -98,12 +100,14 @@ def main():
     config_path.write_text(render_flat_yaml(config))
     calls.clear()
     with patch.object(cli, '_run', side_effect=safe_dispatch):
-        code = cli.main(['setup', '--project', str(project), '--backend', 'docker',
+        code = cli.main(['setup', '--project', str(project), '--backend', args.engine,
                          '--image', args.image, '--run'])
     assert code == 0 and calls == ['container-analysis-dry-run']
     assert ledger.path.read_bytes() == recorded
+    assert fastq.read_text() == '@synthetic\nACGT\n+\nIIII\n'
+    assert all(path.stat().st_uid == os.getuid() for path in output.rglob('*') if not path.is_symlink())
     print(json.dumps(dict(passed=True, synthetic_only=True, analysis_started=False,
-                          image=args.image, stages_retained=1,
+                          image=args.image, engine=args.engine, stages_retained=1,
                           variant_and_cna_resume=True, real_container_leases=True)))
 
 

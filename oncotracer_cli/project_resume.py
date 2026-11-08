@@ -42,37 +42,38 @@ def _rebase(value, old, new):
 def _runtime(backend, config):
     from .output_safety import current_runtime_identity, _IDENTITY_KEYS
     from .runtime import runtime_root
-    if backend == "docker":
+    if backend in {"docker", "podman"}:
         from .cli import DEFAULT_IMAGE, _load_install_config
-        image = config.get("docker_image") or _load_install_config().get("image") or DEFAULT_IMAGE
+        from .container_runtime import image_reference, user_arguments
+        image = image_reference(config.get("docker_image") or _load_install_config().get("image"), backend)
         # Use the image's real launcher: importing its source with python loses
         # the standalone binary identity and selects a different runtime payload.
-        command = ["docker", "run", "--rm", "--network", "none", "--user",
-                   f"{os.getuid()}:{os.getgid()}", "--env", "HOME=/tmp", str(image),
+        command = [backend, "run", "--rm", "--network", "none", *user_arguments(backend),
+                   "--env", "HOME=/tmp", str(image),
                    "provenance", "--runtime-identity"]
         try:
             result = subprocess.run(command, capture_output=True, text=True, timeout=60)
         except (OSError, subprocess.TimeoutExpired) as error:
-            raise OncoTracerError(f"Cannot verify the selected Docker runtime before resuming: {error}") from error
+            raise OncoTracerError(f"Cannot verify the selected {backend.capitalize()} runtime before resuming: {error}") from error
         if result.returncode:
             missing = any(term in result.stderr.lower() for term in
                           ("manifest unknown", "manifest for", "no such image"))
             reason = "was not found" if missing else "could not be verified"
             raise OncoTracerError(
-                f"Docker image '{image}' {reason}. Check its tag and registry access. "
-                "In Continue an existing analysis, correct Docker image or choose "
+                f"{backend.capitalize()} image '{image}' {reason}. Check its tag and registry access. "
+                "In Continue an existing analysis, correct container image or choose "
                 f"Use current image ({DEFAULT_IMAGE}), then load saved settings again. "
                 "Your saved project and analysis outputs have not been changed."
             )
         try:
             identity = json.loads(result.stdout)
         except ValueError as error:
-            raise OncoTracerError("Docker returned an invalid runtime identity") from error
+            raise OncoTracerError(f"{backend.capitalize()} returned an invalid runtime identity") from error
         if not isinstance(identity, dict) or set(identity) != _IDENTITY_KEYS or not identity.get("runtime_payload_sha256"):
-            raise OncoTracerError("Docker returned an incomplete runtime identity")
+            raise OncoTracerError(f"{backend.capitalize()} returned an incomplete runtime identity")
         return identity
     if backend not in {"host", "conda", "poetry"}:
-        raise OncoTracerError("Existing-project resume currently supports Conda, host, Poetry and Docker.")
+        raise OncoTracerError("Existing-project resume currently supports Conda, host, Poetry, Docker and Podman.")
     return current_runtime_identity(runtime_root())
 
 
@@ -214,8 +215,8 @@ def resume_project(value, *, backend=None, image=None, resources=None, variant_o
             raise OncoTracerError("Project results is not a directory")
         backend = backend or str(config.get("execution_backend") or "conda")
         if image:
-            if backend != "docker":
-                raise OncoTracerError("An image override requires the Docker backend")
+            if backend not in {"docker", "podman"}:
+                raise OncoTracerError("An image override requires the Docker or Podman backend")
             config["docker_image"] = str(image)
         old_output = Path(str(config.get("outdir") or ""))
         if not old_output.is_absolute() or old_output.name != "results":

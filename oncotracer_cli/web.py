@@ -364,7 +364,7 @@ class WebState:
                 if (prior.get("methylation_only") is not True
                         or prior.get("methylation_classifier") != methylation_group["classifier"]):
                     raise OncoTracerError("Choose a separate methylation project for this classifier group; keep the completed ONT project and other classifier projects unchanged.")
-            backend = _choice(data, "backend", ("conda", "docker", "singularity", "poetry", "host"), "conda")
+            backend = _choice(data, "backend", ("conda", "docker", "podman", "singularity", "poetry", "host"), "conda")
             from .project_resume import has_recorded_outputs
             if (project / "config/run.yml").is_file() and has_recorded_outputs(project):
                 # A typed Create destination may actually be a moved, used project.
@@ -390,8 +390,8 @@ class WebState:
                 raise OncoTracerError("Small-variant calling selection must be true or false.")
             args.variants = variants
             if data.get('docker_image') not in (None, ''):
-                if backend != 'docker':
-                    raise OncoTracerError('Docker image selection requires the Docker backend.')
+                if backend not in {"docker", "podman"}:
+                    raise OncoTracerError('Container image selection requires the Docker or Podman backend.')
                 args.image = _text(data, 'docker_image')
             for key in VARIANT_FIELDS:
                 # Empty optional fields are omitted. Explicit false, arrays and
@@ -586,9 +586,9 @@ class WebState:
                     raise OncoTracerError(f"Invalid resume {key}.")
                 return value.strip() or None
             backend, image = selection("backend"), selection("image")
-            if backend and backend not in {"conda", "docker", "host", "poetry"}:
+            if backend and backend not in {"conda", "docker", "podman", "host", "poetry"}:
                 raise OncoTracerError("Choose a supported backend for continuing this project.")
-            if backend and backend != "docker":
+            if backend and backend not in {"docker", "podman"}:
                 image = None
             result = resume_project(_text(data, "project"), backend=backend, image=image,
                                     resources=data.get('resources'),variant_options=data.get('variant_options'))

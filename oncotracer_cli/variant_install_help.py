@@ -49,6 +49,7 @@ def official_resource_help(identifier: str) -> dict:
         "ffperase_prefix": [ffperase], "ffperase_runtime": [ffperase], "ffperase_sif": [ffperase],
         "annovar_dir": [annovar], "annovar_db": [databases], "annovar": [annovar, databases],
         "docker_runtime": [("Official Docker installation", "https://docs.docker.com/engine/install/")],
+        "podman_runtime": [("Official Podman installation", "https://podman.io/docs/installation")],
         "docker_image": [("OncoTracer Docker image", "https://hub.docker.com/r/carlosfarkas/oncotracer")],
         "container_runtime": [("Official Apptainer installation", "https://apptainer.org/docs/admin/main/installation.html")],
     }.get(identifier, [])
@@ -109,7 +110,7 @@ def installation_guides(missing_ids: Iterable[str], *, backend: str, mode: str,
     if isinstance(missing_ids, str):
         missing_ids = [missing_ids]
     missing = list(dict.fromkeys(str(item) for item in missing_ids))
-    docker = backend == "docker"
+    docker = backend in {"docker", "podman"}
     native_clair3 = not docker and mode == "ont" and "clair3_caller" in missing
     docker_tools = {"variant_tools", "strelka2_runtime", "ffperase_runtime", "clair3_caller", "clairsto_caller"}
     output: list[dict] = []
@@ -138,11 +139,14 @@ def installation_guides(missing_ids: Iterable[str], *, backend: str, mode: str,
                 _environment("ffperase", root),
                 ("FFPERASE setup", DOCS + "variants_reference/#ffperase-for-illumina-ffpe"))
         elif identifier == "docker_image":
-            guide = _guide(identifier, "Prepare the variant-enabled Docker image",
-                "The tested image includes native callers and variant/FFPERASE runtimes; host Conda is not needed. Docker must already be installed and accessible. Run can prepare the selected Clair3 model and, after license acknowledgment, missing FFPERASE resources. Licensed ANNOVAR resources must be supplied separately. Change the image field explicitly if needed.",
-                f"docker pull {IMAGE}\noncotracer doctor --backend docker --image {IMAGE}",
-                ("Docker installation", "https://docs.docker.com/engine/install/"),
-                ("OncoTracer Docker setup", DOCS + "installation/#docker"))
+            from .container_runtime import image_reference
+            engine = backend if backend in {"docker", "podman"} else "docker"
+            image = image_reference(IMAGE, engine)
+            guide = _guide(identifier, f"Prepare the variant-enabled {engine.capitalize()} image",
+                f"The tested image includes native callers and variant/FFPERASE runtimes; host Conda is not needed. {engine.capitalize()} must already be installed and accessible. Run can prepare the selected Clair3 model and, after license acknowledgment, missing FFPERASE resources. Licensed ANNOVAR resources must be supplied separately. Change the image field explicitly if needed.",
+                f"{engine} pull {image}\noncotracer doctor --backend {engine} --image {image}",
+                (f"{engine.capitalize()} installation", "https://podman.io/docs/installation" if engine == "podman" else "https://docs.docker.com/engine/install/"),
+                ("OncoTracer container setup", DOCS + "installation/#" + engine))
         elif identifier == "ffperase_source":
             guide = _guide(identifier, "Obtain the tested FFPERASE source",
                 "Review the upstream personal/academic/noncommercial license before obtaining source or models. This clones the tested source revision into a new folder; existing source is never changed. OncoTracer runs its native interfaces.",

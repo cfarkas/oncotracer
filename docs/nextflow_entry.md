@@ -24,7 +24,7 @@ path nor environment activation:
 oncotracer --interactive --backend conda
 ```
 
-Use `--backend docker` for Docker. Select the sequencing platform, then **Fresh**
+Use `--backend docker` for Docker or `--backend podman` with the 3.0.0 candidate and a prepared Podman image. Select the sequencing platform, then **Fresh**
 or **FFPE** in the browser; no `--ffpe` flag is required.
 
 This opens the local OncoTracer browser with Illumina and short variants selected. Select preservation, samples and the remaining report options, then save, review and start the analysis. `--interactive` does not invoke the terminal question wizard. Keep the launching terminal open while using the interface. If no browser is available, use the full local URL printed in that terminal.

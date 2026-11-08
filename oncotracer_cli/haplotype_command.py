@@ -47,7 +47,7 @@ def command_haplotype(args):
     if any(out.resolve() == Path(getattr(args,n)) or out.resolve() in Path(getattr(args,n)).parents
            for n in ('bam','vcf','reference')):
         raise OncoTracerError('Output directory must not contain an input file')
-    if backend == 'docker':
+    if backend in {'docker', 'podman'}:
         out.mkdir(parents=True,exist_ok=True)
         files = {Path(getattr(args,n)) for n in ('bam','vcf','reference')}
         for p in tuple(files):
@@ -55,14 +55,15 @@ def command_haplotype(args):
         alternate_index = Path(args.bam).with_suffix('.bai')
         if alternate_index.is_file():
             files.add(alternate_index)
-        command = ['docker','run','--rm','--user',f'{os.getuid()}:{os.getgid()}',
+        from .container_runtime import image_reference, user_arguments
+        command = [backend,'run','--rm',*user_arguments(backend),
                    '--cpus',str(args.threads),'--memory','24g',
                    '--env','PYTHONDONTWRITEBYTECODE=1','--env','XDG_CACHE_HOME=/tmp/oncotracer-cache']
         if not args.varsome:
             command += ['--network','none']
         elif os.environ.get('ONCOTRACER_VARSOME_API_KEY'):
             command += ['--env','ONCOTRACER_VARSOME_API_KEY']
-        command += docker_arguments({'gpu_usage':args.gpu})
+        command += docker_arguments({'gpu_usage':args.gpu}, backend=backend)
         for path in sorted(files):
             command += ['--volume',f'{path}:{path}:ro']
         command += ['--volume',f'{out}:{out}:rw']
@@ -73,11 +74,11 @@ def command_haplotype(args):
             if args.llm_model and Path(args.llm_model).expanduser().is_dir():
                 args.llm_model = str(Path(args.llm_model).expanduser().resolve())
                 command += ['--volume',f'{args.llm_model}:{args.llm_model}:ro']
-        command += [args.image or install.get('image') or DEFAULT_IMAGE,
+        command += [image_reference(args.image or install.get('image'), backend),
                     'haplotype-evidence','--backend','host',*worker_arguments(args)]
         return subprocess.run(command,check=False).returncode
     if backend not in ('conda','poetry','host'):
-        raise OncoTracerError('Haplotype evidence supports Conda/Poetry, host and Docker')
+        raise OncoTracerError('Haplotype evidence supports Conda/Poetry, host, Docker and Podman')
     with contextlib.ExitStack() as stack:
         environment = {k:v for k,v in os.environ.items() if k not in ('PYTHONPATH','PYTHONHOME','LD_PRELOAD','LD_LIBRARY_PATH')}
         if backend in ('conda','poetry'):
@@ -103,7 +104,7 @@ def add_haplotype_command(subparsers):
     p = subparsers.add_parser('haplotype-evidence',help='Assess read-backed linkage after calling (experimental; not germline probability)')
     for flag in ('bam','vcf','reference','sample','outdir'):
         p.add_argument('--'+flag,required=True)
-    p.add_argument('--backend',choices=('conda','poetry','docker','host'))
+    p.add_argument('--backend',choices=('conda','poetry','docker','podman','host'))
     p.add_argument('--image')
     p.add_argument('--threads',type=int,default=2,help='BAM decompression/local model CPU budget')
     p.add_argument('--simulations',type=int,default=10000)

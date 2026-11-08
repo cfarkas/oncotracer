@@ -250,7 +250,7 @@ def _command_uninstall(args) -> int:
             args.conda = True
         elif backend == "singularity":
             args.singularity = True
-        elif backend == "docker":
+        elif backend in {"docker", "podman"}:
             args.global_launcher = True
         else:
             raise OncoTracerError("select the tools to remove: --conda, --singularity, --global-launcher, or --launcher PATH")
@@ -259,10 +259,10 @@ def _command_uninstall(args) -> int:
     if global_only:
         if args.sif or args.prefix:
             raise OncoTracerError("--global-launcher does not accept --sif or --prefix")
-        target = installation_target(install) if install.get("backend") == "docker" else None
+        target = installation_target(install) if install.get("backend") in {"docker", "podman"} else None
         with remove_transaction(target, dry_run=preview, purge=args.purge, required=explicit_global) as command:
             result = command.detach()
-        result.update({"kind": "global-launcher", "preserved": "Scientific tools, Docker images, saved settings and all project data are retained."})
+        result.update({"kind": "global-launcher", "preserved": "Scientific tools, container images, saved settings and all project data are retained."})
         if getattr(args, "json", False):
             print(json.dumps(result, indent=2))
         else:

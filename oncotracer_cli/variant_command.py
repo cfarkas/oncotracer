@@ -160,7 +160,7 @@ def _command_variants_managed(args) -> int:
     from .terminal_progress import terminal_session
     from .gpu_runtime import enabled
     with terminal_session(config_path), managed_variant_runtime(config, mode=str(config.get("mode") or "").strip().lower(), semantic=True), contextlib.ExitStack() as locks:
-        if enabled(config, getattr(args, 'gpu', None)) and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') != 'docker':
+        if enabled(config, getattr(args, 'gpu', None)) and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') not in {'docker', 'podman'}:
             from .cli import _load_install_config
             from .install_safety import managed_gpu_runtime_lock
             family = 'gpu-reports' if config.get('mode') == 'illumina' else 'gpu-clair3'

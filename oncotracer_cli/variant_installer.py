@@ -108,27 +108,30 @@ class VariantInstaller:
             raise OncoTracerError("Unknown analysis form.")
         roots = tools_roots(self.start_dir, data)
         manager = next((path for name in ("conda", "mamba", "micromamba") if (path := _executable(name))), None)
-        docker = _executable("docker")
+        engines = {name: _executable(name) for name in ("docker", "podman")}
         native_reason = "" if manager else "Install Conda, Mamba or Micromamba first, then try again."
         if platform.system() != "Linux" or platform.machine().lower() not in {"x86_64", "amd64"}:
-            native_reason = "These pinned caller environments require Linux x86_64. Use a supported Docker host or the manual guides."
+            native_reason = "These pinned caller environments require Linux x86_64. Use a supported container host or the manual guides."
         sif_runtime = _executable("apptainer") or _executable("singularity")
         if "clairs_to" in callers and not values.get("variant_clairsto_sif") and not sif_runtime:
-            native_reason = "ClairS-TO also needs Apptainer/Singularity for its tested SIF. Use Docker or the manual native installation guide."
-        docker_reason = "" if docker else "Install Docker and enable access to its daemon first."
-        if flow == "bam":
-            docker_reason = "The existing-BAM form uses native tools. Docker installation is available in FASTQ setup."
-        elif data.get("analysis", "cna") != "cna":
-            docker_reason = "Docker supports CNA with optional variants; choose Conda for a methylation workflow."
-        options = [{"method": "conda", "label": "Conda / Mamba", "available": not native_reason, "reason": native_reason},
-                   {"method": "docker", "label": "Docker", "available": not docker_reason, "reason": docker_reason}]
+            native_reason = "ClairS-TO also needs Apptainer/Singularity for its tested SIF. Use Docker, Podman or the manual native installation guide."
+        reasons = {"conda": native_reason}
+        for engine, executable in engines.items():
+            reason = "" if executable else f"Install {engine.capitalize()} and enable access to its runtime first."
+            if flow == "bam":
+                reason = "The existing-BAM form uses native tools. Container installation is available in FASTQ setup."
+            elif data.get("analysis", "cna") != "cna":
+                reason = f"{engine.capitalize()} supports CNA with optional variants; choose Conda for a methylation workflow."
+            reasons[engine] = reason
+        options = [{"method": name, "label": "Conda / Mamba" if name == "conda" else name.capitalize(),
+                    "available": not reason, "reason": reason} for name, reason in reasons.items()]
         requested = data.get("method", "auto")
-        if requested not in {"auto", "conda", "docker"}:
-            raise OncoTracerError("Choose Conda or Docker installation.")
+        if requested not in {"auto", *reasons}:
+            raise OncoTracerError("Choose Conda, Docker or Podman installation.")
         method = requested if requested != "auto" else (
-            "docker" if backend == "docker" and not docker_reason else
-            "conda" if not native_reason else "docker" if not docker_reason else "conda")
-        reason = native_reason if method == "conda" else docker_reason
+            backend if backend in engines and not reasons[backend] else
+            next((name for name, reason in reasons.items() if not reason), "conda"))
+        reason = reasons[method]
         identity = secrets.token_hex(12)
         directory = self.install_root / identity
         plan = {"id": identity, "method": method, "directory": str(directory), "options": options,
@@ -138,18 +141,21 @@ class VariantInstaller:
         def step(label, command=None, **extra):
             plan["steps"].append({"label": label, "command": command or [], **extra})
 
-        if not reason and method == "docker":
-            from .cli import DEFAULT_IMAGE
-            image = image or DEFAULT_IMAGE
+        if not reason and method in engines:
+            from .container_runtime import image_reference, user_arguments
+            image = image_reference(image, method)
             if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_./:@-]{0,511}", image):
-                raise OncoTracerError("Provide a Docker image name or digest, without options or shell characters.")
-            plan["fields"] = {"backend": "docker", "docker_image": image}
-            step("Check Docker access", [docker, "info"])
-            step("Download the selected Docker image", [docker, "pull", image])
-            step("Check the image's analysis tools", [docker, "run", "--rm", "--network", "none", image, "doctor", "--backend", "host"])
+                raise OncoTracerError("Provide a container image name or digest, without options or shell characters.")
+            engine = engines[method]
+            plan["fields"] = {"backend": method, "docker_image": image}
+            step(f"Check {method.capitalize()} access", [engine, "info"])
+            step("Download the selected container image", [engine, "pull", image])
+            run = [engine, "run", "--rm", "--network", "none",
+                   *(user_arguments(method) if method == "podman" else [])]
+            step("Check the image's analysis tools", [*run, image, "doctor", "--backend", "host"])
             selection = {"callers": callers, "varlociraptor": values.get("variant_varlociraptor") == "required",
                          "ffperase": mode == "illumina" and specimen == "ffpe" and values.get("variant_ffperase", "required") != "off"}
-            step("Check selected callers in Docker", [docker, "run", "--rm", "--network", "none", "--entrypoint", "python3", image,
+            step(f"Check selected callers in {method.capitalize()}", [*run, "--entrypoint", "python3", image,
                                                       "-B", "-c", DOCKER_TOOL_CHECK, json.dumps(selection)])
         elif not reason:
             # Model compatibility and licenses are handled by setup/run, not by

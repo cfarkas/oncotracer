@@ -154,7 +154,7 @@ class NextflowGatewayTests(unittest.TestCase):
                 self.assertFalse(parsed.non_interactive)
 
     def test_ffpe_browser_forwards_the_same_native_setup_options(self):
-        for backend in ('conda', 'docker'):
+        for backend in ('conda', 'docker', 'podman'):
             with self.subTest(backend=backend):
                 argv, cwd, _ = gateway.command(self.args(
                     '--interactive', '--ffpe', '--backend', backend, '--no_browser',
@@ -162,7 +162,7 @@ class NextflowGatewayTests(unittest.TestCase):
                     '--variant_tool_prefix', 'variants', '--variant_ffperase_root', 'ffperase',
                     '--variant_ffperase_models', 'models', '--variant_ffperase_sif', 'ffpe.sif',
                     '--variant_ffperase_prefix', 'ffpe-env',
-                    *(['--image', 'oncotracer:local'] if backend == 'docker' else [])))
+                    *(['--image', 'oncotracer:local'] if backend in {'docker', 'podman'} else [])))
                 args = parse_arguments(argv[3:])
                 self.assertEqual(args.command, 'setup')
                 self.assertEqual(args.backend, backend)

@@ -56,7 +56,7 @@ function setVariantPairSamples(samples){
 function renderVariantPairing(){
   const selected=activeVariantCallers(),enabled=selected.includes('strelka2_somatic');
   show('variant-strelka-pairing',enabled);
-  show('variant-strelka-fields',selected.some(caller=>caller.startsWith('strelka2_'))&&document.getElementById('backend')?.value!=='docker');
+  show('variant-strelka-fields',selected.some(caller=>caller.startsWith('strelka2_'))&&!['docker','podman'].includes(document.getElementById('backend')?.value));
   const rows=document.getElementById('variant-pair-rows');rows.replaceChildren();
   if(!enabled)return;
   const normals=variantPairSamples.filter(row=>row.role==='normal'),tumors=variantPairSamples.filter(row=>row.role==='tumor');
@@ -173,7 +173,7 @@ for(const id of ['variant-clair3-source','variant_merge_vcfs','variant_storage_m
 }
 configureVariantModelControls();
 function syncVariantLayout(){
-  const docker=document.getElementById('backend')?.value==='docker',runtime=document.getElementById('variant-ffperase-runtime');
+  const docker=['docker','podman'].includes(document.getElementById('backend')?.value),runtime=document.getElementById('variant-ffperase-runtime');
   if(!runtime)return;
   syncVariantModelControls();renderVariantPairing();
   show('variant-resource-mode-controls',typeof mode!=='undefined'&&mode==='ont');
@@ -218,7 +218,7 @@ function variantResourceValues(){
 }
 function variantResourceField(resource){
   if(resource.id==='ffperase_runtime')return 'variant_ffperase_prefix';
-  if(resource.field==='docker_image'||resource.id==='docker_runtime')return 'variant_tool_prefix';
+  if(resource.field==='docker_image'||['docker_runtime','podman_runtime'].includes(resource.id))return 'variant_tool_prefix';
   if(resource.field)return resource.field;
   const aliases={variant_tools:'variant_tool_prefix',strelka2:'variant_strelka_prefix',strelka2_runtime:'variant_strelka_prefix',samtools:'variant_tool_prefix',bcftools:'variant_tool_prefix',gatk:'variant_tool_prefix',mutect2:'variant_tool_prefix',freebayes:'variant_tool_prefix',varlociraptor:'variant_tool_prefix',clair3:'variant_tool_prefix',clairs_to:'variant_tool_prefix',docker_image:'variant_tool_prefix',clair3_model:'variant_clair3_model',clairsto_model:'variant_clairsto_platform',clairsto_sif:'variant_clairsto_sif',ffperase_root:'variant_ffperase_root',ffperase_source:'variant_ffperase_root',ffperase_models:'variant_ffperase_models',ffperase_prefix:'variant_ffperase_prefix',ffperase_runtime:'variant_ffperase_prefix',ffperase_sif:'variant_ffperase_sif',annovar_dir:'variant_annovar_dir',annovar_db:'variant_annovar_db'};
   return aliases[resource.id]||'';
@@ -253,7 +253,7 @@ function renderVariantResources(result,scope='all'){
   if(hasMissingVariantTools(resources)){
     const choices=node('div',undefined,'variant-install-choices'),actions=node('div',undefined,'actions');
     choices.append(node('p','Missing tools detected. Choose how to install them.','hint'));
-    for(const [method,label] of [['conda','Install with Conda'],['docker','Install with Docker']]){
+    for(const [method,label] of [['conda','Install with Conda'],['docker','Install with Docker'],['podman','Install with Podman']]){
       const install=node('button',label,'primary');install.type='button';install.dataset.variantInstall=method;install.disabled=variantInstallActive;install.onclick=()=>openVariantInstall(method);actions.append(install);
     }
     choices.append(actions);container.append(choices);

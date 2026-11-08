@@ -211,7 +211,7 @@ def command_wizard(original_args) -> int:
                 print("GISTIC is unavailable for one sample; it needs at least two selected samples. Continuing with your CNA reports.")
     backend = args.backend or str(cli._load_install_config().get("backend") or "conda")
     args.backend = _ask(args.backend, "Analysis tools (--backend)", default=backend,
-                        choices=("conda", "docker", "singularity", "poetry", "host"))
+                        choices=("conda", "docker", "podman", "singularity", "poetry", "host"))
     if not getattr(args, "variants", False):
         args.variants = _ask(None, "Add small-variant calling?", default="no", choices=("yes", "no")) == "yes"
     if args.variants and args.mode == "illumina":

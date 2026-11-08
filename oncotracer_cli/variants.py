@@ -152,7 +152,7 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
         require_file(targets, 'Variant target BED')
     prefix = path('variant_tool_prefix') or (Path(os.environ['ONCOTRACER_VARIANTS_PREFIX']).resolve() if os.environ.get('ONCOTRACER_VARIANTS_PREFIX') else None)
     from .gpu_runtime import enabled as gpu_enabled, native_prefix
-    if gpu_enabled(config) and mode == 'ont' and 'clair3' in callers and not config.get('_docker_skip_host_tools') and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') != 'docker':
+    if gpu_enabled(config) and mode == 'ont' and 'clair3' in callers and not config.get('_docker_skip_host_tools') and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') not in {'docker', 'podman'}:
         prefix = native_prefix('gpu-clair3')
     if prefix and not config.get('_docker_skip_host_tools') and not (prefix / 'bin').is_dir():
         raise OncoTracerError('variant_tool_prefix must contain a bin directory')
@@ -282,7 +282,7 @@ def preflight_variant_tools(request: VariantRequest, toolchain=None) -> dict[str
                 found = shutil.which(candidate)
                 if found:
                     return str(Path(found).resolve())
-        if os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') == 'docker' and name in {'run_clair3.sh', 'run_clairs_to'}:
+        if os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'} and name in {'run_clair3.sh', 'run_clairs_to'}:
             wrapper = Path('/usr/local/bin') / name
             if wrapper.is_file() and os.access(wrapper, os.X_OK):
                 return str(wrapper)

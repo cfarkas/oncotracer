@@ -175,24 +175,32 @@ def _install_conda(
     return result
 
 
-def _install_docker(args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
-    docker = shutil.which("docker") or (
-        "docker" if args.dry_run else require_command("docker")
-    )
-    image = args.image or DEFAULT_IMAGE
+def _install_container(args: argparse.Namespace, *, backend: str, save: bool = True) -> dict[str, object]:
+    from .container_runtime import image_reference, user_arguments
+    docker = shutil.which(backend) or (backend if args.dry_run else require_command(backend))
+    image = image_reference(args.image, backend)
     _run([docker, "info"], dry_run=args.dry_run)
     if getattr(args, "no_pull", False):
         _run([docker, "image", "inspect", image], dry_run=args.dry_run)
     else:
         _run([docker, "pull", image], dry_run=args.dry_run)
     _run(
-        [docker, "run", "--rm", image, "doctor", "--backend", "host"],
+        [docker, "run", "--rm", *(user_arguments(backend) if backend == "podman" else []),
+         image, "doctor", "--backend", "host"],
         dry_run=args.dry_run,
     )
-    result: dict[str, object] = {"backend": "docker", "image": image}
+    result: dict[str, object] = {"backend": backend, "image": image}
     if save and not args.dry_run:
         _save_install_config(result)
     return result
+
+
+def _install_docker(args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
+    return _install_container(args, backend="docker", save=save)
+
+
+def _install_podman(args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
+    return _install_container(args, backend="podman", save=save)
 
 
 def _singularity_command() -> str:
@@ -260,12 +268,12 @@ def _install_poetry(root: Path, args: argparse.Namespace, *, save: bool = True) 
 def command_install(args: argparse.Namespace) -> int:
     selected = [
         name
-        for name in ("docker", "singularity", "poetry", "conda")
-        if getattr(args, name)
+        for name in ("docker", "podman", "singularity", "poetry", "conda")
+        if getattr(args, name, False)
     ]
     if len(selected) != 1:
         raise OncoTracerError(
-            "install requires exactly one backend flag: --docker, --singularity, --poetry, or --conda"
+            "install requires exactly one backend flag: --docker, --podman, --singularity, --poetry, or --conda"
         )
     backend = selected[0]
     provided = {
@@ -281,6 +289,7 @@ def command_install(args: argparse.Namespace) -> int:
         "conda": {"--prefix", "--force", "--root", "--gpu"},
         "poetry": {"--prefix", "--force", "--root", "--gpu"},
         "docker": {"--image", "--no-pull", "--gpu"},
+        "podman": {"--image", "--no-pull", "--gpu"},
         "singularity": {"--image", "--sif", "--force"},
     }[backend]
     irrelevant = sorted(
@@ -313,6 +322,8 @@ def command_install(args: argparse.Namespace) -> int:
                 result = _install_conda(runtime_root(args.root), args, save=False)
             elif backend == "docker":
                 result = _install_docker(args, save=False)
+            elif backend == "podman":
+                result = _install_podman(args, save=False)
             elif backend == "singularity":
                 result = _install_singularity(args, save=False)
             else:
@@ -542,13 +553,12 @@ def _preflight_host_runtime(config_path: Path, args: argparse.Namespace) -> None
     print("Environment readiness checks passed. Preparing reference and analysis…", flush=True)
 
 
-def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
-    docker = shutil.which("docker") or (
-        "docker" if args.dry_run else require_command("docker")
-    )
+def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str) -> None:
+    from .container_runtime import image_reference, user_arguments
+    docker = shutil.which(backend) or (backend if args.dry_run else require_command(backend))
     install = _load_install_config()
     config = load_flat_yaml(config_path)
-    image = args.image or str(config.get("docker_image") or install.get("image") or DEFAULT_IMAGE)
+    image = image_reference(args.image or config.get("docker_image") or install.get("image"), backend)
     from .docker_runtime import (docker_mounts, docker_resource_environment,
                                  validate_docker_variants, variants_enabled)
     enabled = variants_enabled(config)
@@ -557,18 +567,17 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         docker,
         "run",
         "--rm",
-        "--user",
-        f"{os.getuid()}:{os.getgid()}",
+        *user_arguments(backend),
     ]
     command.extend(["--env", "HOME=/tmp", "--env", "MPLCONFIGDIR=/tmp/matplotlib"])
     from .gpu_runtime import docker_arguments
-    command.extend(docker_arguments(config, args.gpu, create=not args.dry_run))
+    command.extend(docker_arguments(config, args.gpu, create=not args.dry_run, backend=backend))
     if enabled:
-        environment = docker_resource_environment(config)
+        environment = docker_resource_environment(config, backend=backend)
         for key, value in environment.items():
             command.extend(["--env", f"{key}={value}"])
         command.extend(["--workdir", Path.cwd()])
-        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image):
+        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image, backend=backend):
             command.extend(["--volume", f"{mount}:{mount}:{access}"])
         # Fail early if the selected image lacks callers/resources, before an
         # expensive alignment. Execute image code, never the mounted host tree.
@@ -623,17 +632,25 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         if (error.returncode == 2 and outdir is not None
                 and published_native_partial(outdir, config_sha256, prior_manifest_mtime)):
             outcome = OncoTracerPartialFailure(
-                "Docker analysis retained completed results; requested branches remain incomplete.", outdir
+                f"{backend.capitalize()} analysis retained completed results; requested branches remain incomplete.", outdir
             )
             outcome.terminal_reported = True  # The container already printed its verified final table.
             raise outcome from error
         raise
 
 
+def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
+    return _run_container(config_path, args, backend="docker")
+
+
+def _run_podman(config_path: Path, args: argparse.Namespace) -> None:
+    return _run_container(config_path, args, backend="podman")
+
+
 def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
     from .gpu_runtime import enabled
     if enabled(load_flat_yaml(config_path), args.gpu):
-        raise OncoTracerError('Reserved GPU execution requires Docker or native Conda/Poetry tools; use --cpu for Apptainer/Singularity')
+        raise OncoTracerError('Reserved GPU execution requires Docker, Podman or native Conda/Poetry tools; use --cpu for Apptainer/Singularity')
     install = _load_install_config()
     executable = str(
         install.get("singularity_command")
@@ -746,8 +763,8 @@ def _prepare_configured_hg38(config_path: Path, args: argparse.Namespace) -> Non
     if reference_is_present(parent):
         return
     backend = _backend_from(args)
-    if backend == "docker":
-        require_command("docker")
+    if backend in {"docker", "podman"}:
+        require_command(backend)
     elif backend in {"singularity", "apptainer"}:
         install = _load_install_config()
         if not (install.get("singularity_command") or _singularity_command()):
@@ -804,10 +821,10 @@ def _execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
         requested = load_flat_yaml(config_path).get("run_variants", False)
         if str(requested).strip().lower() not in {"false", "0", "no", "off", "", "none"}:
             raise OncoTracerError(
-                "the optional variants branch requires backend host, conda, poetry, or docker; "
+                "the optional variants branch requires backend host, conda, poetry, docker, or podman; "
                 "integrated variants are not supported by the Singularity backend"
             )
-    if backend in {"docker", "singularity", "apptainer"} and _methylation_requested(
+    if backend in {"docker", "podman", "singularity", "apptainer"} and _methylation_requested(
         config_path, args
     ):
         raise OncoTracerError(
@@ -835,15 +852,15 @@ def _execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
         _preflight_host_runtime(config_path, args)
         _prepare_configured_hg38(config_path, args)
         return _run_host(config_path, args)
-    if backend == "docker":
+    if backend in {"docker", "podman"}:
         from .docker_runtime import docker_host_preview, validate_docker_variants, output_runtime_identity
         selected=load_flat_yaml(config_path)
         validate_docker_variants(selected)
-        identity = output_runtime_identity(selected, image=getattr(args, "image", None))
+        identity = output_runtime_identity(selected, image=getattr(args, "image", None), backend=backend)
         with docker_host_preview(runtime_identity=identity):
             _prepare_configured_hg38(config_path, args)
             outdir = _run_host(config_path, args) if args.dry_run else None
-        _run_docker(config_path, args)
+        (_run_podman if backend == "podman" else _run_docker)(config_path, args)
         return outdir
     if backend in {"singularity", "apptainer"}:
         _prepare_configured_hg38(config_path, args)
@@ -851,7 +868,7 @@ def _execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
         _run_singularity(config_path, args)
         return outdir
     raise OncoTracerError(
-        f"unsupported backend {backend!r}; choose host, conda, docker, singularity, or poetry"
+        f"unsupported backend {backend!r}; choose host, conda, docker, podman, singularity, or poetry"
     )
 
 
@@ -1596,13 +1613,15 @@ def _command_doctor(args: argparse.Namespace) -> int:
             checks["environments"] = {"core": core}
             checks["commands"] = core["probes"]
             success = bool(core["success"])
-    elif backend == "docker":
-        docker = require_command("docker")
-        image = args.image or str(_load_install_config().get("image") or DEFAULT_IMAGE)
+    elif backend in {"docker", "podman"}:
+        from .container_runtime import image_reference, user_arguments
+        docker = require_command(backend)
+        image = image_reference(args.image or _load_install_config().get("image"), backend)
         result = _check_process(
-            [docker, "run", "--rm", image, "doctor", "--backend", "host"]
+            [docker, "run", "--rm", *(user_arguments(backend) if backend == "podman" else []),
+             image, "doctor", "--backend", "host"]
         )
-        checks["docker"] = result
+        checks[backend] = result
         success = bool(result["success"])
     elif backend in {"singularity", "apptainer"}:
         install = _load_install_config()
@@ -1633,7 +1652,7 @@ def _command_doctor(args: argparse.Namespace) -> int:
         print(json.dumps(checks, indent=2, sort_keys=True))
     else:
         print(f"OncoTracer {__version__} — {backend} health check")
-        for name in ("source", "managed_install", "managed_sif", "docker", "gpu"):
+        for name in ("source", "managed_install", "managed_sif", "docker", "podman", "gpu"):
             if name in checks:
                 item = checks[name]
                 print(f"  {'OK' if item.get('success') else 'FAIL'}  {name.replace('_', ' ')}")
@@ -1682,7 +1701,7 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
     from .gpu_runtime import add_wait_argument
     add_wait_argument(parser)
     parser.add_argument(
-        "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
+        "--backend", choices=("host", "conda", "docker", "podman", "singularity", "poetry")
     )
     parser.add_argument("--threads", type=int, help="total CPU budget; shared across concurrent GLIMPSE2 samples")
     parser.add_argument("--parallel-samples", type=parallel_argument, help="concurrent samples: auto recommends a fit; dynamic ONT scheduling bounds the requested maximum by CPU/RAM")
@@ -1776,12 +1795,13 @@ def build_parser() -> argparse.ArgumentParser:
     install = subparsers.add_parser("install", help="Prepare one execution backend")
     group = install.add_mutually_exclusive_group(required=True)
     group.add_argument("--docker", action="store_true")
+    group.add_argument("--podman", action="store_true")
     group.add_argument("--singularity", action="store_true")
     group.add_argument("--poetry", action="store_true")
     group.add_argument("--conda", action="store_true")
     install.add_argument("--prefix")
     install.add_argument("--image")
-    install.add_argument("--no-pull", action="store_true", help="use an existing local Docker image; still verify it with doctor")
+    install.add_argument("--no-pull", action="store_true", help="use an existing local Docker/Podman image; still verify it with doctor")
     install.add_argument("--gpu", action="store_true", help="install and verify compatible optional CUDA runtimes (requires an NVIDIA GPU)")
     install.add_argument("--no-launcher", action="store_true", help="leave ~/.local/bin/oncotracer unchanged; do not publish a user command")
     install.add_argument("--sif")
@@ -1820,7 +1840,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor = subparsers.add_parser("doctor", help="Verify the selected backend")
     doctor.add_argument(
-        "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
+        "--backend", choices=("host", "conda", "docker", "podman", "singularity", "poetry")
     )
     doctor.add_argument("--image")
     doctor.add_argument("--gpu", action="store_true", help="also verify real CUDA computation and the reserved GPU runtimes")

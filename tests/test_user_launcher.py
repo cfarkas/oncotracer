@@ -320,6 +320,7 @@ _SubParsersAction.__init__ = _legacy_subparsers_init
             "conda": {"backend": "conda", "core_prefix": str(self.scratch / "tools/core")},
             "poetry": {"backend": "poetry", "core_prefix": str(self.scratch / "tools/core")},
             "docker": self.config,
+            "podman": {"backend": "podman", "image": "localhost/oncotracer:test"},
             "singularity": {"backend": "singularity", "sif": str(self.scratch / "image.sif")},
         }
         for backend, config in configurations.items():
@@ -495,7 +496,7 @@ _SubParsersAction.__init__ = _legacy_subparsers_init
         self.assertEqual(code, 0, output)
         tools.assert_not_called()
         self.assertFalse(path.exists())
-        self.assertIn("Docker images", output)
+        self.assertIn("container images", output)
 
     def test_matching_conda_removal_includes_command(self):
         base = self.scratch / "tools"

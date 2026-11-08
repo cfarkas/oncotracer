@@ -281,16 +281,16 @@ def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
     install = cli._load_install_config()
     backend = args.backend
     image = getattr(args, 'image', None) or load_flat_yaml(config_path).get('docker_image')
-    if getattr(args, 'image', None) and backend != 'docker':
-        raise OncoTracerError('--image in setup requires --backend docker')
+    if getattr(args, 'image', None) and backend not in {"docker", "podman"}:
+        raise OncoTracerError('--image in setup requires --backend docker or podman')
     if backend in {"conda", "poetry"}:
         required = [install.get(name + "_prefix") for name in
                     ("core", "qdnaseq", "ichorcna", "classifier", "gistic")]
         ready = all(value and Path(str(value)).is_dir() for value in required)
         if backend == "poetry":
             ready = ready and bool(install.get("poetry_prefix")) and Path(str(install["poetry_prefix"])).is_dir()
-    elif backend == 'docker':
-        ready = bool(shutil.which('docker'))
+    elif backend in {"docker", "podman"}:
+        ready = bool(shutil.which(backend))
     elif backend == "singularity":
         ready = bool(install.get("sif")) and Path(str(install["sif"])).is_file()
     else:
@@ -298,11 +298,11 @@ def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
     if not ready:
         print(f"Preparing the {backend} tools required for this run…", flush=True)
         install_flags = ['install', '--' + backend]
-        if backend == 'docker' and image:
+        if backend in {"docker", "podman"} and image:
             install_flags += ['--image', str(image)]
         cli.command_install(parser.parse_args(install_flags))
     run = parser.parse_args(["run", "--config", str(config_path), "--backend", backend])
-    if backend == 'docker' and image:
+    if backend in {"docker", "podman"} and image:
         run.image = str(image)
     if args.threads is not None:
         run.threads = args.threads
@@ -439,9 +439,9 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
         return {"run_variants": False, **({"variant_specimen_type": specimen} if specimen else {})}
     if (analysis or args.analysis) == "methylation":
         raise OncoTracerError("Small-variant calling needs aligned reads: choose CNA or CNA and methylation, rather than methylation-only analysis.")
-    if args.backend and args.backend not in {"host", "conda", "poetry", "docker"}:
-        raise OncoTracerError("Small-variant calling needs --backend conda, host, poetry, or docker; Singularity remains unsupported.")
-    if args.backend == 'docker' and (analysis or args.analysis) != 'cna':
+    if args.backend and args.backend not in {"host", "conda", "poetry", "docker", "podman"}:
+        raise OncoTracerError("Small-variant calling needs --backend conda, host, poetry, docker, or podman; Singularity remains unsupported.")
+    if args.backend in {"docker", "podman"} and (analysis or args.analysis) != 'cna':
         raise OncoTracerError('Docker small-variant calling currently supports --analysis cna only.')
     specimen = _ask(getattr(args, "variant_specimen_type", None),
                     "Sample preservation (--variant-specimen-type)",
@@ -505,7 +505,7 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
             from .variant_model_assets import is_auto_resource
             values[key] = str(value) if key == "variant_clairsto_platform" or is_auto_resource(key, value) else str(Path(value).expanduser().resolve())
     values.update(_postcalling_values(args,mode,interactive=interactive))
-    if args.backend == 'docker':
+    if args.backend in {"docker", "podman"}:
         from .docker_runtime import validate_docker_variants
         validate_docker_variants(dict(values, mode=mode))
     else:
@@ -625,8 +625,8 @@ def _command_setup(args: argparse.Namespace) -> int:
             print("Recovered settings from the backup matching the recorded output owner.")
         from .cli import build_parser
         return command_check(build_parser().parse_args(["check", "--config", result["config_path"]]))
-    if getattr(args, 'image', None) and args.backend != 'docker':
-        raise OncoTracerError('--image in setup requires --backend docker')
+    if getattr(args, 'image', None) and args.backend not in {"docker", "podman"}:
+        raise OncoTracerError('--image in setup requires --backend docker or podman')
     if args.threads is None:
         args.threads = 8
     inferred_mode = "illumina" if args.fastq_1 or args.samplesheet else (
@@ -832,9 +832,9 @@ def _command_setup(args: argparse.Namespace) -> int:
         values.update(_variant_values(args, mode, interactive=interactive, analysis=analysis))
     elif values.get("run_variants"):
         from .variants import resolve_variant_request
-        if args.backend not in {"host", "conda", "poetry", "docker"}:
-            raise OncoTracerError("Small-variant calling needs --backend conda, host, poetry, or docker.")
-        if args.backend == 'docker':
+        if args.backend not in {"host", "conda", "poetry", "docker", "podman"}:
+            raise OncoTracerError("Small-variant calling needs --backend conda, host, poetry, docker, or podman.")
+        if args.backend in {"docker", "podman"}:
             if analysis != 'cna':
                 raise OncoTracerError('Docker small-variant calling currently supports --analysis cna only.')
             from .docker_runtime import validate_docker_variants
@@ -852,7 +852,7 @@ def _command_setup(args: argparse.Namespace) -> int:
         from .variants import resolve_variant_request
         from .strelka2 import validate_samples
         from .docker_runtime import docker_host_preview
-        with docker_host_preview() if args.backend == 'docker' else contextlib.nullcontext():
+        with docker_host_preview() if args.backend in {"docker", "podman"} else contextlib.nullcontext():
             validation_request = resolve_variant_request(values, mode=mode)
         if sample_rows is not None:
             validate_samples(validation_request, [r[0] for r in sample_rows], {r[0]: r[3] for r in sample_rows},
@@ -863,7 +863,7 @@ def _command_setup(args: argparse.Namespace) -> int:
                              paired={s.sample: s.fastq_2 is not None for s in validation_samples})
 
     values['execution_backend'] = args.backend
-    if args.backend == 'docker' and getattr(args, 'image', None):
+    if args.backend in {"docker", "podman"} and getattr(args, 'image', None):
         values['docker_image'] = args.image
 
     if analysis != "cna":
@@ -1148,7 +1148,7 @@ def command_check(args: argparse.Namespace) -> int:
         if not errors:
             output = io.StringIO()
             preview = contextlib.nullcontext()
-            if config.get("execution_backend") == "docker":
+            if config.get("execution_backend") in {"docker", "podman"}:
                 from .docker_runtime import docker_host_preview, validate_docker_variants, output_runtime_identity
 
                 validate_docker_variants(config)
@@ -1163,8 +1163,8 @@ def command_check(args: argparse.Namespace) -> int:
                 intermediates = audit_intermediates(path.parent.parent)
                 warnings.append(audit_summary(intermediates))
             if plan.get("variants") and getattr(args, "variant_tools", False):
-                if config.get("execution_backend") == "docker":
-                    warnings.append("Variant tools in the selected Docker image will be checked when Run starts.")
+                if config.get("execution_backend") in {"docker", "podman"}:
+                    warnings.append("Variant tools in the selected container image will be checked when Run starts.")
                 else:
                     from .cli import _load_install_config, _native_environment
                     from .engine import Toolchain
@@ -1290,10 +1290,10 @@ def add_setup_commands(subparsers) -> None:
     )
     parser.add_argument(
         "--backend",
-        choices=("host", "conda", "docker", "singularity", "poetry"),
+        choices=("host", "conda", "docker", "podman", "singularity", "poetry"),
         help="execution backend (default: saved installation, otherwise conda)",
     )
-    parser.add_argument('--image', help='Docker image tag or digest; saved as docker_image and reused by setup --run')
+    parser.add_argument('--image', help='Container image tag or digest; saved as docker_image and reused by setup --run')
     parser.add_argument(
         "--run", action="store_true",
         help="validate, prepare missing backend tools, and run; also resumes an existing project"

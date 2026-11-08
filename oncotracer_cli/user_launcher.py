@@ -55,10 +55,10 @@ def installation_target(config: dict) -> dict:
         if not config.get("sif"):
             raise OncoTracerError("cannot publish a command without the managed SIF path")
         return {"kind": "sif", "target": _absolute(str(config["sif"]))}
-    if backend == "docker":
+    if backend in {"docker", "podman"}:
         if not config.get("image"):
-            raise OncoTracerError("cannot publish a command without the verified Docker image")
-        return {"kind": "docker", "target": str(config["image"])}
+            raise OncoTracerError("cannot publish a command without the verified container image")
+        return {"kind": backend, "target": str(config["image"])}
     raise OncoTracerError("unsupported backend for the user command")
 
 
@@ -221,7 +221,7 @@ def _inspect(fd: int | None, path: Path, *, allow_foreign=False):
             and command[0] in (_wrapper(value["binding"], path),
                                _wrapper(value["binding"], path, legacy=True))
             and set(value["installation"]) == {"kind", "target"}
-            and value["installation"]["kind"] in {"conda", "sif", "docker"}
+            and value["installation"]["kind"] in {"conda", "sif", "docker", "podman"}
         )
     except (KeyError, TypeError, ValueError, UnicodeError) as error:
         raise OncoTracerError(f"invalid ownership metadata for user command: {path}") from error

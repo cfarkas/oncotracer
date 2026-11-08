@@ -51,7 +51,7 @@ def verify_caller(executable, caller):
     from pathlib import Path
     from .runtime import OncoTracerError
     binary = Path(executable).resolve()
-    if os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') == 'docker':
+    if os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'}:
         marker = Path('/opt/micromamba/envs/clairs-to/bin/.oncotracer-gpu-policy.json')
     else:
         marker = binary.parent / '.oncotracer-gpu-policy.json'
@@ -78,10 +78,10 @@ def doctor_gpu(backend, install, *, image=None):
     result = {'policy': POLICY, 'success': False, 'probes': {}}
     try:
         with contextlib.ExitStack() as stack:
-            in_container = os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') == 'docker'
-            if backend == 'docker' or (backend == 'host' and in_container):
-                from .cli import DEFAULT_IMAGE
-                image = image or install.get('image') or DEFAULT_IMAGE
+            in_container = os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'}
+            if backend in {'docker', 'podman'} or (backend == 'host' and in_container):
+                from .container_runtime import image_reference, user_arguments
+                image = image_reference(image or install.get('image'), backend)
                 prefixes = {'gpu-reports': Path('/opt/oncotracer-envs/gpu-reports'),
                             'gpu-clair3': Path('/opt/oncotracer-gpu/clair3')}
             elif backend in {'conda', 'poetry', 'host'}:
@@ -89,7 +89,7 @@ def doctor_gpu(backend, install, *, image=None):
                 prefixes = {name: stack.enter_context(managed_gpu_runtime_lock(install, name))
                             for name in ('gpu-reports', 'gpu-clair3')}
             else:
-                raise RuntimeError('Reserved GPU support requires Docker or native Conda/Poetry tools')
+                raise RuntimeError('Reserved GPU support requires Docker, Podman or native Conda/Poetry tools')
             device = stack.enter_context(lease('doctor', minimum_mb=1024, timeout=5))
             result['device'] = device
             for kind, code in (('gpu-reports', TORCH_PROBE), ('gpu-clair3', TF_PROBE)):
@@ -98,9 +98,11 @@ def doctor_gpu(backend, install, *, image=None):
                 env.update(environment(device), PYTHONDONTWRITEBYTECODE='1', OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1')
                 prefix = prefixes[kind]
                 command = [str(prefix / 'bin/python'), '-I', '-B', '-c', code]
-                if backend == 'docker':
-                    pre = ['docker', 'run', '--rm', '--cpus', '2', '--memory', '8g',
-                           '--gpus', 'device=' + device['uuid'], '--env', 'CUDA_VISIBLE_DEVICES=' + device['uuid']]
+                if backend in {'docker', 'podman'}:
+                    pre = [backend, 'run', '--rm', *(user_arguments(backend) if backend == 'podman' else []),
+                           '--cpus', '2', '--memory', '8g',
+                           *device_arguments(backend, [device]),
+                           '--env', 'CUDA_VISIBLE_DEVICES=' + device['uuid']]
                     if kind == 'gpu-clair3':
                         pre += ['--env', 'LD_LIBRARY_PATH=/opt/micromamba/envs/clairs-to/lib']
                     command = [*pre, '--entrypoint', command[0], str(image), *command[1:]]
@@ -117,17 +119,37 @@ def doctor_gpu(backend, install, *, image=None):
     return result
 
 
-def docker_arguments(config, override=None, *, create=True):
+def device_arguments(backend, devices):
+    """Grant exactly the selected devices; Podman uses NVIDIA CDI, not --gpus."""
+    from .runtime import OncoTracerError
+    uuids = [device['uuid'] for device in devices]
+    if backend == 'podman':
+        # NVIDIA's default CDI names use the host NVML index. The UUID mask
+        # inside the image and shared lease still enforce the selected identity.
+        if any(type(device.get('index')) is not int or device['index'] < 0 for device in devices):
+            raise OncoTracerError('Podman CDI requires a verified host GPU index')
+        return [item for device in devices for item in ('--device', 'nvidia.com/gpu=' + str(device['index']))] + [
+            '--env', 'NVIDIA_VISIBLE_DEVICES=void',
+            '--env', 'ONCOTRACER_GPU_DEVICES=' + ','.join(uuids)]
+    if backend != 'docker':
+        raise OncoTracerError(f'Unsupported container backend: {backend}')
+    selected = 'device=' + ','.join(uuids)
+    return ['--gpus', '"' + selected + '"' if len(uuids) > 1 else selected]
+
+
+def docker_arguments(config, override=None, *, create=True, backend='docker'):
     if not enabled(config, override):
         return []
     from .runtime import OncoTracerError
     devices = inventory()
     if not devices:
-        raise OncoTracerError('GPU usage Yes requires a visible NVIDIA GPU and the NVIDIA Container Toolkit for Docker')
+        raise OncoTracerError('GPU usage Yes requires a visible NVIDIA GPU and the NVIDIA Container Toolkit for the selected container engine')
     path = lock_directory(create=create)
     # UUIDs are stable across host/container GPU enumeration. Share admission
     # locks with native runs instead of giving each container its own queue.
-    return ['--gpus', '"device=' + ','.join(d['uuid'] for d in devices) + '"',
-            '--env', 'NVIDIA_VISIBLE_DEVICES=' + ','.join(d['uuid'] for d in devices),
-            '--env', 'ONCOTRACER_GPU_DEVICES=' + ','.join(d['uuid'] for d in devices),
-            '--volume', f'{path}:{path}:rw', '--env', f'ONCOTRACER_GPU_LOCK_DIR={path}']
+    uuids = [d['uuid'] for d in devices]
+    access = device_arguments(backend, devices) if backend == 'podman' else [
+        '--gpus', '"device=' + ','.join(uuids) + '"',
+        '--env', 'NVIDIA_VISIBLE_DEVICES=' + ','.join(uuids),
+        '--env', 'ONCOTRACER_GPU_DEVICES=' + ','.join(uuids)]
+    return [*access, '--volume', f'{path}:{path}:rw', '--env', f'ONCOTRACER_GPU_LOCK_DIR={path}']

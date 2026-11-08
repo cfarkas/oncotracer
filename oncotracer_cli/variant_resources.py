@@ -66,8 +66,8 @@ def _payload(data):
     specimen = _string(data.get("specimen_type", ""), "specimen_type")
     if mode not in CALLERS:
         raise OncoTracerError("mode must be illumina or ont")
-    if backend not in {"conda", "host", "poetry", "docker", "singularity"}:
-        raise OncoTracerError("backend must be conda, host, poetry, docker or singularity")
+    if backend not in {"conda", "host", "poetry", "docker", "podman", "singularity"}:
+        raise OncoTracerError("backend must be conda, host, poetry, docker, podman or singularity")
     if specimen not in {"", "fresh", "ffpe"}:
         raise OncoTracerError("specimen_type must be fresh, ffpe or empty")
     raw = data.get("callers", [])
@@ -367,7 +367,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         search.note(message)
     if runtime_selection.managed:
         search.note("Caller tools use the authenticated OncoTracer installation; unrelated Conda environments and PATH are not candidates.")
-    fields = {k: v for k, v in values.items() if k in PATH_FIELDS and v and not (backend == "docker" and k in DOCKER_IGNORED)}
+    fields = {k: v for k, v in values.items() if k in PATH_FIELDS and v and not (backend in {"docker", "podman"} and k in DOCKER_IGNORED)}
     resources, missing, candidates = [], [], []
     # Other optional runtimes (FFPErase/Strelka2) still use bounded discovery.
     # The common Illumina caller prefix was already selected authoritatively.
@@ -461,7 +461,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
 
     # Prefer a complete native environment unless a SIF was selected explicitly.
     sif = None
-    if "clairs_to" in callers and backend != "docker":
+    if "clairs_to" in callers and backend not in {"docker", "podman"}:
         sif_override = search.override("variant_clairsto_sif", values)
         tool_override = search.override("variant_tool_prefix", values)
         native_candidates = [tool_override] if tool_override else [None, *prefixes]
@@ -485,19 +485,19 @@ def discover_variant_resources(data, *, roots=(), environment=None):
     if varlociraptor_needed:
         required["varlociraptor"] = ("varlociraptor",)
     selected_prefix = search.override("variant_tool_prefix", values)
-    if backend == "docker":
+    if backend in {"docker", "podman"}:
         selected_image = image or (search.config.get("image") if isinstance(search.config.get("image"), str) else "")
-        docker = search.which(("docker",))
-        row("docker_runtime", "Docker executable", "found" if docker else "missing", docker,
-            "Executable exists; daemon access has not been tested." if docker else "Docker is not on PATH. No daemon was contacted.")
-        row("docker_image", "Docker caller image", "unverified" if selected_image else "missing", selected_image,
+        docker = search.which((backend,))
+        row(backend + "_runtime", backend.capitalize() + " executable", "found" if docker else "missing", docker,
+            "Executable exists; runtime access has not been tested." if docker else f"{backend.capitalize()} is not on PATH. No runtime was contacted.")
+        row("docker_image", backend.capitalize() + " caller image", "unverified" if selected_image else "missing", selected_image,
             "Local image presence and executables will be checked by Run preflight. Autodetect never pulls or launches containers.")
         if not selected_image or not docker:
             need("docker_image")
         for identity in required:
-            row(identity, identity.replace("_", " "), "unverified", detail="Provided by the selected Docker image; host executables are not substituted.", field="docker_image")
+            row(identity, identity.replace("_", " "), "unverified", detail="Provided by the selected container image; host executables are not substituted.", field="docker_image")
         if any(values.get(field) for field in DOCKER_IGNORED):
-            search.note("Docker ignores host caller/Strelka2/FFPERASE prefixes and SIFs. External source, models and annotation paths remain host resources.")
+            search.note("Container execution ignores host caller/Strelka2/FFPERASE prefixes and SIFs. External source, models and annotation paths remain host resources.")
     else:
         matching = []
         path_complete = not runtime_selection.managed and all(search.which(names) for names in required.values())
@@ -533,8 +533,8 @@ def discover_variant_resources(data, *, roots=(), environment=None):
             ("Missing: " + ", ".join(absent)) if absent else "Requested executable files are present. Save and check settings to record these tools for analysis.")
 
     if STRELKA_CALLERS.intersection(callers):
-        if backend == "docker":
-            row("strelka2_runtime", "Strelka2 Python 2 runtime", "unverified", detail="The selected Docker image must supply its isolated Strelka2 2.9.10 and Python 2.7 runtime. Run preflight verifies this; no host prefix is substituted.", field="docker_image")
+        if backend in {"docker", "podman"}:
+            row("strelka2_runtime", "Strelka2 Python 2 runtime", "unverified", detail="The selected container image must supply its isolated Strelka2 2.9.10 and Python 2.7 runtime. Run preflight verifies this; no host prefix is substituted.", field="docker_image")
         else:
             incompatible = []
 
@@ -619,8 +619,8 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         model = find_resource("variant_ffperase_models", "FFPERASE models", model_candidates,
                               lambda p: all(search.file(p / f"model.{kind}.joblib") for kind in ("snvs", "indels")))
         if not model: need("ffperase_models")
-        if backend == "docker":
-            row("ffperase_runtime", "FFPERASE runtime", "unverified", detail="The Docker image supplies this runtime; external source/models are still required.", field="docker_image")
+        if backend in {"docker", "podman"}:
+            row("ffperase_runtime", "FFPERASE runtime", "unverified", detail="The container image supplies this runtime; external source/models are still required.", field="docker_image")
         else:
             ffpe_sif_override = search.override("variant_ffperase_sif", values)
             prefix_override = search.override("variant_ffperase_prefix", values)
@@ -806,7 +806,7 @@ def _annovar(search, values, locations, fields, row, need, offer, *, backend):
         row("annovar", "ANNOVAR", "unverified", selected_install, f"Local resources could not be inspected: {error}")
         need("annovar")
         return
-    if backend == "docker" and detection.reason == "Perl executable is unavailable on PATH":
+    if backend in {"docker", "podman"} and detection.reason == "Perl executable is unavailable on PATH":
         row("annovar", "ANNOVAR", "candidate", selected_install,
             "Executable helpers and the matching RefSeq pair exist. Container Perl and full annotation compatibility require run preflight.")
     elif detection.available:

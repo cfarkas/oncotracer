@@ -376,7 +376,7 @@ def resource_report(
         "suggested_threads": min(4, cpus),
         "backends_found": {
             name: shutil.which(name)
-            for name in ("conda", "docker", "apptainer", "singularity")
+            for name in ("conda", "docker", "podman", "apptainer", "singularity")
         },
         "disk": disks,
         "capabilities": capabilities,
@@ -483,7 +483,7 @@ def command_system(args: argparse.Namespace) -> int:
     else:
         print_resource_report(report)
         print(
-            "Next: oncotracer --interactive --backend conda (or --backend docker). No analysis has started."
+            "Next: oncotracer --interactive --backend conda (or --backend docker / podman). No analysis has started."
         )
     return 0
 

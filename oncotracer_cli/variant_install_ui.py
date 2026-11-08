@@ -5,7 +5,7 @@ PANEL = '''<div class="variant-detection">
 <label for="variant-tools-folder">Tools folder to search (optional)</label><div class="variant-path-row"><input id="variant-tools-folder" placeholder="Choose a folder containing tools or Conda environments"><button id="variant-tools-browse" type="button">Choose tools folder</button></div>
 <div class="actions"><button id="variant-autodetect" type="button" class="primary variant-detect-glow">detect_tools</button><button id="variant-resource-review" type="button" hidden>Review resource details</button></div>
 <p id="variant-detection-status" class="hint" role="status" aria-live="polite">Check common installation folders on the computer running OncoTracer.</p>
-<div id="variant-install-choices" class="variant-install-choices" hidden><p class="hint">Missing tools detected. Choose how to install them.</p><div class="actions"><button id="variant-install-conda" data-variant-install="conda" type="button" class="primary">Install with Conda</button><button id="variant-install-docker" data-variant-install="docker" type="button" class="primary">Install with Docker</button></div></div>
+<div id="variant-install-choices" class="variant-install-choices" hidden><p class="hint">Missing tools detected. Choose how to install them.</p><div class="actions"><button id="variant-install-conda" data-variant-install="conda" type="button" class="primary">Install with Conda</button><button id="variant-install-docker" data-variant-install="docker" type="button" class="primary">Install with Docker</button><button id="variant-install-podman" data-variant-install="podman" type="button" class="primary">Install with Podman</button></div></div>
 <p id="variant-install-overview" class="hint" role="status" aria-live="polite" hidden></p><button id="variant-install-review" type="button" hidden>View installation progress</button></div>'''
 
 DIALOG = '''<section id="variant-install-panel" class="variant-install-panel" hidden>
@@ -53,7 +53,7 @@ function renderVariantInstallPlan(plan){
   const steps=$('variant-install-steps');steps.replaceChildren();for(const step of plan.steps||[])steps.append(node('li',step.label));
   $('variant-install-commands').textContent=(plan.directory?'New installation folder: '+plan.directory+'\n\n':'')+(plan.steps||[]).map(step=>step.command.map(value=>JSON.stringify(value)).join(' ')).join('\n');
   $('variant-install-start').disabled=variantInstallActive||!plan.available;
-  $('variant-install-start').textContent=plan.method==='docker'?'Install with Docker':'Install with Conda';
+  $('variant-install-start').textContent=plan.method==='podman'?'Install with Podman':plan.method==='docker'?'Install with Docker':'Install with Conda';
   $('variant-install-start').hidden=false;
 }
 async function planVariantInstall(method='auto'){
@@ -79,7 +79,7 @@ function renderVariantInstallJob(job){
   $('variant-install-start').hidden=variantInstallActive||job.status==='complete';
   $('variant-install-method').disabled=variantInstallActive;
   $('variant-install-stop').hidden=!variantInstallActive;$('variant-install-stop').disabled=job.status==='stopping';
-  const incompatible=job.fields?.backend==='docker'&&!document.getElementById('backend');
+  const incompatible=['docker','podman'].includes(job.fields?.backend)&&!document.getElementById('backend');
   $('variant-install-apply').hidden=job.status!=='complete'||variantInstallApplied===job.id||incompatible;
   if(incompatible)$('variant-install-status').textContent='Docker tools are ready for FASTQ setup. The existing-BAM form uses native caller environments.';
   if(job.error)variantInstallError(new Error(job.error));
@@ -92,7 +92,7 @@ function renderVariantInstallJob(job){
 async function applyVariantInstallation(){
   const job=variantInstallJob;if(!job||job.status!=='complete'||variantInstallActive)return;
   const fields=job.fields||{};
-  if(fields.backend==='docker'&&!document.getElementById('backend'))return;
+  if(['docker','podman'].includes(fields.backend)&&!document.getElementById('backend'))return;
   if(fields.backend&&document.getElementById('backend')){
     if(fields.docker_image)$('docker_image').value=fields.docker_image;$('backend').value=fields.backend;
     $('backend').dispatchEvent(new Event('change',{bubbles:true}));if(fields.docker_image)$('docker_image').dispatchEvent(new Event('input',{bubbles:true}));

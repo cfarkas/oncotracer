@@ -75,7 +75,7 @@ jobs:
             tests/test_variant_command.py \
             tests/test_variant_engine.py \
             tests/test_variant_container.py \
-            tests/test_docker_variants.py \
+            tests/test_docker_variants.py tests/test_podman_backend.py \
             tests/test_variant_assessments.py \
             tests/test_annovar.py \
             tests/test_variant_results.py \
@@ -560,6 +560,45 @@ jobs:
              .source.source_sha256 == $sha256 and
              .source.source_tree_dirty == false' \
             "$RUNNER_TEMP/docker-installed-doctor.json"
+      - name: Verify the same image with rootless Podman
+        run: |
+          set -Eeuo pipefail
+          if ! command -v podman >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y podman
+          fi
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/podman-install/config"
+          export XDG_DATA_HOME="$RUNNER_TEMP/podman-install/data"
+          export XDG_CACHE_HOME="$RUNNER_TEMP/podman-install/cache"
+          podman info --format json > "$RUNNER_TEMP/podman-info.json"
+          jq -e '.host.security.rootless == true' "$RUNNER_TEMP/podman-info.json"
+          IMAGE_ID="$(cat "$RUNNER_TEMP/docker-image-id.txt")"
+          IMAGE_BYTES="$(docker image inspect --format '{{.Size}}' "$IMAGE_ID")"
+          PODMAN_STORE="$(podman info --format '{{.Store.GraphRoot}}')"
+          python3 - "$PODMAN_STORE" "$IMAGE_BYTES" <<'PY'
+          import pathlib, shutil, sys
+          path = pathlib.Path(sys.argv[1])
+          while not path.exists(): path = path.parent
+          required = int(sys.argv[2]) * 2 + 8 * 1024**3
+          available = shutil.disk_usage(path).free
+          if available < required:
+              raise SystemExit(f'Podman image import needs {required} free bytes; available={available}')
+          PY
+          docker image save "$IMAGE_ID" | podman image load > "$RUNNER_TEMP/podman-load.log" 2>&1
+          podman image inspect "$IMAGE_ID" > "$RUNNER_TEMP/podman-image.json"
+          python3 -B "$GITHUB_WORKSPACE/oncotracer" install --podman \
+            --image "$IMAGE_ID" --no-pull --no-launcher --json \
+            2> "$RUNNER_TEMP/podman-install.log" | tee "$RUNNER_TEMP/podman-install.json"
+          jq -e --arg image "$IMAGE_ID" '.backend == "podman" and .image == $image' "$RUNNER_TEMP/podman-install.json"
+          python3 -B "$GITHUB_WORKSPACE/oncotracer" doctor --backend podman --json \
+            2> "$RUNNER_TEMP/podman-doctor.log" | tee "$RUNNER_TEMP/podman-doctor.json"
+          jq -e --arg commit '${{ steps.source.outputs.source_commit }}' \
+            --arg sha256 '${{ steps.source.outputs.source_sha256 }}' \
+            '.success == true and .podman.success == true and .podman.returncode == 0 and
+             .source.source_commit == $commit and .source.source_sha256 == $sha256 and
+             .source.source_tree_dirty == false' "$RUNNER_TEMP/podman-doctor.json"
+          python3 -B scripts/smoke_docker_resume.py --engine podman --image "$IMAGE_ID" \
+            --work-dir "$RUNNER_TEMP/podman-resume-smoke" | tee "$RUNNER_TEMP/podman-resume.log"
       - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
           docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 3.0.0'
@@ -578,7 +617,7 @@ jobs:
             --env XDG_CONFIG_HOME=/tmp/oncotracer-test-config \
             --entrypoint /opt/conda/bin/python oncotracer:v2-ci -B -m unittest \
             tests.test_sample_parallelism tests.test_glimpse_parallel tests.test_nextflow_runtime tests.test_completion_counts tests.test_terminal_progress tests.test_gpu_resources \
-            tests.test_docker_variants tests.test_project_resume
+            tests.test_docker_variants tests.test_podman_backend tests.test_project_resume
           python3 -B scripts/smoke_docker_resume.py --image oncotracer:v2-ci \
             --work-dir "$RUNNER_TEMP/docker-resume-smoke"
           docker run --rm --network none --user 1000:1000 --env HOME=/tmp \
@@ -681,3 +720,5 @@ jobs:
             ${{ runner.temp }}/docker-install.log
             ${{ runner.temp }}/docker-installed-doctor.json
             ${{ runner.temp }}/docker-installed-doctor.log
+            ${{ runner.temp }}/podman-*.json
+            ${{ runner.temp }}/podman-*.log
