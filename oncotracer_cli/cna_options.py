@@ -1,4 +1,4 @@
-"""Versioned research CNA profiles, independent of sample labels.
+"""Versioned research CNA coverage and calling profiles.
 
 Omitted profiles in existing YAML retain the original scientific policy.
 New projects save their choice explicitly. These are research operating points,
@@ -52,7 +52,7 @@ def resolve_policy(config=None):
 
 def add_arguments(parser):
     parser.add_argument("--cna-profile", "--cna_profile", choices=tuple(PROFILES), default=None,
-                        help="CNA research sensitivity, identical for tumors and controls; new projects use sensitive, existing YAML without this field keeps standard")
+                        help="CNA coverage/calling profile; sensitive uses stricter read-support checks for controls. New projects use sensitive; existing YAML without this field keeps standard")
 
 
 def codification_arguments(policy):

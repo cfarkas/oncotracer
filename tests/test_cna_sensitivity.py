@@ -26,6 +26,43 @@ class EvidenceTests(unittest.TestCase):
             self.assertTrue(all(r['decision']=='rejected' for r in results))
             self.assertTrue(all(r['reason']=='uncertain_or_discordant_read_depth' for r in results))
 
+    def test_modest_study_relaxation_retains_borderline_supported_events_only(self):
+        for seed in (12,27,49):
+            counts=synthetic(seed=seed,changes={'2':1.4,'7':.72},mean=20)
+            calls=[event(),event(chrom='7',state='loss')]
+            strict=ReadSupport(counts,sample_role='normal').evaluate(calls)
+            study=ReadSupport(counts,sample_role='tumor').evaluate(calls)
+            self.assertTrue(all(r['decision']=='rejected' for r in strict),strict)
+            self.assertTrue(all(r['decision']=='retained' for r in study),study)
+            self.assertTrue(all(r['interval_percent']==99 for r in strict))
+            self.assertTrue(all(r['interval_percent']==95 and r['approximate_q']<=.05 for r in study))
+            self.assertGreater(study[0]['lower_95'],.15)
+            self.assertLess(study[1]['upper_95'],-.15)
+            self.assertNotIn('lower_99',study[0])
+            self.assertEqual(study[0]['lower_bound'],study[0]['lower_95'])
+
+    def test_study_relaxation_keeps_neutral_and_unusable_samples_rejected(self):
+        for seed in (12,27,49):
+            for mean in (.001,1,20):
+                calls=[event(),event(chrom='7',state='loss')]
+                rows=ReadSupport(synthetic(seed=seed,mean=mean),sample_role='tumor').evaluate(calls)
+                self.assertTrue(all(r['decision']=='rejected' for r in rows),rows)
+        for role in ('unknown','',None):
+            with self.assertRaises(OncoTracerError):ReadSupport([],sample_role=role)
+
+    def test_study_relaxation_preserves_gap_bias_and_local_consistency_checks(self):
+        biased=ReadSupport(synthetic(biased=True,mean=3),sample_role='tumor').evaluate([event()])[0]
+        self.assertEqual(biased['decision'],'rejected')
+        counts=synthetic(changes={'2':2.2})
+        counts=[b for b in counts if b['chromosome']!='2' or b['start']<10_000_000]
+        gap=ReadSupport(counts,sample_role='tumor').evaluate([event()])[0]
+        self.assertEqual(gap['reason'],'poor_reference_or_genomic_coverage')
+        counts=synthetic(mean=1)
+        targets=[b for b in counts if b['chromosome']=='2']
+        targets[100]['reads']=1000;targets[101]['reads']=1000
+        isolated=ReadSupport(counts,sample_role='tumor').evaluate([event()])[0]
+        self.assertEqual(isolated['reason'],'localized_or_inconsistent_read_support')
+
     def test_supported_control_gain_and_loss_are_retained(self):
         support=ReadSupport(synthetic(changes={'2':2.2,'7':.35}, mean=1))
         rows=support.evaluate([event(), event(chrom='7',state='loss')])
@@ -126,9 +163,44 @@ class EvidenceTests(unittest.TestCase):
                 decisions=list(csv.DictReader(handle,delimiter='\t'))
             self.assertEqual(len(decisions),2)
             self.assertTrue(decisions[1]['reason'])
+            self.assertTrue(all(r['interval_percent']=='99' and r['evidence_policy']=='strict_control' for r in decisions))
+            self.assertEqual(receipt['policies']['normal']['maximum_approximate_q'],.01)
+            self.assertEqual(receipt['policies']['tumor']['maximum_approximate_q'],.05)
             # A resumed evaluation reads the preserved unfiltered inputs.
             again=publish_guard(raw,root,counts,'qdnaseq',assessment,resolve_policy({'cna_profile':'sensitive'}))
             self.assertEqual(again,receipt)
+
+
+    def test_publication_uses_recorded_role_for_borderline_event_evidence(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);raw=root/'diagnostics/unfiltered';raw.mkdir(parents=True)
+            # Names deliberately contradict roles: metadata must determine policy.
+            roles={'control_named_study':'tumor','study_named_control':'normal'}
+            rows=[dict(event(sample=name),molecular_piece='2(1_50000000)x3',
+                       cna_shorthand='gain(2)',caller='qdnaseq') for name in roles]
+            with (raw/'cna_events.tsv').open('w') as handle:
+                writer=csv.DictWriter(handle,fieldnames=list(rows[0]),delimiter='\t')
+                writer.writeheader();writer.writerows(rows)
+            (raw/'cna_cytogenomic_notation.tsv').write_text(
+                'sample\tn_cna_events\tmolecular_cytogenomic_notation\tcna_shorthand\tcaller\n'+
+                ''.join(name+'\t1\tcna[GRCh38] original\toriginal\tqdnaseq\n' for name in roles))
+            counts=root/'counts';counts.mkdir()
+            with gzip.open(counts/'broad_cna_counts.tsv.gz','wt') as handle:
+                fields=['chromosome','start','end','gc','mappability','bases']+['sample:'+name for name in roles]
+                writer=csv.DictWriter(handle,fieldnames=fields,delimiter='\t');writer.writeheader()
+                for row in synthetic(changes={'2':1.4},mean=20):
+                    record=dict(row);observed=record.pop('reads')
+                    record.update({'sample:'+name:observed for name in roles});writer.writerow(record)
+            assessment={'samples':[dict(sample=name,sample_role=role,median_reads_per_bin=19,
+                                        zero_read_bin_fraction=0) for name,role in roles.items()]}
+            receipt=publish_guard(raw,root,counts,'qdnaseq',assessment,resolve_policy({'cna_profile':'sensitive'}))
+            self.assertEqual(receipt['samples']['control_named_study'],{'retained':1,'rejected':0})
+            self.assertEqual(receipt['samples']['study_named_control'],{'retained':0,'rejected':1})
+            with (root/'cna_evidence_decisions.tsv').open() as handle:
+                decisions=list(csv.DictReader(handle,delimiter='\t'))
+            self.assertEqual([row['interval_percent'] for row in decisions],['95','99'])
+            with (root/'cna_events.tsv').open() as handle:
+                self.assertEqual([row['sample'] for row in csv.DictReader(handle,delimiter='\t')],['control_named_study'])
 
 
 class ProfileTests(unittest.TestCase):

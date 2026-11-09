@@ -40,22 +40,34 @@ Passing sample QC does not establish evidence for every segment. Raw qDNAseq
 cutoff calling is preserved for standard; sensitive uses ±0.20 for gains/losses.
 No control is subtracted from a tumor or pooled into a reference.
 
-### Read-support checks for controls
+### Read-support checks for candidate events
 
 Sensitive mode checks every candidate control CNA against its underlying raw
-counts before publishing the final event table. It applies the same checks to
-study samples that fail standard coverage requirements. Controls with supported
-changes retain those calls; the normal/control label never forces a neutral
-result. The evaluator itself receives counts and event coordinates, not a
-diagnosis or a desired event count.
+counts before publishing the final event table. Study samples that fail standard
+coverage requirements also need supporting reads. Calls admitted only by the
+sensitive size or amplitude thresholds require support even in study samples
+that pass standard coverage QC. Controls with supported changes retain those
+calls; the normal/control label never forces a neutral result. The evaluator
+uses the recorded sample role to choose the uncertainty criteria below, without
+using a diagnosis or a desired event count.
 
 The heuristic uses GC/mappability-matched counts from at least eight other
 autosomes. An event needs at least ten usable bins, 100 observed and 200 expected
-reads, at least 80% matched bins and 60% covered span. Its approximate 99% interval
+reads, at least 80% matched bins and 60% covered span. Its approximate interval
 must lie beyond ±0.15 log2 in the called direction; interleaved bin subsets must
 agree, and at least three of four consecutive blocks must support the same
-direction. An approximate multiple-candidate q-value must be at most 0.01. The 0.15
-log2 uncertainty floor and empirical dispersion remain in place.
+direction. Sample coverage, read-count requirements, the 0.15 log2 uncertainty
+floor and empirical dispersion are unchanged for both roles.
+
+| Event evidence criterion | Study sample (`tumor`) | Control (`normal`) |
+| --- | --- | --- |
+| Approximate interval | 95% | 99% |
+| Maximum approximate multiple-candidate q-value | 0.05 | 0.01 |
+
+This modest relaxation applies only to the sensitive profile's study-event
+checks. Controls keep the stricter operating point. The audit records the role,
+policy and interval level for each evaluated event; missing or unknown roles
+are rejected rather than inferred from sample names.
 
 These checks reuse the calling reads. They are corroboration, not independent
 confirmation, and the candidate-selection procedure means the approximate
@@ -205,8 +217,3 @@ that evidence. [TRIPOD statement](https://www.bmj.com/content/350/bmj.g7594).
 
 The clinician HTML/PDF reports expose these limits alongside the underlying CNA
 findings. CNA-flat or missing results do not establish absence of cancer.
-
-Calls admitted only by the sensitive size or amplitude thresholds also require
-raw read support, including in study samples that pass standard coverage QC.
-This prevents the relaxed thresholds alone from promoting small, poorly
-supported regions into final events.

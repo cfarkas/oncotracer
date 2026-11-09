@@ -19,18 +19,26 @@ from .broad_cna import prepare_bins, _mad
 from .runtime import atomic_write_json, atomic_write_text, OncoTracerError
 
 POLICY = {
-    "schema": "cna-read-support-v1", "minimum_total_reads": 5000,
+    "schema": "cna-read-support-v2", "minimum_total_reads": 5000,
     "minimum_region_observed_reads": 100, "minimum_region_expected_reads": 200,
     "minimum_region_bins": 10, "minimum_reference_chromosomes": 8,
     "minimum_matched_fraction": .8, "minimum_covered_fraction": .6,
-    "log2_uncertainty_floor": .15, "interval_z": 2.576,
+    "log2_uncertainty_floor": .15, "interval_z": 2.576, "interval_percent": 99,
     "minimum_log2_margin": .15, "maximum_approximate_q": .01,
     "minimum_split_reads": 20, "minimum_supporting_blocks": 3, "consistency_blocks": 4,
 }
 
 
+STUDY_POLICY = {**POLICY, "interval_z": 1.96, "interval_percent": 95,
+                "maximum_approximate_q": .05}
+
+
 class ReadSupport:
-    def __init__(self, rows):
+    def __init__(self, rows, *, sample_role="normal"):
+        if sample_role not in ("normal", "tumor"):
+            raise OncoTracerError("Read-support checks require an explicit normal or tumor role")
+        self.policy = dict(POLICY if sample_role == "normal" else STUDY_POLICY)
+        self.sample_role = sample_role
         self.bins = prepare_bins(rows)
         self.total = sum(b['reads'] for b in self.bins)
         self.chromosomes = {b['chromosome'] for b in self.bins}
@@ -48,11 +56,11 @@ class ReadSupport:
         for stratum in {b['stratum'] for b in targets}:
             refs = [v for (c, s), v in self.groups.items()
                     if c != chrom and s == stratum and v[0] >= 20 and v[2] >= 10]
-            if len(refs) < POLICY['minimum_reference_chromosomes'] or sum(v[0] for v in refs) < 500:
+            if len(refs) < self.policy['minimum_reference_chromosomes'] or sum(v[0] for v in refs) < 500:
                 continue
             rates = [v[0] / v[1] for v in refs]
             rate = median(rates)
-            expectations[stratum] = (rate, max(POLICY['log2_uncertainty_floor'],
+            expectations[stratum] = (rate, max(self.policy['log2_uncertainty_floor'],
                                                _mad([math.log2(r/rate) for r in rates])))
         matched = [dict(b, expected=b['exposure']*expectations[b['stratum']][0],
                         uncertainty=expectations[b['stratum']][1])
@@ -69,10 +77,12 @@ class ReadSupport:
     def interval(self, event):
         result = {'decision': 'rejected', 'reason': 'insufficient_genome_wide_read_support',
                   'observed_reads': None, 'expected_reads': None, 'usable_bins': 0,
-                  'log2_ratio': None, 'lower_99': None, 'upper_99': None,
+                  'log2_ratio': None, 'lower_bound': None, 'upper_bound': None,
+                  'interval_percent': self.policy['interval_percent'],
+                  'evidence_policy': 'strict_control' if self.sample_role == 'normal' else 'sensitive_study',
                   'approximate_p': None, 'approximate_q': None,
                   'covered_fraction': None, 'odd_log2': None, 'even_log2': None, 'supporting_blocks': None}
-        if self.total < POLICY['minimum_total_reads'] or len(self.bins) < 100 or len(self.chromosomes) < 10:
+        if self.total < self.policy['minimum_total_reads'] or len(self.bins) < 100 or len(self.chromosomes) < 10:
             return result
         chrom = str(event['chrom']).removeprefix('chr')
         start, end = int(event['start']), int(event['end'])
@@ -86,41 +96,43 @@ class ReadSupport:
         expected = sum(b['expected'] for b in values)
         covered = sum(b['end']-b['start']+1 for b in values)/(end-start+1)
         result.update(observed_reads=observed, expected_reads=expected, usable_bins=len(values), covered_fraction=covered)
-        if len(values) < POLICY['minimum_region_bins']:
+        if len(values) < self.policy['minimum_region_bins']:
             result['reason'] = 'too_few_usable_region_bins'; return result
-        if len(values)/max(1, len(targets)) < POLICY['minimum_matched_fraction'] or covered < POLICY['minimum_covered_fraction']:
+        if len(values)/max(1, len(targets)) < self.policy['minimum_matched_fraction'] or covered < self.policy['minimum_covered_fraction']:
             result['reason'] = 'poor_reference_or_genomic_coverage'; return result
-        if observed < POLICY['minimum_region_observed_reads'] or expected < POLICY['minimum_region_expected_reads']:
+        if observed < self.policy['minimum_region_observed_reads'] or expected < self.policy['minimum_region_expected_reads']:
             result['reason'] = 'insufficient_region_read_support'; return result
         ratio = math.log2(observed/expected)
         uncertainty = sum(b['expected']*b['uncertainty'] for b in values)/expected
         se = math.sqrt(dispersion/observed/math.log(2)**2 + uncertainty**2)
-        low, high = ratio-POLICY['interval_z']*se, ratio+POLICY['interval_z']*se
-        result.update(log2_ratio=ratio, lower_99=low, upper_99=high,
+        low, high = ratio-self.policy['interval_z']*se, ratio+self.policy['interval_z']*se
+        result.update(log2_ratio=ratio, lower_bound=low, upper_bound=high,
                       approximate_p=math.erfc(abs(ratio)/se/math.sqrt(2)))
+        result['lower_'+str(self.policy['interval_percent'])] = low
+        result['upper_'+str(self.policy['interval_percent'])] = high
         sign = 1 if event['state'] in ('gain', 'amplification') else -1
         if event['state'] not in ('gain', 'amplification', 'loss', 'deep_loss'):
             raise OncoTracerError('Unsupported CNA event state')
-        margin = POLICY['minimum_log2_margin']
+        margin = self.policy['minimum_log2_margin']
         if (low <= margin if sign > 0 else high >= -margin):
             result['reason'] = 'uncertain_or_discordant_read_depth'; return result
         # Interleaved subsets must support the same direction; a few isolated
         # extreme bins must not suffice. These are consistency checks, not replicates.
         for label, subset in [('odd_log2', values[::2]), ('even_log2', values[1::2])]:
             obs, exp = sum(b['reads'] for b in subset), sum(b['expected'] for b in subset)
-            if min(obs, exp) < POLICY['minimum_split_reads']:
+            if min(obs, exp) < self.policy['minimum_split_reads']:
                 result['reason'] = 'insufficient_split_bin_support'; return result
             result[label] = math.log2(obs/exp)
             if sign*result[label] <= margin:
                 result['reason'] = 'inconsistent_split_bin_direction'; return result
         supported = 0
-        for index in range(POLICY['consistency_blocks']):
+        for index in range(self.policy['consistency_blocks']):
             subset = values[index*len(values)//4:(index+1)*len(values)//4]
             obs, exp = sum(b['reads'] for b in subset), sum(b['expected'] for b in subset)
-            if min(obs, exp) >= POLICY['minimum_split_reads'] and sign*math.log2(obs/exp) > margin:
+            if min(obs, exp) >= self.policy['minimum_split_reads'] and sign*math.log2(obs/exp) > margin:
                 supported += 1
         result['supporting_blocks'] = supported
-        if supported < POLICY['minimum_supporting_blocks']:
+        if supported < self.policy['minimum_supporting_blocks']:
             result['reason'] = 'localized_or_inconsistent_read_support'; return result
         result.update(decision='pending_multiple_comparison_check', reason='')
         return result
@@ -133,7 +145,7 @@ class ReadSupport:
             r = tested[rank-1]; q = min(q, r['approximate_p']*len(tested)/rank); r['approximate_q'] = q
         for record in records:
             if record['decision'] == 'pending_multiple_comparison_check':
-                if record['approximate_q'] <= POLICY['maximum_approximate_q']:
+                if record['approximate_q'] <= self.policy['maximum_approximate_q']:
                     record.update(decision='retained', reason='supported_by_raw_read_depth')
                 else:
                     record.update(decision='rejected', reason='multiple_candidate_evidence_insufficient')
@@ -201,7 +213,7 @@ def publish_guard(raw_dir, output_dir, counts_dir, caller, assessment, policy):
     for name, rows in raw_sample_rows(counts_dir, caller, sorted(required)):
         indices = [i for i,e in enumerate(events) if e['sample'] == name and i in required_indices]
         if indices:
-            for i, decision in zip(indices, ReadSupport(rows).evaluate([events[i] for i in indices])):
+            for i, decision in zip(indices, ReadSupport(rows, sample_role=samples[name]['sample_role']).evaluate([events[i] for i in indices])):
                 decisions[i] = decision
     accepted, audit = [], []
     for i, event in enumerate(events):
@@ -210,7 +222,8 @@ def publish_guard(raw_dir, output_dir, counts_dir, caller, assessment, policy):
         audit.append(dict(event, sample_role=samples[event['sample']].get('sample_role','unknown'), **decision))
     output_dir.mkdir(parents=True, exist_ok=True)
     audit_fields = list(fields)+['sample_role','decision','reason','observed_reads','expected_reads','usable_bins',
-                                'log2_ratio','lower_99','upper_99','approximate_p','approximate_q',
+                                'log2_ratio','lower_bound','upper_bound','interval_percent','evidence_policy',
+                                'lower_99','upper_99','lower_95','upper_95','approximate_p','approximate_q',
                                 'covered_fraction','odd_log2','even_log2','supporting_blocks']
     _tsv(output_dir/'cna_evidence_decisions.tsv', audit, audit_fields)
     _tsv(output_dir/'cna_events.tsv', accepted, fields)
@@ -225,12 +238,13 @@ def publish_guard(raw_dir, output_dir, counts_dir, caller, assessment, policy):
         if (raw_dir/name).is_file(): atomic_write_text(output_dir/name,(raw_dir/name).read_text())
     counts = {name:{'retained':sum(e['sample']==name for e in accepted),
                    'rejected':sum(r['sample']==name and r['decision']=='rejected' for r in audit)} for name in samples}
-    receipt = {'schema':POLICY['schema'],'cna_profile':policy['profile'],'policy':POLICY,
+    receipt = {'schema':POLICY['schema'],'cna_profile':policy['profile'],
+               'policies':{'normal':POLICY, 'tumor':STUDY_POLICY},
                'notice':'Heuristic support from the same reads; not independent confirmation or calibrated false-discovery control. Rejection does not establish a normal genome.',
                'raw_events_sha256':hashlib.sha256(raw_events.read_bytes()).hexdigest(),
                'samples':counts,'checked_samples':sorted(required),'raw_event_count':len(events),'retained_event_count':len(accepted)}
     atomic_write_json(output_dir/'cna_evidence_summary.json',receipt)
-    body = '<!doctype html><meta charset="utf-8"><title>CNA read-support checks</title><h1>CNA read-support checks</h1><p>'+receipt['notice']+'</p><p><a href="cna_evidence_decisions.tsv">Every decision and reason</a> · <a href="diagnostics/unfiltered/cna_events.tsv">Unfiltered events</a></p><table><tr><th>Sample</th><th>Retained</th><th>Rejected</th></tr>'
+    body = '<!doctype html><meta charset="utf-8"><title>CNA read-support checks</title><h1>CNA read-support checks</h1><p>'+receipt['notice']+'</p><p>Study samples: approximate 95% interval and q &le; 0.05. Controls: approximate 99% interval and q &le; 0.01. Both retain the same read-count, covered-span and consistency requirements.</p><p><a href="cna_evidence_decisions.tsv">Every decision and reason</a> · <a href="diagnostics/unfiltered/cna_events.tsv">Unfiltered events</a></p><table><tr><th>Sample</th><th>Retained</th><th>Rejected</th></tr>'
     for name, values in counts.items():
         body += '<tr><td>'+html.escape(name)+'</td><td>'+str(values['retained'])+'</td><td>'+str(values['rejected'])+'</td></tr>'
     atomic_write_text(output_dir/'cna_evidence.html',body+'</table>')
