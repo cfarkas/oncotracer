@@ -32,6 +32,7 @@ from .methylation import (
     write_global_methylation_failure,
 )
 from .fontconfig_safety import FontconfigRuntime
+from .cna_options import resolve_policy, codification_arguments, r_policy_argument
 from .output_safety import OutputRunLease, claim_output_run, inspect_output_target
 from .runtime import (
     CommandRunner,
@@ -2408,7 +2409,9 @@ def run_qdnaseq(
     *,
     force: bool,
     paired_ends: bool | None = None,
+    cna_policy=None,
 ) -> tuple[Path, Path]:
+    cna_policy = cna_policy or resolve_policy()
     bam_sheet = samurai_outdir / "input" / "native.bam.samplesheet.csv"
     _write_bam_sheet(samples, input_bams, bam_sheet)
     annotation = prepare_qdnaseq_annotation(
@@ -2451,6 +2454,8 @@ def run_qdnaseq(
             str(paired).lower(),
             "--bin-data",
             annotation,
+            "--cna-policy",
+            r_policy_argument(cna_policy),
         ],
     )
     output = qdna_out / "all_segments.seg"
@@ -2844,6 +2849,7 @@ def run_ichorcna(
     *,
     threads: int,
     force: bool,
+    cna_policy=None,
 ) -> Path:
     assets = prepare_ichor_assets(lpwgs_root, binsize)
     with _validated_ichor_asset_reader(assets, runner):
@@ -2859,6 +2865,7 @@ def run_ichorcna(
             assets,
             threads=threads,
             force=force,
+            cna_policy=cna_policy,
         )
 
 
@@ -2875,6 +2882,7 @@ def _run_ichorcna_with_assets(
     *,
     threads: int,
     force: bool,
+    cna_policy=None,
 ) -> Path:
     ichor_out = samurai_outdir / "results" / "ichorcna"
     wig_dir = ichor_out / "diagnostics" / "wigfiles_samples"
@@ -2945,7 +2953,7 @@ def _run_ichorcna_with_assets(
 
             failed_stage = "coverage_qc"
             from .cna_quality import assess_ichor_counts
-            coverage = assess_ichor_counts(wig, assets["gc"], assets["map"])
+            coverage = assess_ichor_counts(wig, assets["gc"], assets["map"], policy=cna_policy)
             from .broad_cna import export_wig_counts
             export_wig_counts(wig, assets["gc"], assets["map"],
                               ichor_out / "diagnostics/broad_counts" / f"{sample.sample}.tsv.gz")
@@ -3138,15 +3146,16 @@ def run_refinement_and_outputs(
         "hg38 cytoband resource",
     )
     from .cna_quality import publish_assessment, invalidate_derived_cna, summary_fields
+    cna_policy = resolve_policy(config)
     assessment = None
     if selected_caller in {"qdnaseq", "ichorcna"}:
         status_path = qdna_or_ichor_dir / ("qdnaseq_sample_status.json" if selected_caller == "qdnaseq" else "ichorcna_sample_status.json")
         bin_size = _as_int(config.get("illumina_binsize_kb" if mode == "illumina" else "ont_binsize_kb"), 100 if mode == "illumina" else 500)
-        assessment = publish_assessment(outdir, status_path, bin_size)
+        assessment = publish_assessment(outdir, status_path, bin_size, policy=cna_policy)
         if assessment:
             invalidate_derived_cna(outdir, status_path, qdna_or_ichor_dir / ("all_segments.seg" if selected_caller == "qdnaseq" else "segments_logR_corrected_gistic.seg"))
             from .broad_cna import publish_screen
-            publish_screen(outdir, qdna_or_ichor_dir, selected_caller, assessment, cytoband)
+            publish_screen(outdir, qdna_or_ichor_dir, selected_caller, assessment, cytoband, policy=cna_policy)
             if not any(row["assessment"] == "assessable" for row in assessment["samples"]):
                 summary = {"oncotracer_version": __version__, "engine": "native", "nextflow_used": False,
                            "mode": mode, "caller": selected_caller, "outdir": str(outdir),
@@ -3246,7 +3255,7 @@ def run_refinement_and_outputs(
         "--zipcnv-min-segment-bins",
         str(_as_int(config.get("zipcnv_min_segment_bins"), 3)),
         "--zipcnv-min-abs-log2",
-        str(config.get("zipcnv_min_abs_log2", 0.25)),
+        str(config.get("zipcnv_min_abs_log2", cna_policy["calling"]["gain"])),
         "--zipcnv-compare-min-overlap",
         str(config.get("zipcnv_compare_min_overlap", 0.50)),
         "--native-current-environment",
@@ -3270,6 +3279,7 @@ def run_refinement_and_outputs(
 
     codify_out = outdir / "03_cna_codification"
     codify_out.mkdir(parents=True, exist_ok=True)
+    raw_codify_out = codify_out / "diagnostics/unfiltered" if cna_policy["profile"] == "sensitive" else codify_out
     runner.run(
         "cna-codification",
         toolchain.wrap(
@@ -3283,13 +3293,21 @@ def run_refinement_and_outputs(
                 "--cytoband",
                 cytoband,
                 "--outdir",
-                codify_out,
+                raw_codify_out,
                 "--prefix",
                 "cna",
+                *codification_arguments(cna_policy),
             ],
         ),
         cwd=root,
     )
+    if cna_policy["profile"] == "sensitive":
+        from .cna_evidence_guard import publish_guard
+        if assessment is None:
+            raise OncoTracerError("Sensitive CNA evidence checks require a current coverage assessment")
+        checked = publish_guard(raw_codify_out, codify_out, qdna_or_ichor_dir, selected_caller, assessment, cna_policy)
+        print(f"CNA evidence: retained {checked['retained_event_count']} of {checked['raw_event_count']} candidate events; "
+              "control and sparse-sample decisions: 03_cna_codification/cna_evidence_decisions.tsv", flush=True)
     events = require_file(codify_out / "cna_events.tsv", "CNA events")
     require_file(codify_out / "cna_cytogenomic_notation.tsv", "cytogenomic notation")
 
@@ -3499,6 +3517,7 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "failed_samples": summary.get("failed_samples", []),
         "completion": summary.get("completion"),
         "cna_status": summary.get("cna_status"),
+        "cna_profile": summary.get("cna_profile", "standard"),
         "variant_status": summary.get("variant_status"),
         "methylation_status": summary.get("methylation_status"),
         "methylation_completed_samples": summary.get(
@@ -3692,6 +3711,8 @@ def _validate_native_dry_run(
             from .strelka2 import validate_samples
             validate_samples(variants, [s.sample for s in samples], {s.sample: s.status for s in samples}, paired={s.sample: s.fastq_2 is not None for s in samples})
         plan["stages"].extend(variant_plan(variants)["stages"])
+    plan["cna_profile"] = resolve_policy(config)["profile"]
+    plan["cna_policy"] = resolve_policy(config)
     plan["methylation_only"] = _as_bool(config.get("methylation_only"), False)
     if not plan["methylation_only"]:
         from .sample_resources import allocate
@@ -3759,6 +3780,7 @@ def _run_ont_cna_branch(
             toolchain,
             threads=threads,
             force=force,
+            cna_policy=resolve_policy(config),
         )
     else:
         caller_dir, _ = run_qdnaseq(
@@ -3772,6 +3794,7 @@ def _run_ont_cna_branch(
             ledger,
             toolchain,
             force=force,
+            cna_policy=resolve_policy(config),
             paired_ends=False,
         )
     run_refinement_and_outputs(
@@ -3819,6 +3842,7 @@ def run_native(
     merge_vcfs: bool | None = None,
     storage_mode: str | None = None,
     resource_mode: str | None = None,
+    cna_profile: str | None = None,
     force: bool | None = None,
     dry_run: bool = False,
     methylation: bool | None = None,
@@ -3837,6 +3861,7 @@ def run_native(
         merge_vcfs=merge_vcfs,
         storage_mode=storage_mode,
         resource_mode=resource_mode,
+        cna_profile=cna_profile,
         force=force,
         dry_run=dry_run,
         methylation=methylation,
@@ -3861,6 +3886,7 @@ def _run_native_impl(
     merge_vcfs: bool | None,
     storage_mode: str | None,
     resource_mode: str | None,
+    cna_profile: str | None,
     force: bool | None,
     dry_run: bool,
     methylation: bool | None,
@@ -3905,6 +3931,9 @@ def _run_native_impl(
     if resource_mode is not None:
         from .resource_options import validate_mode as validate_resource_mode
         config["variant_resource_mode"] = validate_resource_mode(resource_mode)
+    if cna_profile is not None:
+        config["cna_profile"] = cna_profile
+    resolve_policy(config)
     _reject_local_sample_panel(config)
     if methylation_only is not None:
         config["methylation_only"] = methylation_only
@@ -3970,6 +3999,7 @@ def _run_native_impl(
                 merge_vcfs=merge_vcfs,
                 storage_mode=storage_mode,
                 resource_mode=resource_mode,
+                cna_profile=cna_profile,
                 force=force,
                 dry_run=False,
                 methylation=methylation,
@@ -4086,6 +4116,7 @@ def _run_native_impl(
                 ledger,
                 toolchain,
                 force=force_run,
+                cna_policy=resolve_policy(config),
             )
             run_refinement_and_outputs(
                 root,

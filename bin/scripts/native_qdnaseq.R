@@ -26,7 +26,8 @@ parse_args <- function(argv) {
     binsize = 100L,
     min_mapq = 37L,
     paired_ends = TRUE,
-    bin_data = ""
+    bin_data = "",
+    cna_policy = ""
   )
   keys <- c(
     "--samplesheet" = "samplesheet",
@@ -34,7 +35,8 @@ parse_args <- function(argv) {
     "--binsize" = "binsize",
     "--min-mapq" = "min_mapq",
     "--paired-ends" = "paired_ends",
-    "--bin-data" = "bin_data"
+    "--bin-data" = "bin_data",
+    "--cna-policy" = "cna_policy"
   )
   i <- 1L
   while (i <= length(argv)) {
@@ -192,6 +194,8 @@ run_analysis <- function(options) {
     library(Biobase)
   })
 
+  policy <- qdnaseq_parse_policy(options$cna_policy)
+  message("CNA research profile: ", policy$profile, "; median reads/bin >= ", policy$thresholds$minimum_median_reads_per_bin)
   samples <- read_samplesheet(options$samplesheet)
   outdir <- normalizePath(options$outdir, mustWork = FALSE)
   bins_dir <- file.path(outdir, "bins")
@@ -273,7 +277,8 @@ run_analysis <- function(options) {
            finally=close(handle))
   per_sample_counts <- lapply(seq_len(ncol(raw_counts)), function(index) raw_counts[usable, index])
   records <- qdnaseq_classify_normalized(samples$sample,
-    lapply(per_sample_counts, function(values) rep(1, length(values))), per_sample_counts)
+    lapply(per_sample_counts, function(values) rep(1, length(values))), per_sample_counts, policy)
+  for (i in seq_along(records)) records[[i]]$sample_role <- samples$status[[i]]
   preliminary_valid <- qdnaseq_valid_indices(records)
   for (index in setdiff(seq_along(records), preliminary_valid)) {
     records[[index]]$normalized_median <- NA_real_
@@ -299,7 +304,8 @@ run_analysis <- function(options) {
   )
   counts <- Biobase::assayDataElement(read_counts, "counts")
   records[preliminary_valid] <- qdnaseq_classify_normalized(samples$sample[preliminary_valid], normalized_values,
-    lapply(seq_len(ncol(counts)), function(index) counts[usable, index]))
+    lapply(seq_len(ncol(counts)), function(index) counts[usable, index]), policy)
+  for (i in seq_along(records)) records[[i]]$sample_role <- samples$status[[i]]
   valid_indices <- qdnaseq_valid_indices(records)
   write_qdnaseq_sample_status(status_path, records)
 
@@ -335,7 +341,9 @@ run_analysis <- function(options) {
 
   set.seed(1L)
   segmented <- QDNAseq::segmentBins(copy_numbers, transformFun = "sqrt")
-  called <- QDNAseq::callBins(segmented, method = "cutoff")
+  called <- if (policy$profile == "standard") QDNAseq::callBins(segmented, method = "cutoff") else
+    QDNAseq::callBins(segmented, method = "cutoff", cutoffs=c(deletion=-2,
+      loss=policy$calling$loss, gain=policy$calling$gain, amplification=log2(5)))
   if (!"calls" %in% Biobase::assayDataElementNames(called)) {
     fail("QDNAseq::callBins() did not add the required 'calls' assay element")
   }

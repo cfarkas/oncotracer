@@ -7,6 +7,12 @@ stopifnot(identical(qdnaseq_valid_indices(x), c(2L,3L)),
   x[[1]]$assessment == "not_assessable", x[[2]]$assessment == "assessable", x[[3]]$assessment == "assessable",
   x[[1]]$error == "low_coverage_at_selected_bin_size", x[[6]]$error == "excess_empty_bins_at_selected_bin_size")
 f <- tempfile(fileext=".json"); invisible(write_qdnaseq_sample_status(f,x)); stopifnot(grepl('"not_assessable"',readLines(f))); unlink(f)
+# The explicit sensitive profile still rejects unusable/very sparse samples.
+sensitive <- qdnaseq_parse_policy("sensitive|coverage-v3-sensitive|100|5|0.2|0.99|5000|-0.2|0.2")
+checks <- qdnaseq_classify_normalized(c("moderate", "sparse", "empty", "few_reads"),
+  rep(list(rep(1,1000)),4), list(rep(7,1000), rep(1,1000), rep(0,1000), rep(5,100)), sensitive)
+stopifnot(checks[[1]]$assessment == "assessable", all(vapply(checks[2:4], function(r) r$assessment == "not_assessable", logical(1))),
+          checks[[1]]$cna_profile == "sensitive", checks[[4]]$error == "insufficient_total_reads")
 cat("CNA_COVERAGE_GATE_OK\n")
 if (requireNamespace("QDNAseq", quietly=TRUE)) {
   suppressPackageStartupMessages(library(QDNAseq)); suppressPackageStartupMessages(library(Biobase))

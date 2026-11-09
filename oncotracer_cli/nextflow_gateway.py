@@ -24,6 +24,8 @@ def parser() -> argparse.ArgumentParser:
     add_wait_argument(p)
     from .cohort_options import add_arguments as add_cohort_arguments
     add_cohort_arguments(p)
+    from .cna_options import add_arguments as add_cna_arguments
+    add_cna_arguments(p)
     p.add_argument('--project-dir', default=str(Path(__file__).resolve().parents[1]), help=argparse.SUPPRESS)
     p.add_argument('--launch-dir', default=str(Path.cwd()), help=argparse.SUPPRESS)
     p.add_argument('--interactive', action='store_true', help='open the local OncoTracer visual browser setup')
@@ -141,6 +143,10 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         argv += ['--parallel-samples', str(args.parallel_samples)]
     if args.variant_merge_vcfs is not None:
         argv.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
+    if args.cna_profile is not None:
+        if not args.interactive and args.analysis != "full":
+            raise ValueError("--cna-profile requires --analysis full or --interactive")
+        argv += ["--cna-profile", args.cna_profile]
     if args.variant_storage_mode is not None:
         argv += ["--storage-mode", args.variant_storage_mode]
     if args.variant_resource_mode is not None:

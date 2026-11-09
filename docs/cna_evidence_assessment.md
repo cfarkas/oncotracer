@@ -13,13 +13,60 @@ bin size. It must not be described as CNA-flat, normal, ultra-complex or a deep
 loss. The same checks apply to tumor and control samples, with native Conda,
 Docker and the Nextflow launcher.
 
-The current conservative research policy requires at least 100 usable autosomal
-bins, a median of at least 20 reads per usable bin, and no more than 5% empty
-usable bins. QDNAseq additionally requires a positive normalized baseline and
-finite normalized values in at least 99% of usable bins. ichorCNA checks read
-counts in matching GC/mappability reference bins before modeling. These are
-engineering safeguards at the chosen resolution, not validated clinical
-sensitivity thresholds. Passing them does not guarantee detection of every CNA.
+New projects explicitly save `cna_profile: sensitive`. Existing YAML files without
+this field retain `standard`; resuming does not silently change their criteria.
+Choose the profile in browser/terminal setup or with `--cna-profile`:
+
+```bash
+oncotracer setup --cna-profile sensitive
+oncotracer run --config project/config/run.yml --cna-profile sensitive
+nextflow run . --analysis full --config project/config/run.yml --cna_profile sensitive
+```
+
+| Research criterion | Standard | Sensitive |
+| --- | --- | --- |
+| Median reads per usable bin | 20 | 5 |
+| Maximum empty usable bins | 5% | 20% |
+| Minimum usable bins | 100 | 100 |
+| Additional minimum total usable reads | None | 5,000 |
+| Finite normalized values | 99% | 99% |
+| Final gain / loss log2 threshold | +0.25 / −0.30 | +0.20 / −0.20 |
+| Minimum final event | 3 bins and 1 Mb | 3 bins and 0.5 Mb |
+
+A positive normalized baseline is required in both profiles. Empty, nearly
+empty and inadequately covered samples remain unassessable. These thresholds
+are research operating points, not calibrated clinical detection limits.
+Passing sample QC does not establish evidence for every segment. Raw qDNAseq
+cutoff calling is preserved for standard; sensitive uses ±0.20 for gains/losses.
+No control is subtracted from a tumor or pooled into a reference.
+
+### Read-support checks for controls
+
+Sensitive mode checks every candidate control CNA against its underlying raw
+counts before publishing the final event table. It applies the same checks to
+study samples that fail standard coverage requirements. Controls with supported
+changes retain those calls; the normal/control label never forces a neutral
+result. The evaluator itself receives counts and event coordinates, not a
+diagnosis or a desired event count.
+
+The heuristic uses GC/mappability-matched counts from at least eight other
+autosomes. An event needs at least ten usable bins, 100 observed and 200 expected
+reads, at least 80% matched bins and 60% covered span. Its approximate 99% interval
+must lie beyond ±0.15 log2 in the called direction; interleaved bin subsets must
+agree, and at least three of four consecutive blocks must support the same
+direction. An approximate multiple-candidate q-value must be at most 0.01. The 0.15
+log2 uncertainty floor and empirical dispersion remain in place.
+
+These checks reuse the calling reads. They are corroboration, not independent
+confirmation, and the candidate-selection procedure means the approximate
+q-values are not calibrated false-discovery rates. The approach assumes a
+mostly stable autosomal baseline and does not establish germline/somatic origin.
+
+Inspect `03_cna_codification/cna_evidence.html`, `cna_evidence_decisions.tsv` and
+`cna_evidence_summary.json`. Every rejected event retains its reason and support
+metrics. Unfiltered calls remain in `diagnostics/unfiltered/`; only retained
+events enter final notation, event plots, interpretation and GISTIC. Rejection
+means insufficient evidence for that call, not proof of a normal genome.
 
 Sparse read counts formerly became extreme negative log2 values after empty-bin
 transformation. QDNAseq now fits with its supported square-root transform;
@@ -76,7 +123,7 @@ approaches; see [Yoon et al.](https://pmc.ncbi.nlm.nih.gov/articles/PMC2752127/)
 Independent biological benchmarking remains necessary before sensitivity,
 specificity or clinical-use claims.
 
-The screen uses autosomal bins with adequate mappability and defined sequence,
+The standard screen uses autosomal bins with adequate mappability and defined sequence,
 matches GC/mappability strata, and estimates each chromosome's expected read
 count from the median rates of at least eight *other* chromosomes. Sample
 disease labels and existing CNA calls do not enter the calculation. It requires
@@ -100,6 +147,12 @@ normal genome. The screen assumes a predominantly stable autosomal baseline;
 it cannot resolve absolute ploidy, tumor fraction, small focal changes or
 germline versus somatic origin. FFPE bias, uneven sampling and widespread
 aneuploidy can invalidate that assumption. Confirm candidates independently.
+
+Sensitive mode also screens assessable samples and uses 100 reads per region,
+5 Mb of usable sequence, approximate 95% intervals, a ±0.15 log2 margin and
+q ≤ 0.05. Control candidates additionally require the stricter read-support
+check above. Both profiles retain the 5,000-read genome-wide floor and stable
+baseline checks. Saved JSON records the profile, thresholds and interval level.
 
 Experimental results never overwrite primary CNA status or enter oncoprints,
 GISTIC, driver interpretation, tumor classification or pathology scores. The
@@ -152,3 +205,8 @@ that evidence. [TRIPOD statement](https://www.bmj.com/content/350/bmj.g7594).
 
 The clinician HTML/PDF reports expose these limits alongside the underlying CNA
 findings. CNA-flat or missing results do not establish absence of cancer.
+
+Calls admitted only by the sensitive size or amplitude thresholds also require
+raw read support, including in study samples that pass standard coverage QC.
+This prevents the relaxed thresholds alone from promoting small, poorly
+supported regions into final events.

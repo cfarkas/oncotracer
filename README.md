@@ -38,7 +38,7 @@ The image is saved for later commands. See [installation](docs/installation.md) 
 
 Use `oncotracer --detect-resources` (also `--detect_resources`) for [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) based on CPU/RAM. Choose the allocation during setup or **Review and run**.
 
-The [3.0.0 candidate](docs/releases/3.0.0.md) defaults to dynamic ONT scheduling and compact storage, with parallel Illumina validation and reuse of verified QUILT2 reference hashes. It also adds [Podman setup](docs/installation_details.md#podman-300-candidate) and repairs FFPE report resume. Options: `--resource-mode fixed` and `--no-merge-vcfs`. Publication awaits study and parity validation.
+The [3.0.0 candidate](docs/releases/3.0.0.md) adds dynamic ONT scheduling, compact storage, QUILT2 hash reuse, [Podman setup](docs/installation_details.md#podman-300-candidate) and FFPE report recovery. New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md) with read-support checks; existing settings persist. Options: `--resource-mode fixed` and `--no-merge-vcfs`. Study and parity validation are pending.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 

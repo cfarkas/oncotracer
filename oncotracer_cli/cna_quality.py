@@ -19,6 +19,7 @@ POLICY = "coverage-v2"
 REASONS = {
     "low_coverage_at_selected_bin_size": "Too few reads per usable bin at the selected resolution",
     "excess_empty_bins_at_selected_bin_size": "Too many usable bins have no reads",
+    "insufficient_total_reads": "Too few usable reads overall",
     "insufficient_usable_bins": "Too few usable bins for CNA assessment",
     "non_finite_normalized_bins": "Too many bins have invalid normalized values",
     "normalized_copy_number_median_non_positive": "No positive normalized copy-number baseline",
@@ -32,7 +33,9 @@ def _stable_text(path, text):
         atomic_write_text(path, text)
 
 
-def publish_assessment(outdir: Path, status_path: Path, binsize: int):
+def publish_assessment(outdir: Path, status_path: Path, binsize: int, policy=None):
+    from .cna_options import resolve_policy
+    policy = policy or resolve_policy()
     if not status_path.is_file():
         return None
     source = json.loads(status_path.read_text())
@@ -41,16 +44,18 @@ def publish_assessment(outdir: Path, status_path: Path, binsize: int):
         return None
     rows = []
     for record in records:
-        current = record.get("qc_policy") == POLICY
+        current = record.get("qc_policy") == policy["qc_policy"]
         valid = current and record.get("assessment") == "assessable" and record.get("status") == "complete"
         reason = record.get("error") if current else "requires_coverage_recheck"
         rows.append({"sample": record["sample"], "assessment": "assessable" if valid else "not_assessable",
                      "reason": "" if valid else REASONS.get(reason, reason or "CNA processing did not complete"),
+                     "sample_role": record.get("sample_role", "unknown"),
+                     "cna_profile": policy["profile"],
                      "bin_size_kb": binsize, "median_reads_per_bin": record.get("median_reads_per_bin"),
                      "zero_read_bin_fraction": record.get("zero_read_bin_fraction")})
-    data = {"schema": "oncotracer-cna-assessment-v1", "qc_policy": POLICY,
-            "thresholds": {"minimum_usable_bins": 100, "minimum_median_reads_per_bin": 20,
-                           "maximum_zero_read_bin_fraction": 0.05, "minimum_finite_normalized_fraction": 0.99},
+    data = {"schema": "oncotracer-cna-assessment-v1", "qc_policy": policy["qc_policy"],
+            "cna_profile": policy["profile"], "thresholds": policy["thresholds"],
+            "calling_thresholds": policy["calling"],
             "samples": rows}
     directory = outdir / "06_workflow_summary"
     directory.mkdir(parents=True, exist_ok=True)
@@ -70,13 +75,17 @@ def assessment_html(data):
         return ""
     def cell(value):
         return html.escape(str(value if value is not None else "unavailable"))
+    profile = data.get("cna_profile", "standard")
+    profile_notice = ('<p>CNA research profile: <strong>' + cell(profile) + '</strong>. '
+                      'Sensitive calls use relaxed operating thresholds and require review. '
+                      'Controls retain their labels and undergo raw-read evidence checks.</p>') if profile == "sensitive" else ''
     rows = "".join('<tr>' + ''.join('<td>' + cell(value) + '</td>' for value in (
         row['sample'], 'Assessable' if row['assessment'] == 'assessable' else 'NOT ASSESSABLE',
         row.get('bin_size_kb'), row.get('median_reads_per_bin'),
         ('%.2f%%' % (100 * row['zero_read_bin_fraction'])) if row.get('zero_read_bin_fraction') is not None else None,
         row.get('reason', ''))) + '</tr>' for row in data['samples'])
     return ('<section class="card"><h2>CNA coverage and assessability</h2>'
-            '<p>Not assessable means insufficient reliable evidence at the selected bin size. '
+            + profile_notice + '<p>Not assessable means insufficient reliable evidence at the selected bin size. '
             'It is neither a normal/flat profile nor a deep loss. Such samples are excluded from CNA '
             'interpretation, oncoprints, clustering and GISTIC. Other analyses retain their own status.</p>'
             '<p>Consider coarser bins and recheck coverage, or obtain more usable reads. Passing these '
@@ -100,7 +109,8 @@ def summary_fields(data):
     if not data:
         return {}
     rows = data["samples"]
-    return {"cna_assessment": "06_workflow_summary/cna_assessment.json",
+    return {"cna_profile": data.get("cna_profile", "standard"),
+            "cna_assessment": "06_workflow_summary/cna_assessment.json",
             "cna_not_assessable_samples": [r["sample"] for r in rows if r["assessment"] != "assessable"],
             "cna_sample_statuses": {r["sample"]: "complete" if r["assessment"] == "assessable" else "not_assessable" for r in rows},
             "reports_sample_statuses": {r["sample"]: "not_assessable" for r in rows if r["assessment"] != "assessable"}}
@@ -114,7 +124,7 @@ def invalidate_derived_cna(outdir, status_path, segments):
     """
     status = json.loads(status_path.read_text())
     # Status refresh times are bookkeeping, not new scientific evidence.
-    fields = ("sample", "status", "error", "assessment", "qc_policy", "median_reads_per_bin",
+    fields = ("sample", "sample_role", "cna_profile", "status", "error", "assessment", "qc_policy", "median_reads_per_bin",
               "zero_read_bin_fraction", "usable_bin_count", "normalized_median")
     scientific_status = [{key: record.get(key) for key in fields} for record in status.get("samples", [])]
     digest = hashlib.sha256(json.dumps(scientific_status, sort_keys=True).encode() + segments.read_bytes()).hexdigest()
@@ -151,8 +161,11 @@ def eligible_classifier_samples(outdir, selected=""):
     return ','.join(allowed)
 
 
-def assess_ichor_counts(wig, gc_wig, map_wig):
+def assess_ichor_counts(wig, gc_wig, map_wig, policy=None):
     """Check autosomal read support in matching GC/mappability reference bins."""
+    from .cna_options import resolve_policy
+    policy = policy or resolve_policy()
+    thresholds = policy["thresholds"]
     import gzip
     import math
     import statistics
@@ -182,9 +195,10 @@ def assess_ichor_counts(wig, gc_wig, map_wig):
               and mapping.get(key, -1) >= .75 and math.isfinite(v) and v >= 0]
     median = statistics.median(usable) if usable else None
     empty = sum(v == 0 for v in usable) / len(usable) if usable else None
-    reason = ("insufficient_usable_bins" if len(usable) < 100 else
-              "low_coverage_at_selected_bin_size" if median < 20 else
-              "excess_empty_bins_at_selected_bin_size" if empty > .05 else None)
-    return {"qc_policy": POLICY, "assessment": "not_assessable" if reason else "assessable",
+    reason = ("insufficient_usable_bins" if len(usable) < thresholds["minimum_usable_bins"] else
+              "insufficient_total_reads" if sum(usable) < thresholds["minimum_total_reads"] else
+              "low_coverage_at_selected_bin_size" if median < thresholds["minimum_median_reads_per_bin"] else
+              "excess_empty_bins_at_selected_bin_size" if empty > thresholds["maximum_zero_read_bin_fraction"] else None)
+    return {"qc_policy": policy["qc_policy"], "cna_profile": policy["profile"], "total_usable_reads": sum(usable), "assessment": "not_assessable" if reason else "assessable",
             "coverage_error": reason, "median_reads_per_bin": median, "zero_read_bin_fraction": empty,
             "usable_bin_count": len(usable)}

@@ -571,6 +571,13 @@ def run_native_classifier(
     force: bool,
 ) -> Path:
     """Run the complete optional v1.1 classifier/report graph natively."""
+    from .cna_options import resolve_policy
+    policy = resolve_policy(config)
+    if policy["profile"] == "sensitive":
+        config = dict(config)
+        config.setdefault("min_bins", policy["calling"]["minimum_event_bins"])
+        config.setdefault("min_size_mb", policy["calling"]["minimum_event_mb"])
+        config.setdefault("min_abs_log2", min(abs(policy["calling"]["loss"]), policy["calling"]["gain"]))
     package = require_directory(root / "bin" / "cna_classifier_nf", "CNA classifier payload")
     scripts = require_directory(package / "bin", "CNA classifier scripts")
     assets = require_directory(package / "assets", "CNA classifier assets")

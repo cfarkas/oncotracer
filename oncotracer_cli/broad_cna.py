@@ -86,14 +86,7 @@ def _mad(values):
     return 1.4826 * median(abs(value - center) for value in values)
 
 
-def screen_bins(rows, arms=None):
-    """GC/mappability matched, leave-one-chromosome-out baseline and broad tests.
-
-    Bin GC/map/base fractions must be in [0,1]. A broad region must have 200
-    observed AND expected reads; zeros alone can never produce a loss call.
-    A 0.15 log2 uncertainty floor and empirical block dispersion guard against
-    treating nominal Poisson counting precision as biological precision.
-    """
+def prepare_bins(rows):
     bins = []
     seen = set()
     for row in rows:
@@ -119,11 +112,26 @@ def screen_bins(rows, arms=None):
     for a, b in zip(bins, bins[1:]):
         if a["chromosome"] == b["chromosome"] and a["end"] >= b["start"]:
             raise ValueError("Overlapping raw count bins cannot be screened")
+    return bins
+
+
+def screen_bins(rows, arms=None, *, policy=None):
+    """GC/mappability matched, leave-one-chromosome-out baseline and broad tests.
+
+    Bin GC/map/base fractions must be in [0,1]. A broad region must have 200
+    observed AND expected reads; zeros alone can never produce a loss call.
+    A 0.15 log2 uncertainty floor and empirical block dispersion guard against
+    treating nominal Poisson counting precision as biological precision.
+    """
+    from .cna_options import resolve_policy
+    policy = policy or resolve_policy()
+    settings = policy["broad"]
+    bins = prepare_bins(rows)
     total = sum(b["reads"] for b in bins)
     result = {"status": "not_assessable", "reason": "Insufficient usable raw read support",
               "total_usable_reads": total, "usable_bins": len(bins), "regions": []}
     chroms = sorted({b["chromosome"] for b in bins}, key=int)
-    if total < MIN_TOTAL or len(bins) < 100 or len(chroms) < 10:
+    if total < settings["minimum_total_reads"] or len(bins) < 100 or len(chroms) < 10:
         return result
     grouped = defaultdict(lambda: [0., 0., 0])
     for b in bins:
@@ -135,12 +143,12 @@ def screen_bins(rows, arms=None):
         for stratum in {b["stratum"] for b in target}:
             refs = [v for (c, s), v in grouped.items()
                     if c != chrom and s == stratum and v[0] >= 20 and v[2] >= 10]
-            if len(refs) < MIN_REFERENCE_CHROMOSOMES or sum(v[0] for v in refs) < 500:
+            if len(refs) < settings["minimum_reference_chromosomes"] or sum(v[0] for v in refs) < 500:
                 continue
             rates = [v[0]/v[1] for v in refs]
             rate = median(rates)
             # Reference variation is retained, not divided away as if bias were random.
-            uncertainty = max(.15, _mad([math.log2(r/rate) for r in rates]))
+            uncertainty = max(settings["log2_uncertainty_floor"], _mad([math.log2(r/rate) for r in rates]))
             expectations[stratum] = (rate, uncertainty)
         matched = [dict(b, expected=b["exposure"]*expectations[b["stratum"]][0],
                         uncertainty=expectations[b["stratum"]][1])
@@ -159,9 +167,9 @@ def screen_bins(rows, arms=None):
         for arm, (start, end) in (arms or {}).get(chrom, {}).items():
             arm_bins[arm] = [b for b in matched if start <= (b["start"]+b["end"])/2 <= end]
         def supported(values):
-            return (len(values) >= 10 and sum(b["reads"] for b in values) >= MIN_REGION
-                    and sum(b["expected"] for b in values) >= MIN_REGION
-                    and sum(b["end"]-b["start"]+1 for b in values) >= 10_000_000)
+            return (len(values) >= 10 and sum(b["reads"] for b in values) >= settings["minimum_region_reads"]
+                    and sum(b["expected"] for b in values) >= settings["minimum_region_reads"]
+                    and sum(b["end"]-b["start"]+1 for b in values) >= settings["minimum_region_bases"])
         # Adapt resolution without overlapping arm and chromosome hypothesis tests.
         regions = [(chrom + a, v) for a, v in sorted(arm_bins.items())] if len(arm_bins) == 2 and all(map(supported, arm_bins.values())) else [(chrom, matched)]
         for name, values in regions:
@@ -173,18 +181,23 @@ def screen_bins(rows, arms=None):
                 ratio = math.log2(region["observed_reads"]/region["expected_reads"])
                 baseline_se = sum(b["expected"]*b["uncertainty"] for b in values)/region["expected_reads"]
                 se = math.sqrt(dispersion/region["observed_reads"]/math.log(2)**2 + baseline_se**2)
-                region.update(log2_ratio=ratio, lower_99=ratio-2.576*se, upper_99=ratio+2.576*se,
+                region.update(log2_ratio=ratio, lower_bound=ratio-settings["interval_z"]*se, upper_bound=ratio+settings["interval_z"]*se,
+                              interval_percent=settings["interval_percent"],
                               dispersion=dispersion, approximate_p=math.erfc(abs(ratio)/se/math.sqrt(2)),
                               status="no_supported_broad_change", reason="")
             result["regions"].append(region)
+    for region in result["regions"]:
+        if "lower_bound" in region:
+            region["lower_" + str(settings["interval_percent"])] = region["lower_bound"]
+            region["upper_" + str(settings["interval_percent"])] = region["upper_bound"]
     tested = sorted([r for r in result["regions"] if "approximate_p" in r], key=lambda r: r["approximate_p"])
     q = 1.
     for rank in range(len(tested), 0, -1):
         r = tested[rank-1]; q = min(q, r["approximate_p"]*len(tested)/rank)
         r["approximate_q"] = q
-        if q <= .01 and r["lower_99"] > .3:
+        if q <= settings["maximum_approximate_q"] and r["lower_bound"] > settings["candidate_log2_margin"]:
             r["status"] = "candidate_broad_gain"
-        elif q <= .01 and r["upper_99"] < -.3:
+        elif q <= settings["maximum_approximate_q"] and r["upper_bound"] < -settings["candidate_log2_margin"]:
             r["status"] = "candidate_broad_loss"
     if len(tested) < 10 or sum(r["status"].startswith("candidate") for r in tested) > len(tested)/3:
         result["reason"] = "Insufficient or unstable genome-wide relative baseline"
@@ -195,9 +208,11 @@ def screen_bins(rows, arms=None):
     return result
 
 
-def publish_screen(outdir, counts_dir, caller, assessment, cytoband):
+def publish_screen(outdir, counts_dir, caller, assessment, cytoband, policy=None):
     """Always regenerate from current evidence, retaining primary failure status."""
-    rows = [r for r in assessment["samples"] if r["assessment"] != "assessable"]
+    from .cna_options import resolve_policy
+    policy = policy or resolve_policy()
+    rows = [r for r in assessment["samples"] if r["assessment"] != "assessable" or policy["profile"] == "sensitive"]
     directory = outdir / "06_workflow_summary/experimental_broad_cna"
     directory.mkdir(parents=True, exist_ok=True)
     arms = _arms(cytoband)
@@ -218,19 +233,27 @@ def publish_screen(outdir, counts_dir, caller, assessment, cytoband):
             with gzip.open(path, "rt") as handle:
                 raw = list(csv.DictReader(handle, delimiter="\t"))
             inputs[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
-        result = screen_bins(raw, arms)
+        result = screen_bins(raw, arms, policy=policy)
         result["sample"] = name
+        result["sample_role"] = sample.get("sample_role", "unknown")
+        if policy["profile"] == "sensitive" and sample.get("sample_role") == "normal":
+            from .cna_evidence_guard import ReadSupport
+            candidates = [r for r in result["regions"] if r["status"].startswith("candidate_broad_")]
+            events = [dict(chrom=r["region"].rstrip("pq"), start=r["start"], end=r["end"],
+                           state=r["status"].removeprefix("candidate_broad_")) for r in candidates]
+            for region, support in zip(candidates, ReadSupport(raw).evaluate(events)):
+                region["before_control_evidence"] = region["status"]
+                region["control_evidence"] = support
+                if support["decision"] != "retained":
+                    region.update(status="no_supported_broad_change", reason="control_evidence: " + support["reason"])
         if not raw:
             result["reason"] = "Raw count evidence unavailable; resume the CNA stage to regenerate it"
         samples.append(result)
     data = {"schema": METHOD, "experimental": True, "notice": NOTICE,
-            "policy": {"minimum_total_reads": MIN_TOTAL, "minimum_region_reads": MIN_REGION,
-                       "minimum_reference_chromosomes": MIN_REFERENCE_CHROMOSOMES,
-                       "minimum_region_bases": 10_000_000, "interval": "approximate 99%",
-                       "log2_uncertainty_floor": .15, "candidate_log2_margin": .3, "maximum_approximate_q": .01},
+            "cna_profile": policy["profile"], "policy": dict(policy["broad"], interval=f'approximate {policy["broad"]["interval_percent"]}%'),
             "input_sha256": inputs, "samples": samples}
     atomic_write_text(directory/"screen.json", json.dumps(data, indent=2, sort_keys=True, allow_nan=False)+"\n")
-    fields = ["sample", "region", "status", "observed_reads", "expected_reads", "log2_ratio", "lower_99", "upper_99", "approximate_q", "reason"]
+    fields = ["sample", "region", "status", "observed_reads", "expected_reads", "log2_ratio", "lower_99", "upper_99", "lower_bound", "upper_bound", "interval_percent", "approximate_q", "reason"]
     buffer = io.StringIO(); writer = csv.DictWriter(buffer, fieldnames=fields, delimiter="\t", extrasaction="ignore")
     writer.writeheader()
     for sample in samples:
@@ -245,9 +268,9 @@ def publish_screen(outdir, counts_dir, caller, assessment, cytoband):
             'Arms are tested when sufficiently supported; otherwise the whole chromosome is tested. Missing reads alone cannot yield a deletion.</p>']
     for sample in samples:
         body.append('<h2>'+cell(sample["sample"])+'</h2><p>'+cell(sample["status"].replace('_',' '))+': '+cell(sample['reason'])+'</p>')
-        body.append('<table><tr><th>Region</th><th>Screen</th><th>Reads</th><th>log2 ratio</th><th>Approximate 99% interval</th><th>Reason</th></tr>')
+        body.append('<table><tr><th>Region</th><th>Screen</th><th>Reads</th><th>log2 ratio</th><th>Approximate interval</th><th>Reason</th></tr>')
         for r in sample["regions"]:
-            interval = f'{r["lower_99"]:.3f} to {r["upper_99"]:.3f}' if "lower_99" in r else "unavailable"
+            interval = f'{r["lower_bound"]:.3f} to {r["upper_bound"]:.3f} ({r["interval_percent"]}%)' if "lower_bound" in r else "unavailable"
             values = (r['region'], r['status'].replace('_', ' '), r.get('observed_reads', ''), r.get('log2_ratio', ''), interval, r['reason'])
             body.append('<tr>'+''.join('<td>'+cell(v)+'</td>' for v in values)+'</tr>')
         body.append('</table>')

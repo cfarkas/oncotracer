@@ -415,6 +415,9 @@ def write_results_index(outdir: Path) -> Path:
     broad_screen = outdir / "06_workflow_summary/experimental_broad_cna/index.html"
     if broad_screen.is_file():
         cna_quality_html += '<p>' + _link(root_page, broad_screen, "Open experimental broad CNA screen") + '</p>'
+    evidence_page = outdir / "03_cna_codification/cna_evidence.html"
+    if evidence_page.is_file():
+        cna_quality_html += '<p>' + _link(root_page, evidence_page, "Control and sparse-sample CNA evidence checks") + '</p>'
     body = f'<div class="intro"><span class="badge">OncoTracer results</span><h1>Your analysis results</h1><p class="{status_class}">Status: {html.escape(_status_label(status))}</p><p>{html.escape(intro_description)}</p><p>{_link(root_page, entry_page, entry_label)}</p><p class="muted">{html.escape(counts)} Check the workflow and per-sample status files before interpreting results.</p></div>' + completion_html(completion) + cna_quality_html + '<div class="grid">' + "".join(cards) + '</div><p class="muted">This dashboard is a presentation of the saved files. Refreshing it does not rerun analysis or alter scientific outputs.</p>'
     planned.append((root_page, _page("Analysis results", body)))
     # Fail before changing any page if a user-created index occupies a target.

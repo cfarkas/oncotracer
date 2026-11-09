@@ -155,7 +155,7 @@ class WebState:
             args = self.setup_args
             from .setup import VARIANT_FIELDS
             defaults = {key: getattr(args, key, None) for key in
-                        ("mode", "analysis", "threads", "backend", "classifier", "gpu", "accept_sturgeon_license", "variants", "variant_config", "image", *VARIANT_FIELDS)}
+                        ("mode", "analysis", "cna_profile", "threads", "backend", "classifier", "gpu", "accept_sturgeon_license", "variants", "variant_config", "image", *VARIANT_FIELDS)}
             for key, value in {"input_folder": getattr(args, 'input_folder', None) or getattr(args, 'reads_folder', None),
                                "project": getattr(args, "project", None), "resources": getattr(args, "resources", None),
                                "methylation_path": getattr(args, "modbam", None) or getattr(args, "pod5_dir", None)}.items():
@@ -442,6 +442,9 @@ class WebState:
             if type(binsize) is not int or binsize not in allowed:
                 raise OncoTracerError(f"CNA bin size must be one of: {', '.join(map(str, allowed))} kb.")
             values[discovered.mode + "_binsize_kb"] = binsize
+            from .cna_options import NEW_PROJECT_PROFILE
+            if analysis != "methylation":
+                values["cna_profile"] = _choice(data, "cna_profile", ("standard", "sensitive"), NEW_PROJECT_PROFILE)
             reports = data.get("reports", False)
             if type(reports) is not bool:
                 raise OncoTracerError("Interpretation report selection must be true or false.")
@@ -535,6 +538,7 @@ class WebState:
                 "project_id": project_id, "project": str(project), "config_path": str(config_path),
                 "config": {"mode": discovered.mode, "backend": backend, "analysis": analysis,
                            "threads": saved["threads"], "caller": caller, "bin_size_kb": binsize,
+                           "cna_profile": saved.get("cna_profile", "standard"),
                            "run_variants": bool(saved.get("run_variants", False)),
                            "specimen_type": saved.get("variant_specimen_type"),
                            "variant_callers": saved.get("variant_callers") if saved.get("run_variants") else None},
@@ -625,6 +629,7 @@ class WebState:
                         "reviewed_summary": {"project_id": project_id, "project": str(project),
                             "config_path": str(config_path), "samples": samples,
                             "config": {"mode": config["mode"], "backend": result["backend"], "analysis": analysis,
+                                "cna_profile": config.get("cna_profile", "standard"),
                                 "threads": config.get("threads"), "caller": config.get("ont_caller", "qdnaseq"),
                                 "run_variants": config.get("run_variants", False),
                                 "variant_monte_carlo_linkage": False,

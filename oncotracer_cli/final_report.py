@@ -90,6 +90,8 @@ def final_report(root: Path, summary: dict) -> tuple[str, dict]:
     assessment = load_assessment(root)
     data["cna_assessment"] = assessment
     body += assessment_html(assessment)
+    if (root / "03_cna_codification/cna_evidence.html").is_file():
+        body += '<p>' + link('03_cna_codification/cna_evidence.html', 'Control and sparse-sample CNA evidence checks') + '</p>'
     if (root / "06_workflow_summary/experimental_broad_cna/index.html").is_file():
         body += '<p>' + link('06_workflow_summary/experimental_broad_cna/index.html', 'Open experimental broad CNA screen') + '</p>'
     events = [] if data['cna_status'] == 'not_requested' else _rows(root, '03_cna_codification/cna_events.tsv', limit=None)

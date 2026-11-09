@@ -177,7 +177,7 @@ def audit_summary(audit):
             f"{audit['needs_recompute']} need recomputation. Run rechecks inputs and settings before reuse.")
 
 
-def resume_project(value, *, backend=None, image=None, resources=None, variant_options=None):
+def resume_project(value, *, backend=None, image=None, resources=None, variant_options=None, cna_profile=None):
     """Back up configuration, rebase owned paths, and authorize the selected runtime.
 
     Never start tools, delete results, bless a stage, or accept a classifier license.
@@ -243,6 +243,9 @@ def resume_project(value, *, backend=None, image=None, resources=None, variant_o
                              "strategy": "preserve-native-v2.3-checkpoints-and-revalidate"}
         updated = _rebase(config, old, project) if moved else dict(config)
         updated["execution_backend"] = backend
+        if cna_profile is not None:
+            from .cna_options import validate_profile
+            updated["cna_profile"] = validate_profile(cna_profile)
         if resources is not None:
             from .sample_resources import selected_config
             _, samples = sample_snapshot(updated)

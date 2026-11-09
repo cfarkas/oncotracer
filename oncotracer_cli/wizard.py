@@ -188,6 +188,9 @@ def command_wizard(original_args) -> int:
         if caller == "qdnaseq":
             values.update(ont_analysis_type="solid_biopsy", ont_binsize_kb=100)
     if args.analysis != "methylation":
+        from .cna_options import NEW_PROJECT_PROFILE
+        values["cna_profile"] = _ask(getattr(args, "cna_profile", None), "CNA sensitivity (sensitive includes control evidence checks)",
+                                    default=NEW_PROJECT_PROFILE, choices=("sensitive", "standard"))
         if args.mode == "illumina" or values.get("ont_caller") == "qdnaseq":
             binsize = _ask(None, "CNA bin size (kb)", default="100",
                            choices=tuple(str(n) for n in sorted(QDNASEQ_HG38_SOURCE_SHA256)))

@@ -54,6 +54,14 @@ class WebTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             return self.state.prepare(data)
 
+    def test_cna_profile_is_saved_from_browser_and_invalid_values_are_rejected(self):
+        self.fastq("reads/case_R1.fastq.gz"); self.fastq("reads/case_R2.fastq.gz")
+        prepared = self.prepare(cna_profile="standard")
+        self.assertEqual(load_flat_yaml(Path(prepared["config_path"]))["cna_profile"], "standard")
+        self.assertEqual(prepared["reviewed_summary"]["config"]["cna_profile"], "standard")
+        with self.assertRaisesRegex(OncoTracerError, "cna_profile"):
+            self.prepare(project=str(self.root/"invalid"), cna_profile="unusable")
+
     def test_real_illumina_check_and_metadata_preserve_inputs_without_running(self):
         paths = [self.fastq(f"reads/{name}_R{mate}.fastq.gz")
                  for name in ("case", "control", "other") for mate in (1, 2)]
@@ -69,6 +77,7 @@ class WebTests(unittest.TestCase):
         self.assertIn("check", popen.call_args.args[0])
         self.assertNotIn("--run", popen.call_args.args[0])
         config = load_flat_yaml(Path(prepared["config_path"]))
+        self.assertEqual(config["cna_profile"], "sensitive")
         rows = parse_illumina_samplesheet(Path(config["illumina_samplesheet"]))
         self.assertEqual([(r.sample, r.status) for r in rows],
                          [("patient", "tumor"), ("healthy", "normal"), ("custom", "tumor")])
@@ -288,7 +297,7 @@ class WebTests(unittest.TestCase):
         self.assertEqual(summary["project_id"], prepared["id"])
         self.assertEqual(summary["config"], {
             "mode": "ont", "backend": "conda", "analysis": "cna", "threads": 2,
-            "caller": "qdnaseq", "bin_size_kb": 100, "run_variants": False,
+            "caller": "qdnaseq", "bin_size_kb": 100, "cna_profile": "sensitive", "run_variants": False,
             "specimen_type": None, "variant_callers": None})
         self.assertEqual([(row["name"], row["sample_type"], row["analysis_role"], row["barcode"])
                           for row in summary["samples"]],

@@ -147,6 +147,12 @@ The wizard saves `config/sample_metadata.csv` and its `sample_metadata` YAML pat
 This records each sample's type label, explicit tumor/normal analysis role and
 selected FASTQ files. `other` labels require an explicit study/control mapping.
 CNA controls are analyzed independently; ONT controls support ichorCNA or solid-biopsy qDNAseq.
+`cna_profile` selects `sensitive` (explicit default for new setup projects) or
+`standard` (retained for existing YAML without a profile). Use `--cna-profile`
+in CLI/interactive setup or `--cna_profile` in Nextflow. Sensitive mode keeps
+coverage exclusions and adds auditable raw-read checks for control CNAs; see
+[CNA evidence and thresholds](../cna_evidence_assessment.md).
+
 Somatic Strelka2 additionally requires explicit tumor-to-normal pairing.
 
 `oncotracer check --config FILE` reports missing paths/settings and the planned

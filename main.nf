@@ -41,6 +41,8 @@ workflow {
         } else if (mergeVcfs != null) {
             argv.add(selectedFlag(mergeVcfs, 'merge_vcfs') ? '--merge-vcfs' : '--no-merge-vcfs')
         }
+        def cnaProfile = params.containsKey('cnaProfile') ? params.cnaProfile : params.cna_profile
+        if (cnaProfile != null) argv.addAll(['--cna-profile', cnaProfile.toString()])
         def storageMode = params.containsKey('storageMode') ? params.storageMode : params.storage_mode
         if (storageMode != null) argv.addAll(['--storage-mode', storageMode.toString()])
         def resourceMode = params.containsKey('resourceMode') ? params.resourceMode : params.resource_mode

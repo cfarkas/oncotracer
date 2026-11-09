@@ -489,6 +489,7 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
                 parallel_samples=getattr(args, "parallel_samples", None),
                 merge_vcfs=getattr(args, "variant_merge_vcfs", None),
                 storage_mode=getattr(args, "variant_storage_mode", None),
+                cna_profile=getattr(args, "cna_profile", None),
                 resource_mode=getattr(args, "variant_resource_mode", None),
                 force=args.force if args.force else None,
                 dry_run=args.dry_run,
@@ -598,6 +599,8 @@ def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str)
         command.extend(["--parallel-samples", str(args.parallel_samples)])
     if getattr(args, "variant_merge_vcfs", None) is not None:
         command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
+    if getattr(args, "cna_profile", None) is not None:
+        command.extend(["--cna-profile", args.cna_profile])
     if getattr(args, "variant_storage_mode", None) is not None:
         command.extend(["--storage-mode", args.variant_storage_mode])
     if getattr(args, "variant_resource_mode", None) is not None:
@@ -692,6 +695,8 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--parallel-samples", str(args.parallel_samples)])
     if getattr(args, "variant_merge_vcfs", None) is not None:
         command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
+    if getattr(args, "cna_profile", None) is not None:
+        command.extend(["--cna-profile", args.cna_profile])
     if getattr(args, "variant_storage_mode", None) is not None:
         command.extend(["--storage-mode", args.variant_storage_mode])
     if getattr(args, "variant_resource_mode", None) is not None:
@@ -1698,6 +1703,8 @@ def command_provenance(args: argparse.Namespace) -> int:
 def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
     from .cohort_options import add_arguments as add_cohort_arguments
     add_cohort_arguments(parser)
+    from .cna_options import add_arguments as add_cna_arguments
+    add_cna_arguments(parser)
     from .gpu_runtime import add_wait_argument
     add_wait_argument(parser)
     parser.add_argument(

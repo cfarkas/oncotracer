@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "base_commit": "7a4cdb7e9bd21e036adb9529c746d8dfa3bf4e11",
-  "scope": "Exact reversible source audit back to the retained tutorials: CLI additions since 2.1.1 (variant, GPU, resource, storage and image options), and GISTIC eligibility guidance. Videos and their capture hashes remain unchanged; these videos do not demonstrate later features and have not been rerecorded. Each source revision and every reversal are checked exactly. Podman backend additions are now audited through exact reversible source differences. Retained videos still demonstrate their original Conda/Docker workflows, not Podman; their capture hashes and media have not been changed. Current creation and continuation routes are checked by the real Firefox tests in tests/test_sample_resource_browser.py.",
+  "scope": "Exact reversible source audit back to the retained tutorials: CLI additions since 2.1.1 (variant, GPU, resource, storage and image options), and GISTIC eligibility guidance. Videos and their capture hashes remain unchanged; these videos do not demonstrate later features and have not been rerecorded. Each source revision and every reversal are checked exactly. Podman backend additions are now audited through exact reversible source differences. Retained videos still demonstrate their original Conda/Docker workflows, not Podman; their capture hashes and media have not been changed. Current creation and continuation routes are checked by the real Firefox tests in tests/test_sample_resource_browser.py. New setup projects explicitly select the sensitive CNA research profile; existing configurations keep standard. Current control evidence checks and their selector are not shown in retained recordings. Exact source deltas remain reversible; media hashes are unchanged.",
   "files": {
     "oncotracer_cli/cli.py": {
       "base_commit": "7a4cdb7e9bd21e036adb9529c746d8dfa3bf4e11",
-      "current_sha256": "3fc54422fac312f32bc1b6d8729b9210887b3332e0ef7e7919975c0ebcb5bec9",
+      "current_sha256": "da400f989138b238c469ca78977cf3f2aa9f9046bb050dbf36c9d1ea289994ae",
       "recorded_sha256": "f6e5374c4e289da2066087a74166f63f6fbdcb70b11b2c698ce687e313ab6d21",
       "changes": [
         {
@@ -63,231 +63,285 @@
           "recorded": ""
         },
         {
-          "start": 22052,
-          "end": 22303,
+          "start": 18937,
+          "end": 19001,
+          "current": "                cna_profile=getattr(args, \"cna_profile\", None),\n",
+          "recorded": ""
+        },
+        {
+          "start": 22116,
+          "end": 22367,
           "current": "def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str) -> None:\n    from .container_runtime import image_reference, user_arguments\n    docker = shutil.which(backend) or (backend if args.dry_run else require_command(backend))\n",
           "recorded": "def _run_docker(config_path: Path, args: argparse.Namespace) -> None:\n    docker = shutil.which(\"docker\") or (\n        \"docker\" if args.dry_run else require_command(\"docker\")\n    )\n"
         },
         {
-          "start": 22381,
-          "end": 22484,
+          "start": 22445,
+          "end": 22548,
           "current": "    image = image_reference(args.image or config.get(\"docker_image\") or install.get(\"image\"), backend)\n",
           "recorded": "    image = args.image or str(config.get(\"docker_image\") or install.get(\"image\") or DEFAULT_IMAGE)\n"
         },
         {
-          "start": 22795,
-          "end": 22829,
+          "start": 22859,
+          "end": 22893,
           "current": "        *user_arguments(backend),\n",
           "recorded": "        \"--user\",\n        f\"{os.getuid()}:{os.getgid()}\",\n"
         },
         {
-          "start": 22965,
-          "end": 23062,
+          "start": 23029,
+          "end": 23126,
           "current": "    command.extend(docker_arguments(config, args.gpu, create=not args.dry_run, backend=backend))\n",
           "recorded": "    command.extend(docker_arguments(config, args.gpu, create=not args.dry_run))\n"
         },
         {
-          "start": 23078,
-          "end": 23153,
+          "start": 23142,
+          "end": 23217,
           "current": "        environment = docker_resource_environment(config, backend=backend)\n",
           "recorded": "        environment = docker_resource_environment(config)\n"
         },
         {
-          "start": 23306,
-          "end": 23443,
+          "start": 23370,
+          "end": 23507,
           "current": "        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image, backend=backend):\n",
           "recorded": "        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image):\n"
         },
         {
-          "start": 26391,
-          "end": 26516,
+          "start": 24671,
+          "end": 24786,
+          "current": "    if getattr(args, \"cna_profile\", None) is not None:\n        command.extend([\"--cna-profile\", args.cna_profile])\n",
+          "recorded": ""
+        },
+        {
+          "start": 26570,
+          "end": 26695,
           "current": "                f\"{backend.capitalize()} analysis retained completed results; requested branches remain incomplete.\", outdir\n",
           "recorded": "                \"Docker analysis retained completed results; requested branches remain incomplete.\", outdir\n"
         },
         {
-          "start": 26687,
-          "end": 26957,
+          "start": 26866,
+          "end": 27136,
           "current": "def _run_docker(config_path: Path, args: argparse.Namespace) -> None:\n    return _run_container(config_path, args, backend=\"docker\")\n\n\ndef _run_podman(config_path: Path, args: argparse.Namespace) -> None:\n    return _run_container(config_path, args, backend=\"podman\")\n\n\n",
           "recorded": ""
         },
         {
-          "start": 27124,
-          "end": 27270,
+          "start": 27303,
+          "end": 27449,
           "current": "        raise OncoTracerError('Reserved GPU execution requires Docker, Podman or native Conda/Poetry tools; use --cpu for Apptainer/Singularity')\n",
           "recorded": "        raise OncoTracerError('Reserved GPU execution requires Docker or native Conda/Poetry tools; use --cpu for Apptainer/Singularity')\n"
         },
         {
-          "start": 31477,
-          "end": 31550,
+          "start": 29036,
+          "end": 29151,
+          "current": "    if getattr(args, \"cna_profile\", None) is not None:\n        command.extend([\"--cna-profile\", args.cna_profile])\n",
+          "recorded": ""
+        },
+        {
+          "start": 31771,
+          "end": 31844,
           "current": "    if backend in {\"docker\", \"podman\"}:\n        require_command(backend)\n",
           "recorded": "    if backend == \"docker\":\n        require_command(\"docker\")\n"
         },
         {
-          "start": 33925,
-          "end": 34190,
+          "start": 34219,
+          "end": 34484,
           "current": "            with operation(\"Verifying saved project and installed environment\", verbose=getattr(args, \"verbose\", False)):\n                result = resume_project(config_path.parent.parent, backend=getattr(args, \"backend\", None), image=getattr(args, \"image\", None))\n",
           "recorded": "            result = resume_project(config_path.parent.parent, backend=getattr(args, \"backend\", None), image=getattr(args, \"image\", None))\n"
         },
         {
-          "start": 34235,
-          "end": 34464,
+          "start": 34529,
+          "end": 34758,
           "current": "            with operation(\"Checking saved intermediate files\", verbose=getattr(args, \"verbose\", False)):\n                audit = audit_intermediates(config_path.parent.parent)\n            print(audit_summary(audit), flush=True)\n",
           "recorded": "            print(audit_summary(audit_intermediates(config_path.parent.parent)), flush=True)\n"
         },
         {
-          "start": 34746,
-          "end": 34851,
+          "start": 35040,
+          "end": 35145,
           "current": "                \"the optional variants branch requires backend host, conda, poetry, docker, or podman; \"\n",
           "recorded": "                \"the optional variants branch requires backend host, conda, poetry, or docker; \"\n"
         },
         {
-          "start": 34948,
-          "end": 35043,
+          "start": 35242,
+          "end": 35337,
           "current": "    if backend in {\"docker\", \"podman\", \"singularity\", \"apptainer\"} and _methylation_requested(\n",
           "recorded": "    if backend in {\"docker\", \"singularity\", \"apptainer\"} and _methylation_requested(\n"
         },
         {
-          "start": 36234,
-          "end": 36274,
+          "start": 36528,
+          "end": 36568,
           "current": "    if backend in {\"docker\", \"podman\"}:\n",
           "recorded": "    if backend == \"docker\":\n"
         },
         {
-          "start": 36469,
-          "end": 36575,
+          "start": 36763,
+          "end": 36869,
           "current": "        identity = output_runtime_identity(selected, image=getattr(args, \"image\", None), backend=backend)\n",
           "recorded": "        identity = output_runtime_identity(selected, image=getattr(args, \"image\", None))\n"
         },
         {
-          "start": 36768,
-          "end": 36849,
+          "start": 37062,
+          "end": 37143,
           "current": "        (_run_podman if backend == \"podman\" else _run_docker)(config_path, args)\n",
           "recorded": "        _run_docker(config_path, args)\n"
         },
         {
-          "start": 37136,
-          "end": 37239,
+          "start": 37430,
+          "end": 37533,
           "current": "        f\"unsupported backend {backend!r}; choose host, conda, docker, podman, singularity, or poetry\"\n",
           "recorded": "        f\"unsupported backend {backend!r}; choose host, conda, docker, singularity, or poetry\"\n"
         },
         {
-          "start": 65540,
-          "end": 65787,
+          "start": 65834,
+          "end": 66081,
           "current": "    elif backend in {\"docker\", \"podman\"}:\n        from .container_runtime import image_reference, user_arguments\n        docker = require_command(backend)\n        image = image_reference(args.image or _load_install_config().get(\"image\"), backend)\n",
           "recorded": "    elif backend == \"docker\":\n        docker = require_command(\"docker\")\n        image = args.image or str(_load_install_config().get(\"image\") or DEFAULT_IMAGE)\n"
         },
         {
-          "start": 65820,
-          "end": 65966,
+          "start": 66114,
+          "end": 66260,
           "current": "            [docker, \"run\", \"--rm\", *(user_arguments(backend) if backend == \"podman\" else []),\n             image, \"doctor\", \"--backend\", \"host\"]\n",
           "recorded": "            [docker, \"run\", \"--rm\", image, \"doctor\", \"--backend\", \"host\"]\n"
         },
         {
-          "start": 65976,
-          "end": 66009,
+          "start": 66270,
+          "end": 66303,
           "current": "        checks[backend] = result\n",
           "recorded": "        checks[\"docker\"] = result\n"
         },
         {
-          "start": 67401,
-          "end": 67494,
+          "start": 67695,
+          "end": 67788,
           "current": "        for name in (\"source\", \"managed_install\", \"managed_sif\", \"docker\", \"podman\", \"gpu\"):\n",
           "recorded": "        for name in (\"source\", \"managed_install\", \"managed_sif\", \"docker\", \"gpu\"):\n"
         },
         {
-          "start": 69525,
-          "end": 69617,
+          "start": 69717,
+          "end": 69811,
+          "current": "    from .cna_options import add_arguments as add_cna_arguments\n    add_cna_arguments(parser)\n",
+          "recorded": ""
+        },
+        {
+          "start": 69913,
+          "end": 70005,
           "current": "        \"--backend\", choices=(\"host\", \"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\")\n",
           "recorded": "        \"--backend\", choices=(\"host\", \"conda\", \"docker\", \"singularity\", \"poetry\")\n"
         },
         {
-          "start": 73596,
-          "end": 73652,
+          "start": 73984,
+          "end": 74040,
           "current": "    group.add_argument(\"--podman\", action=\"store_true\")\n",
           "recorded": ""
         },
         {
-          "start": 73897,
-          "end": 74035,
+          "start": 74285,
+          "end": 74423,
           "current": "    install.add_argument(\"--no-pull\", action=\"store_true\", help=\"use an existing local Docker/Podman image; still verify it with doctor\")\n",
           "recorded": "    install.add_argument(\"--no-pull\", action=\"store_true\", help=\"use an existing local Docker image; still verify it with doctor\")\n"
         },
         {
-          "start": 75995,
-          "end": 76087,
+          "start": 76383,
+          "end": 76475,
           "current": "        \"--backend\", choices=(\"host\", \"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\")\n",
           "recorded": "        \"--backend\", choices=(\"host\", \"conda\", \"docker\", \"singularity\", \"poetry\")\n"
         }
       ]
     },
     "oncotracer_cli/wizard.py": {
-      "current_sha256": "486f151558953ff3408465403117d09fd59d6ab22c99cf99f78ef205020badb9",
+      "current_sha256": "8f6f2270e04a640387e02a494f13f25f844f21f6c0d6895a1a5bf0b298f4e1a2",
       "recorded_sha256": "65da72ad8f2365481c11985911ea503212b265342f930bcdd71a8db251e2cd0b",
       "changes": [
         {
-          "start": 11078,
-          "end": 11262,
+          "start": 9793,
+          "end": 10083,
+          "current": "        from .cna_options import NEW_PROJECT_PROFILE\n        values[\"cna_profile\"] = _ask(getattr(args, \"cna_profile\", None), \"CNA sensitivity (sensitive includes control evidence checks)\",\n                                    default=NEW_PROJECT_PROFILE, choices=(\"sensitive\", \"standard\"))\n",
+          "recorded": ""
+        },
+        {
+          "start": 11368,
+          "end": 11552,
           "current": "            if values[\"run_gistic\"]:\n                print(\"GISTIC runs only if at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.\")\n",
           "recorded": ""
         },
         {
-          "start": 11605,
-          "end": 11701,
+          "start": 11895,
+          "end": 11991,
           "current": "                        choices=(\"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\", \"host\"))\n",
           "recorded": "                        choices=(\"conda\", \"docker\", \"singularity\", \"poetry\", \"host\"))\n"
         }
       ]
     },
     "oncotracer_cli/web_ui.py": {
-      "current_sha256": "29a93db778f92ba790e0b4aa4e206139dde8dc648ef5f461e02d92dc535457f3",
+      "current_sha256": "486cf9983fd081452121a04035a00cacdba4d73667d07ae22815c6331f45478d",
       "recorded_sha256": "aea58175d17e17511e7f9558044d51da4bb0301a3d2117354cdae563e5541378",
       "changes": [
         {
-          "start": 25765,
-          "end": 27277,
+          "start": 17013,
+          "end": 17995,
+          "current": "<div id=\"cna-profile-field\"><label for=\"cna-profile\">CNA sensitivity</label><select id=\"cna-profile\"><option value=\"sensitive\">Sensitive research \u00b7 control evidence checks</option><option value=\"standard\">Standard \u00b7 conservative coverage</option></select><p class=\"hint\">Unusable samples stay excluded. Control CNAs require read support; rejected calls remain available for review.</p></div><div id=\"caller-field\"><label for=\"caller\">ONT CNA method</label><select id=\"caller\"><option value=\"ichorcna\">ichorCNA \u00b7 500 kb bins</option><option value=\"qdnaseq\">QDNAseq \u00b7 solid biopsy</option></select></div><div id=\"binsize-field\"><label for=\"binsize\">CNA bin size (kb)</label><select id=\"binsize\"></select><p class=\"hint\" id=\"binsize-default\">Default: 100 kb for QDNAseq.</p></div></div><p id=\"controls-note\" class=\"notice\" hidden>Normal/control samples keep their labels with either CNA method. Each sample is analyzed independently; these controls do not form a panel of normals.</p>\n",
+          "recorded": "<div id=\"caller-field\"><label for=\"caller\">ONT CNA method</label><select id=\"caller\"><option value=\"ichorcna\">ichorCNA \u00b7 500 kb bins</option><option value=\"qdnaseq\">QDNAseq \u00b7 solid biopsy</option></select></div><div id=\"binsize-field\"><label for=\"binsize\">CNA bin size (kb)</label><select id=\"binsize\"></select><p class=\"hint\" id=\"binsize-default\">Default: 100 kb for QDNAseq.</p></div></div><p id=\"controls-note\" class=\"notice\" hidden>Normal/control samples keep their labels with either CNA method. Each sample is analyzed independently; these controls do not form a panel of normals.</p>\n"
+        },
+        {
+          "start": 26156,
+          "end": 27668,
           "current": "<div class=\"grid\"><div><label for=\"backend\">Analysis tools</label><select id=\"backend\"><option value=\"conda\">Conda \u00b7 managed installation</option><option value=\"docker\">Docker</option><option value=\"podman\">Podman</option><option value=\"singularity\">Apptainer / Singularity</option><option value=\"poetry\">Poetry</option><option value=\"host\">Existing tools on this computer</option></select></div><div><label for=\"reference\">hg38 reference</label><select id=\"reference\"><option value=\"download\">Download prepared indexes when needed</option><option value=\"reuse\">Reuse a prepared OncoTracer reference</option><option value=\"build\">Build indexes locally on CPU</option></select></div></div><p id=\"reference-note\" class=\"hint\">Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.</p><div id=\"reference-path-field\" hidden><label for=\"reference-path\">Prepared reference parent or references/samurai_hg38 folder</label><div class=\"row\"><input id=\"reference-path\"><button data-browse=\"reference-path\">Browse folders</button></div></div>\n<div id=\"docker-image-field\" hidden><label for=\"docker_image\">Container image tag or digest (optional)</label><input id=\"docker_image\" placeholder=\"For example: oncotracer:variant-filters-20260921\"><p class=\"hint\">Use a local image tag or a registry image reference. The image supplies analysis tools; selected source files, models and annotation databases stay on this computer and are mounted for the run.</p></div>\n",
           "recorded": "<div class=\"grid\"><div><label for=\"backend\">Analysis tools</label><select id=\"backend\"><option value=\"conda\">Conda \u00b7 managed installation</option><option value=\"docker\">Docker</option><option value=\"singularity\">Apptainer / Singularity</option><option value=\"poetry\">Poetry</option><option value=\"host\">Existing tools on this computer</option></select></div><div><label for=\"reference\">hg38 reference</label><select id=\"reference\"><option value=\"download\">Download prepared indexes when needed</option><option value=\"reuse\">Reuse a prepared OncoTracer reference</option><option value=\"build\">Build indexes locally on CPU</option></select></div></div><p id=\"reference-note\" class=\"hint\">Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.</p><div id=\"reference-path-field\" hidden><label for=\"reference-path\">Prepared reference parent or references/samurai_hg38 folder</label><div class=\"row\"><input id=\"reference-path\"><button data-browse=\"reference-path\">Browse folders</button></div></div>\n<div id=\"docker-image-field\" hidden><label for=\"docker_image\">Docker image tag or digest (optional)</label><input id=\"docker_image\" placeholder=\"For example: oncotracer:variant-filters-20260921\"><p class=\"hint\">Use a local image tag or a registry image reference. The image supplies analysis tools; selected source files, models and annotation databases stay on this computer and are mounted for the run.</p></div>\n"
         },
         {
-          "start": 43443,
-          "end": 44993,
-          "current": "function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'If enabled, GISTIC runs when at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.';invalidate();}\n",
+          "start": 43834,
+          "end": 45414,
+          "current": "function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('cna-profile-field',cna);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'If enabled, GISTIC runs when at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.';invalidate();}\n",
           "recorded": "function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'GISTIC is available for this cohort; leave it off unless recurrence analysis is needed.';invalidate();}\n"
         },
         {
-          "start": 50639,
-          "end": 50704,
+          "start": 51060,
+          "end": 51125,
           "current": "  const docker=['docker','podman'].includes($('backend').value);\n",
           "recorded": "  const docker=$('backend').value==='docker';\n"
         },
         {
-          "start": 50925,
-          "end": 51372,
+          "start": 51346,
+          "end": 51793,
           "current": "  $('variant-tool-note').textContent=docker?'The container image supplies the caller and FFPERASE environments. Automatic resources are prepared when the run starts; ANNOVAR uses your existing licensed installation.':'Use detect_tools to find installed caller tools. If tools are missing, choose Conda, Docker or Podman to install them. Models set to Automatic are prepared when the run starts. ANNOVAR uses your existing licensed installation.';\n",
           "recorded": "  $('variant-tool-note').textContent=docker?'Docker supplies the caller and FFPERASE environments. Automatic resources are prepared when the run starts; ANNOVAR uses your existing licensed installation.':'Use detect_tools to find installed caller tools. If tools are missing, choose Conda or Docker to install them. Models set to Automatic are prepared when the run starts. ANNOVAR uses your existing licensed installation.';\n"
         },
         {
-          "start": 53863,
-          "end": 53928,
+          "start": 54284,
+          "end": 54349,
           "current": "  const docker=['docker','podman'].includes($('backend').value);\n",
           "recorded": "  const docker=$('backend').value==='docker';\n"
         },
         {
-          "start": 60761,
-          "end": 60964,
+          "start": 61182,
+          "end": 61385,
           "current": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','podman','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n",
           "recorded": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n"
         },
         {
-          "start": 73887,
-          "end": 76386,
-          "current": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n",
+          "start": 65356,
+          "end": 66892,
+          "current": "$('select-none').onclick=()=>{for(const row of sampleRows())moveSample(row,'');};$('analysis').onchange=settings;$('caller').onchange=settings;$('cna-profile').onchange=invalidate;$('reports').onchange=()=>{show('report-context-field',$('reports').checked);invalidate();};$('report-detail').onchange=()=>{$('report-detail-note').textContent=$('report-detail').value==='catalog'?'Uses the included evidence catalog. No publication searches or language-model downloads.':$('report-detail').value==='models'?'Drafts use the bundled CNA catalog and run on this computer. No publication searches. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Sample files are not uploaded.':'Searches publication services using CNA feature terms and study context. Language models run on this computer. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Raw reads and sample names are not sent to publication services.';invalidate();};$('reference').onchange=()=>{show('reference-path-field',$('reference').value==='reuse');$('reference-note').textContent=$('reference').value==='build'?'Local indexing downloads hg38 source files as needed and requires more RAM, temporary disk space, and time.':$('reference').value==='reuse'?'Select a prepared OncoTracer reference parent, or its references/samurai_hg38 folder. It must contain indexes for this platform.':'Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.';invalidate();};\n",
+          "recorded": "$('select-none').onclick=()=>{for(const row of sampleRows())moveSample(row,'');};$('analysis').onchange=settings;$('caller').onchange=settings;$('reports').onchange=()=>{show('report-context-field',$('reports').checked);invalidate();};$('report-detail').onchange=()=>{$('report-detail-note').textContent=$('report-detail').value==='catalog'?'Uses the included evidence catalog. No publication searches or language-model downloads.':$('report-detail').value==='models'?'Drafts use the bundled CNA catalog and run on this computer. No publication searches. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Sample files are not uploaded.':'Searches publication services using CNA feature terms and study context. Language models run on this computer. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Raw reads and sample names are not sent to publication services.';invalidate();};$('reference').onchange=()=>{show('reference-path-field',$('reference').value==='reuse');$('reference-note').textContent=$('reference').value==='build'?'Local indexing downloads hg38 source files as needed and requires more RAM, temporary disk space, and time.':$('reference').value==='reuse'?'Select a prepared OncoTracer reference parent, or its references/samurai_hg38 folder. It must contain indexes for this platform.':'Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.';invalidate();};\n"
+        },
+        {
+          "start": 74345,
+          "end": 76879,
+          "current": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n",
           "recorded": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:$('backend').value==='docker'?$('docker_image').value.trim():'',caller:$('caller').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n"
+        },
+        {
+          "start": 79515,
+          "end": 79661,
+          "current": "  if(config.analysis!=='methylation')parts.push(config.caller+' \u00b7 '+config.bin_size_kb+' kb \u00b7 '+(config.cna_profile||'standard')+' CNA profile');\n",
+          "recorded": "  if(config.analysis!=='methylation')parts.push(config.caller+' \u00b7 '+config.bin_size_kb+' kb');\n"
+        },
+        {
+          "start": 86903,
+          "end": 87293,
+          "current": "for(const [key,id]of[['input_folder','input-folder'],['analysis','analysis'],['cna_profile','cna-profile'],['threads','threads'],['backend','backend'],['classifier','classifier'],['resources','resources'],['methylation_source','methylation-source'],['reference','reference'],['reference_path','reference-path']])if(defaults[key]!==null&&defaults[key]!==undefined)$(id).value=defaults[key];\n",
+          "recorded": "for(const [key,id]of[['input_folder','input-folder'],['analysis','analysis'],['threads','threads'],['backend','backend'],['classifier','classifier'],['resources','resources'],['methylation_source','methylation-source'],['reference','reference'],['reference_path','reference-path']])if(defaults[key]!==null&&defaults[key]!==undefined)$(id).value=defaults[key];\n"
         }
       ]
     },
     "PAGE": {
-      "current_sha256": "027e757dba0fa35871cfb60bb4d4550c4da88534be78ca29cb3f1773cabe1be6",
+      "current_sha256": "92a892e50ff1f11322f8688efcad1801f3a5bd5b0eee9522e0d2f795b3857fee",
       "recorded_sha256": "0bf11d3716a606fa170eee75d056ca5d9f2c550669f58f6399601caa10cc5eda",
       "changes": [
         {
@@ -297,104 +351,128 @@
           "recorded": "<div class=\"grid\" style=\"margin-top:18px\"><div><label for=\"resume-backend\">Analysis tools</label><select id=\"resume-backend\"><option value=\"\">Use saved project backend</option value=\"conda\">Conda</option><option value=\"docker\">Docker</option></select></div>\n<div id=\"resume-image-field\"><label for=\"resume-image\">Docker image (optional)</label><div class=\"row\"><input id=\"resume-image\"><button id=\"resume-current-image\" type=\"button\">Use current image</button></div><p class=\"hint\">Leave blank to use the saved project's image. Correct an unavailable tag here before loading.</p></div></div>\n"
         },
         {
-          "start": 37608,
-          "end": 39120,
+          "start": 26469,
+          "end": 27451,
+          "current": "<div id=\"cna-profile-field\"><label for=\"cna-profile\">CNA sensitivity</label><select id=\"cna-profile\"><option value=\"sensitive\">Sensitive research \u00b7 control evidence checks</option><option value=\"standard\">Standard \u00b7 conservative coverage</option></select><p class=\"hint\">Unusable samples stay excluded. Control CNAs require read support; rejected calls remain available for review.</p></div><div id=\"caller-field\"><label for=\"caller\">ONT CNA method</label><select id=\"caller\"><option value=\"ichorcna\">ichorCNA \u00b7 500 kb bins</option><option value=\"qdnaseq\">QDNAseq \u00b7 solid biopsy</option></select></div><div id=\"binsize-field\"><label for=\"binsize\">CNA bin size (kb)</label><select id=\"binsize\"></select><p class=\"hint\" id=\"binsize-default\">Default: 100 kb for QDNAseq.</p></div></div><p id=\"controls-note\" class=\"notice\" hidden>Normal/control samples keep their labels with either CNA method. Each sample is analyzed independently; these controls do not form a panel of normals.</p>\n",
+          "recorded": "<div id=\"caller-field\"><label for=\"caller\">ONT CNA method</label><select id=\"caller\"><option value=\"ichorcna\">ichorCNA \u00b7 500 kb bins</option><option value=\"qdnaseq\">QDNAseq \u00b7 solid biopsy</option></select></div><div id=\"binsize-field\"><label for=\"binsize\">CNA bin size (kb)</label><select id=\"binsize\"></select><p class=\"hint\" id=\"binsize-default\">Default: 100 kb for QDNAseq.</p></div></div><p id=\"controls-note\" class=\"notice\" hidden>Normal/control samples keep their labels with either CNA method. Each sample is analyzed independently; these controls do not form a panel of normals.</p>\n"
+        },
+        {
+          "start": 37999,
+          "end": 39511,
           "current": "<div class=\"grid\"><div><label for=\"backend\">Analysis tools</label><select id=\"backend\"><option value=\"conda\">Conda \u00b7 managed installation</option><option value=\"docker\">Docker</option><option value=\"podman\">Podman</option><option value=\"singularity\">Apptainer / Singularity</option><option value=\"poetry\">Poetry</option><option value=\"host\">Existing tools on this computer</option></select></div><div><label for=\"reference\">hg38 reference</label><select id=\"reference\"><option value=\"download\">Download prepared indexes when needed</option><option value=\"reuse\">Reuse a prepared OncoTracer reference</option><option value=\"build\">Build indexes locally on CPU</option></select></div></div><p id=\"reference-note\" class=\"hint\">Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.</p><div id=\"reference-path-field\" hidden><label for=\"reference-path\">Prepared reference parent or references/samurai_hg38 folder</label><div class=\"row\"><input id=\"reference-path\"><button data-browse=\"reference-path\">Browse folders</button></div></div>\n<div id=\"docker-image-field\" hidden><label for=\"docker_image\">Container image tag or digest (optional)</label><input id=\"docker_image\" placeholder=\"For example: oncotracer:variant-filters-20260921\"><p class=\"hint\">Use a local image tag or a registry image reference. The image supplies analysis tools; selected source files, models and annotation databases stay on this computer and are mounted for the run.</p></div>\n",
           "recorded": "<div class=\"grid\"><div><label for=\"backend\">Analysis tools</label><select id=\"backend\"><option value=\"conda\">Conda \u00b7 managed installation</option><option value=\"docker\">Docker</option><option value=\"singularity\">Apptainer / Singularity</option><option value=\"poetry\">Poetry</option><option value=\"host\">Existing tools on this computer</option></select></div><div><label for=\"reference\">hg38 reference</label><select id=\"reference\"><option value=\"download\">Download prepared indexes when needed</option><option value=\"reuse\">Reuse a prepared OncoTracer reference</option><option value=\"build\">Build indexes locally on CPU</option></select></div></div><p id=\"reference-note\" class=\"hint\">Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.</p><div id=\"reference-path-field\" hidden><label for=\"reference-path\">Prepared reference parent or references/samurai_hg38 folder</label><div class=\"row\"><input id=\"reference-path\"><button data-browse=\"reference-path\">Browse folders</button></div></div>\n<div id=\"docker-image-field\" hidden><label for=\"docker_image\">Docker image tag or digest (optional)</label><input id=\"docker_image\" placeholder=\"For example: oncotracer:variant-filters-20260921\"><p class=\"hint\">Use a local image tag or a registry image reference. The image supplies analysis tools; selected source files, models and annotation databases stay on this computer and are mounted for the run.</p></div>\n"
         },
         {
-          "start": 46836,
-          "end": 47383,
+          "start": 47227,
+          "end": 47774,
           "current": "<div id=\"variant-install-choices\" class=\"variant-install-choices\" hidden><p class=\"hint\">Missing tools detected. Choose how to install them.</p><div class=\"actions\"><button id=\"variant-install-conda\" data-variant-install=\"conda\" type=\"button\" class=\"primary\">Install with Conda</button><button id=\"variant-install-docker\" data-variant-install=\"docker\" type=\"button\" class=\"primary\">Install with Docker</button><button id=\"variant-install-podman\" data-variant-install=\"podman\" type=\"button\" class=\"primary\">Install with Podman</button></div></div>\n",
           "recorded": "<div id=\"variant-install-choices\" class=\"variant-install-choices\" hidden><p class=\"hint\">Missing tools detected. Choose how to install them.</p><div class=\"actions\"><button id=\"variant-install-conda\" data-variant-install=\"conda\" type=\"button\" class=\"primary\">Install with Conda</button><button id=\"variant-install-docker\" data-variant-install=\"docker\" type=\"button\" class=\"primary\">Install with Docker</button></div></div>\n"
         },
         {
-          "start": 89114,
-          "end": 90664,
-          "current": "function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'If enabled, GISTIC runs when at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.';invalidate();}\n",
+          "start": 89505,
+          "end": 91085,
+          "current": "function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('cna-profile-field',cna);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'If enabled, GISTIC runs when at least two selected samples pass CNA coverage checks; otherwise it is skipped and reports continue.';invalidate();}\n",
           "recorded": "function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'GISTIC is available for this cohort; leave it off unless recurrence analysis is needed.';invalidate();}\n"
         },
         {
-          "start": 96349,
-          "end": 96414,
+          "start": 96770,
+          "end": 96835,
           "current": "  const docker=['docker','podman'].includes($('backend').value);\n",
           "recorded": "  const docker=$('backend').value==='docker';\n"
         },
         {
-          "start": 96635,
-          "end": 97082,
+          "start": 97056,
+          "end": 97503,
           "current": "  $('variant-tool-note').textContent=docker?'The container image supplies the caller and FFPERASE environments. Automatic resources are prepared when the run starts; ANNOVAR uses your existing licensed installation.':'Use detect_tools to find installed caller tools. If tools are missing, choose Conda, Docker or Podman to install them. Models set to Automatic are prepared when the run starts. ANNOVAR uses your existing licensed installation.';\n",
           "recorded": "  $('variant-tool-note').textContent=docker?'Docker supplies the caller and FFPERASE environments. Automatic resources are prepared when the run starts; ANNOVAR uses your existing licensed installation.':'Use detect_tools to find installed caller tools. If tools are missing, choose Conda or Docker to install them. Models set to Automatic are prepared when the run starts. ANNOVAR uses your existing licensed installation.';\n"
         },
         {
-          "start": 99573,
-          "end": 99638,
+          "start": 99994,
+          "end": 100059,
           "current": "  const docker=['docker','podman'].includes($('backend').value);\n",
           "recorded": "  const docker=$('backend').value==='docker';\n"
         },
         {
-          "start": 106471,
-          "end": 106674,
+          "start": 106892,
+          "end": 107095,
           "current": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','podman','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n",
           "recorded": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n"
         },
         {
-          "start": 119673,
-          "end": 122486,
-          "current": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():''});if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),resources_selection:resourceSelection('sample'),backend:$('backend').value,docker_image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);if(prepared.kind==='existing_project'){showResumedProject();return;}$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n",
+          "start": 111066,
+          "end": 112602,
+          "current": "$('select-none').onclick=()=>{for(const row of sampleRows())moveSample(row,'');};$('analysis').onchange=settings;$('caller').onchange=settings;$('cna-profile').onchange=invalidate;$('reports').onchange=()=>{show('report-context-field',$('reports').checked);invalidate();};$('report-detail').onchange=()=>{$('report-detail-note').textContent=$('report-detail').value==='catalog'?'Uses the included evidence catalog. No publication searches or language-model downloads.':$('report-detail').value==='models'?'Drafts use the bundled CNA catalog and run on this computer. No publication searches. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Sample files are not uploaded.':'Searches publication services using CNA feature terms and study context. Language models run on this computer. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Raw reads and sample names are not sent to publication services.';invalidate();};$('reference').onchange=()=>{show('reference-path-field',$('reference').value==='reuse');$('reference-note').textContent=$('reference').value==='build'?'Local indexing downloads hg38 source files as needed and requires more RAM, temporary disk space, and time.':$('reference').value==='reuse'?'Select a prepared OncoTracer reference parent, or its references/samurai_hg38 folder. It must contain indexes for this platform.':'Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.';invalidate();};\n",
+          "recorded": "$('select-none').onclick=()=>{for(const row of sampleRows())moveSample(row,'');};$('analysis').onchange=settings;$('caller').onchange=settings;$('reports').onchange=()=>{show('report-context-field',$('reports').checked);invalidate();};$('report-detail').onchange=()=>{$('report-detail-note').textContent=$('report-detail').value==='catalog'?'Uses the included evidence catalog. No publication searches or language-model downloads.':$('report-detail').value==='models'?'Drafts use the bundled CNA catalog and run on this computer. No publication searches. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Sample files are not uploaded.':'Searches publication services using CNA feature terms and study context. Language models run on this computer. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Raw reads and sample names are not sent to publication services.';invalidate();};$('reference').onchange=()=>{show('reference-path-field',$('reference').value==='reuse');$('reference-note').textContent=$('reference').value==='build'?'Local indexing downloads hg38 source files as needed and requires more RAM, temporary disk space, and time.':$('reference').value==='reuse'?'Select a prepared OncoTracer reference parent, or its references/samurai_hg38 folder. It must contain indexes for this platform.':'Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.';invalidate();};\n"
+        },
+        {
+          "start": 120131,
+          "end": 122979,
+          "current": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():''});if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),resources_selection:resourceSelection('sample'),backend:$('backend').value,docker_image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);if(prepared.kind==='existing_project'){showResumedProject();return;}$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n",
           "recorded": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:$('backend').value==='docker'?$('docker_image').value.trim():''});if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),resources_selection:resourceSelection('sample'),backend:$('backend').value,docker_image:$('backend').value==='docker'?$('docker_image').value.trim():'',caller:$('caller').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);if(prepared.kind==='existing_project'){showResumedProject();return;}$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n"
         },
         {
-          "start": 132331,
-          "end": 132522,
+          "start": 125676,
+          "end": 125822,
+          "current": "  if(config.analysis!=='methylation')parts.push(config.caller+' \u00b7 '+config.bin_size_kb+' kb \u00b7 '+(config.cna_profile||'standard')+' CNA profile');\n",
+          "recorded": "  if(config.analysis!=='methylation')parts.push(config.caller+' \u00b7 '+config.bin_size_kb+' kb');\n"
+        },
+        {
+          "start": 132875,
+          "end": 133066,
           "current": "  if($('resume-backend').value!=='podman')$('resume-backend').value='docker';$('resume-image').value=($('resume-backend').value==='podman'?'docker.io/':'')+$('resume-image').dataset.current;\n",
           "recorded": "  $('resume-backend').value='docker';$('resume-image').value=$('resume-image').dataset.current;\n"
         },
         {
-          "start": 146357,
-          "end": 146935,
+          "start": 144980,
+          "end": 145370,
+          "current": "for(const [key,id]of[['input_folder','input-folder'],['analysis','analysis'],['cna_profile','cna-profile'],['threads','threads'],['backend','backend'],['classifier','classifier'],['resources','resources'],['methylation_source','methylation-source'],['reference','reference'],['reference_path','reference-path']])if(defaults[key]!==null&&defaults[key]!==undefined)$(id).value=defaults[key];\n",
+          "recorded": "for(const [key,id]of[['input_folder','input-folder'],['analysis','analysis'],['threads','threads'],['backend','backend'],['classifier','classifier'],['resources','resources'],['methylation_source','methylation-source'],['reference','reference'],['reference_path','reference-path']])if(defaults[key]!==null&&defaults[key]!==undefined)$(id).value=defaults[key];\n"
+        },
+        {
+          "start": 146931,
+          "end": 147509,
           "current": "$('resume-image').dataset.current=system.default_docker_image||'';$('resume-image').placeholder=system.default_docker_image||'';if(['conda','docker','podman'].includes(defaults.backend))$('resume-backend').value=defaults.backend;if(defaults.image)$('resume-image').value=defaults.image;show('resume-image-field',$('resume-backend').value!=='conda');if(system.resume_project){$('resume-project').value=system.resume_project;$('resume-note').textContent='Existing project detected. Load its saved settings above to continue.';}if(system.cpg)initializeCpgContinuation(system.cpg);\n",
           "recorded": "$('resume-image').dataset.current=system.default_docker_image||'';$('resume-image').placeholder=system.default_docker_image||'';if(['conda','docker'].includes(defaults.backend))$('resume-backend').value=defaults.backend;if(defaults.image)$('resume-image').value=defaults.image;show('resume-image-field',$('resume-backend').value!=='conda');if(system.resume_project){$('resume-project').value=system.resume_project;$('resume-note').textContent='Existing project detected. Load its saved settings above to continue.';}if(system.cpg)initializeCpgContinuation(system.cpg);\n"
         },
         {
-          "start": 150350,
-          "end": 150512,
+          "start": 150924,
+          "end": 151086,
           "current": "  show('variant-strelka-fields',selected.some(caller=>caller.startsWith('strelka2_'))&&!['docker','podman'].includes(document.getElementById('backend')?.value));\n",
           "recorded": "  show('variant-strelka-fields',selected.some(caller=>caller.startsWith('strelka2_'))&&document.getElementById('backend')?.value!=='docker');\n"
         },
         {
-          "start": 160782,
-          "end": 160930,
+          "start": 161356,
+          "end": 161504,
           "current": "  const docker=['docker','podman'].includes(document.getElementById('backend')?.value),runtime=document.getElementById('variant-ffperase-runtime');\n",
           "recorded": "  const docker=document.getElementById('backend')?.value==='docker',runtime=document.getElementById('variant-ffperase-runtime');\n"
         },
         {
-          "start": 164819,
-          "end": 164945,
+          "start": 165393,
+          "end": 165519,
           "current": "  if(resource.field==='docker_image'||['docker_runtime','podman_runtime'].includes(resource.id))return 'variant_tool_prefix';\n",
           "recorded": "  if(resource.field==='docker_image'||resource.id==='docker_runtime')return 'variant_tool_prefix';\n"
         },
         {
-          "start": 168891,
-          "end": 169024,
+          "start": 169465,
+          "end": 169598,
           "current": "    for(const [method,label] of [['conda','Install with Conda'],['docker','Install with Docker'],['podman','Install with Podman']]){\n",
           "recorded": "    for(const [method,label] of [['conda','Install with Conda'],['docker','Install with Docker']]){\n"
         },
         {
-          "start": 181471,
-          "end": 181624,
+          "start": 182045,
+          "end": 182198,
           "current": "  $('variant-install-start').textContent=plan.method==='podman'?'Install with Podman':plan.method==='docker'?'Install with Docker':'Install with Conda';\n",
           "recorded": "  $('variant-install-start').textContent=plan.method==='docker'?'Install with Docker':'Install with Conda';\n"
         },
         {
-          "start": 183729,
-          "end": 183838,
+          "start": 184303,
+          "end": 184412,
           "current": "  const incompatible=['docker','podman'].includes(job.fields?.backend)&&!document.getElementById('backend');\n",
           "recorded": "  const incompatible=job.fields?.backend==='docker'&&!document.getElementById('backend');\n"
         },
         {
-          "start": 184797,
-          "end": 184892,
+          "start": 185371,
+          "end": 185466,
           "current": "  if(['docker','podman'].includes(fields.backend)&&!document.getElementById('backend'))return;\n",
           "recorded": "  if(fields.backend==='docker'&&!document.getElementById('backend'))return;\n"
         }
@@ -624,122 +702,194 @@
       ]
     },
     "oncotracer_cli/setup.py": {
-      "current_sha256": "cfffd97f44297e4914d2ed450506356a1d4aa80cd6d0f62f9758afb1d997adf9",
+      "current_sha256": "203fb7fc4ed75bf75286953e5d946a7cbfcd79eb75e5e51575e4542e32fadad8",
       "recorded_sha256": "23c6a08917a39b844c16e7f4d9b657575849b8517dfde3bf85f30e0c397f60fe",
       "changes": [
         {
-          "start": 11815,
-          "end": 11978,
+          "start": 2091,
+          "end": 2275,
+          "current": "    \"cna_profile\": \"Sensitive research uses relaxed coverage/calling thresholds with read-support checks for controls and sparse samples. Standard preserves the conservative policy.\",\n",
+          "recorded": ""
+        },
+        {
+          "start": 11999,
+          "end": 12162,
           "current": "    if getattr(args, 'image', None) and backend not in {\"docker\", \"podman\"}:\n        raise OncoTracerError('--image in setup requires --backend docker or podman')\n",
           "recorded": "    if getattr(args, 'image', None) and backend != 'docker':\n        raise OncoTracerError('--image in setup requires --backend docker')\n"
         },
         {
-          "start": 12381,
-          "end": 12467,
+          "start": 12565,
+          "end": 12651,
           "current": "    elif backend in {\"docker\", \"podman\"}:\n        ready = bool(shutil.which(backend))\n",
           "recorded": "    elif backend == 'docker':\n        ready = bool(shutil.which('docker'))\n"
         },
         {
-          "start": 12817,
-          "end": 12871,
+          "start": 13001,
+          "end": 13055,
           "current": "        if backend in {\"docker\", \"podman\"} and image:\n",
           "recorded": "        if backend == 'docker' and image:\n"
         },
         {
-          "start": 13075,
-          "end": 13125,
+          "start": 13259,
+          "end": 13309,
           "current": "    if backend in {\"docker\", \"podman\"} and image:\n",
           "recorded": "    if backend == 'docker' and image:\n"
         },
         {
-          "start": 22169,
-          "end": 22492,
+          "start": 22353,
+          "end": 22676,
           "current": "    if args.backend and args.backend not in {\"host\", \"conda\", \"poetry\", \"docker\", \"podman\"}:\n        raise OncoTracerError(\"Small-variant calling needs --backend conda, host, poetry, docker, or podman; Singularity remains unsupported.\")\n    if args.backend in {\"docker\", \"podman\"} and (analysis or args.analysis) != 'cna':\n",
           "recorded": "    if args.backend and args.backend not in {\"host\", \"conda\", \"poetry\", \"docker\"}:\n        raise OncoTracerError(\"Small-variant calling needs --backend conda, host, poetry, or docker; Singularity remains unsupported.\")\n    if args.backend == 'docker' and (analysis or args.analysis) != 'cna':\n"
         },
         {
-          "start": 26900,
-          "end": 26945,
+          "start": 27084,
+          "end": 27129,
           "current": "    if args.backend in {\"docker\", \"podman\"}:\n",
           "recorded": "    if args.backend == 'docker':\n"
         },
         {
-          "start": 33646,
-          "end": 33814,
+          "start": 33830,
+          "end": 33998,
           "current": "    if getattr(args, 'image', None) and args.backend not in {\"docker\", \"podman\"}:\n        raise OncoTracerError('--image in setup requires --backend docker or podman')\n",
           "recorded": "    if getattr(args, 'image', None) and args.backend != 'docker':\n        raise OncoTracerError('--image in setup requires --backend docker')\n"
         },
         {
-          "start": 42135,
-          "end": 42379,
+          "start": 41915,
+          "end": 42151,
+          "current": "    from .cna_options import NEW_PROJECT_PROFILE, validate_profile\n    if analysis != \"methylation\":\n        values[\"cna_profile\"] = validate_profile(values.get(\"cna_profile\", getattr(args, \"cna_profile\", None) or NEW_PROJECT_PROFILE))\n",
+          "recorded": ""
+        },
+        {
+          "start": 42555,
+          "end": 42799,
           "current": "        if args.backend not in {\"host\", \"conda\", \"poetry\", \"docker\", \"podman\"}:\n            raise OncoTracerError(\"Small-variant calling needs --backend conda, host, poetry, docker, or podman.\")\n        if args.backend in {\"docker\", \"podman\"}:\n",
           "recorded": "        if args.backend not in {\"host\", \"conda\", \"poetry\", \"docker\"}:\n            raise OncoTracerError(\"Small-variant calling needs --backend conda, host, poetry, or docker.\")\n        if args.backend == 'docker':\n"
         },
         {
-          "start": 43342,
-          "end": 43448,
+          "start": 43762,
+          "end": 43868,
           "current": "        with docker_host_preview() if args.backend in {\"docker\", \"podman\"} else contextlib.nullcontext():\n",
           "recorded": "        with docker_host_preview() if args.backend == 'docker' else contextlib.nullcontext():\n"
         },
         {
-          "start": 44153,
-          "end": 44231,
+          "start": 44573,
+          "end": 44651,
           "current": "    if args.backend in {\"docker\", \"podman\"} and getattr(args, 'image', None):\n",
           "recorded": "    if args.backend == 'docker' and getattr(args, 'image', None):\n"
         },
         {
-          "start": 56686,
-          "end": 56758,
+          "start": 53554,
+          "end": 53633,
+          "current": "        from .cna_options import resolve_policy\n        resolve_policy(config)\n",
+          "recorded": ""
+        },
+        {
+          "start": 57185,
+          "end": 57257,
           "current": "            if config.get(\"execution_backend\") in {\"docker\", \"podman\"}:\n",
           "recorded": "            if config.get(\"execution_backend\") == \"docker\":\n"
         },
         {
-          "start": 57687,
-          "end": 57881,
+          "start": 58186,
+          "end": 58380,
           "current": "                if config.get(\"execution_backend\") in {\"docker\", \"podman\"}:\n                    warnings.append(\"Variant tools in the selected container image will be checked when Run starts.\")\n",
           "recorded": "                if config.get(\"execution_backend\") == \"docker\":\n                    warnings.append(\"Variant tools in the selected Docker image will be checked when Run starts.\")\n"
         },
         {
-          "start": 63325,
-          "end": 63405,
+          "start": 63486,
+          "end": 63580,
+          "current": "    from .cna_options import add_arguments as add_cna_arguments\n    add_cna_arguments(parser)\n",
+          "recorded": ""
+        },
+        {
+          "start": 63918,
+          "end": 63998,
           "current": "        choices=(\"host\", \"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\"),\n",
           "recorded": "        choices=(\"host\", \"conda\", \"docker\", \"singularity\", \"poetry\"),\n"
         },
         {
-          "start": 63492,
-          "end": 63614,
+          "start": 64085,
+          "end": 64207,
           "current": "    parser.add_argument('--image', help='Container image tag or digest; saved as docker_image and reused by setup --run')\n",
           "recorded": "    parser.add_argument('--image', help='Docker image tag or digest; saved as docker_image and reused by setup --run')\n"
         }
       ]
     },
     "oncotracer_cli/web.py": {
-      "current_sha256": "22dac5476c86bfad0771fdce2a542597c55f1940a377b53edd6b88acc523fb70",
+      "current_sha256": "1cbb10213edcff5c78403472496b5094778bcc431ddbad6d5e249755d6981779",
       "recorded_sha256": "5c45e499ea1d371d3ca38a9ef04101768abc3ea7bd57a0b6ca644357caddce51",
       "changes": [
         {
-          "start": 21210,
-          "end": 21330,
+          "start": 6488,
+          "end": 6675,
+          "current": "                        (\"mode\", \"analysis\", \"cna_profile\", \"threads\", \"backend\", \"classifier\", \"gpu\", \"accept_sturgeon_license\", \"variants\", \"variant_config\", \"image\", *VARIANT_FIELDS)}\n",
+          "recorded": "                        (\"mode\", \"analysis\", \"threads\", \"backend\", \"classifier\", \"gpu\", \"accept_sturgeon_license\", \"variants\", \"variant_config\", \"image\", *VARIANT_FIELDS)}\n"
+        },
+        {
+          "start": 21225,
+          "end": 21345,
           "current": "            backend = _choice(data, \"backend\", (\"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\", \"host\"), \"conda\")\n",
           "recorded": "            backend = _choice(data, \"backend\", (\"conda\", \"docker\", \"singularity\", \"poetry\", \"host\"), \"conda\")\n"
         },
         {
-          "start": 23173,
-          "end": 23339,
+          "start": 23188,
+          "end": 23354,
           "current": "                if backend not in {\"docker\", \"podman\"}:\n                    raise OncoTracerError('Container image selection requires the Docker or Podman backend.')\n",
           "recorded": "                if backend != 'docker':\n                    raise OncoTracerError('Docker image selection requires the Docker backend.')\n"
         },
         {
-          "start": 37207,
-          "end": 37298,
+          "start": 26766,
+          "end": 26982,
+          "current": "            from .cna_options import NEW_PROJECT_PROFILE\n            if analysis != \"methylation\":\n                values[\"cna_profile\"] = _choice(data, \"cna_profile\", (\"standard\", \"sensitive\"), NEW_PROJECT_PROFILE)\n",
+          "recorded": ""
+        },
+        {
+          "start": 33901,
+          "end": 33981,
+          "current": "                           \"cna_profile\": saved.get(\"cna_profile\", \"standard\"),\n",
+          "recorded": ""
+        },
+        {
+          "start": 37518,
+          "end": 37609,
           "current": "            if backend and backend not in {\"conda\", \"docker\", \"podman\", \"host\", \"poetry\"}:\n",
           "recorded": "            if backend and backend not in {\"conda\", \"docker\", \"host\", \"poetry\"}:\n"
         },
         {
-          "start": 37395,
-          "end": 37459,
+          "start": 37706,
+          "end": 37770,
           "current": "            if backend and backend not in {\"docker\", \"podman\"}:\n",
           "recorded": "            if backend and backend != \"docker\":\n"
+        },
+        {
+          "start": 40866,
+          "end": 40952,
+          "current": "                                \"cna_profile\": config.get(\"cna_profile\", \"standard\"),\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "tests/test_web.py": {
+      "current_sha256": "68f22dfa13b36448e02d870fca34a0650cbf7e29680e46c9737fb1f8436f482e",
+      "recorded_sha256": "6e4ddd33a6cb6031c978dc834a11b8e29c24b48c7592acdfa5d49a3c35fd1445",
+      "changes": [
+        {
+          "start": 2053,
+          "end": 2622,
+          "current": "    def test_cna_profile_is_saved_from_browser_and_invalid_values_are_rejected(self):\n        self.fastq(\"reads/case_R1.fastq.gz\"); self.fastq(\"reads/case_R2.fastq.gz\")\n        prepared = self.prepare(cna_profile=\"standard\")\n        self.assertEqual(load_flat_yaml(Path(prepared[\"config_path\"]))[\"cna_profile\"], \"standard\")\n        self.assertEqual(prepared[\"reviewed_summary\"][\"config\"][\"cna_profile\"], \"standard\")\n        with self.assertRaisesRegex(OncoTracerError, \"cna_profile\"):\n            self.prepare(project=str(self.root/\"invalid\"), cna_profile=\"unusable\")\n\n",
+          "recorded": ""
+        },
+        {
+          "start": 3714,
+          "end": 3775,
+          "current": "        self.assertEqual(config[\"cna_profile\"], \"sensitive\")\n",
+          "recorded": ""
+        },
+        {
+          "start": 17418,
+          "end": 17522,
+          "current": "            \"caller\": \"qdnaseq\", \"bin_size_kb\": 100, \"cna_profile\": \"sensitive\", \"run_variants\": False,\n",
+          "recorded": "            \"caller\": \"qdnaseq\", \"bin_size_kb\": 100, \"run_variants\": False,\n"
         }
       ]
     }

@@ -98,6 +98,25 @@ class ResumeTests(unittest.TestCase):
             resume_project(self.project,variant_options={'variant_ont_imputation':'quilt2'})
         self.assertEqual(unchanged,path.read_bytes())
 
+    def test_cna_profile_change_is_explicit_and_preserves_checkpoints(self):
+        path = self.project/'config/run.yml'
+        stage = self.output/'completed.bam'
+        stage.write_bytes(b'completed fixture')
+        ledger = StageLedger(self.output/'.oncotracer-native/state.json')
+        ledger.complete('fixture', 'original-signature', [stage])
+        before = ledger.path.read_bytes()
+        resume_project(self.project)
+        self.assertNotIn('cna_profile', load_flat_yaml(path))
+        result = resume_project(self.project, cna_profile='sensitive')
+        self.assertEqual(load_flat_yaml(path)['cna_profile'], 'sensitive')
+        self.assertNotIn('cna_profile', load_flat_yaml(Path(result['backup'])/'run.yml'))
+        self.assertEqual(ledger.path.read_bytes(), before)
+        self.assertTrue(ledger.reusable('fixture', 'original-signature', [stage]))
+        selected = path.read_bytes()
+        with self.assertRaises(OncoTracerError):
+            resume_project(self.project, cna_profile='invalid')
+        self.assertEqual(path.read_bytes(), selected)
+
     def test_selected_resource_budget_keeps_samples_and_stage_records(self):
         stage = self.output / 'existing.bam'
         stage.write_bytes(b'completed fixture')

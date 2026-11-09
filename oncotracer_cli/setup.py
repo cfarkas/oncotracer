@@ -72,6 +72,7 @@ RESOURCE_FLAGS = {
     "methylation_dorado_modbase_model": "--modified-base-model",
 }
 COMMENTS = {
+    "cna_profile": "Sensitive research uses relaxed coverage/calling thresholds with read-support checks for controls and sparse samples. Standard preserves the conservative policy.",
     "mode": "Sequencing platform: illumina or ont.",
     "lpwgs_root": "Reference cache. Downloads and reusable hg38 files go here.",
     "hg38_auto_download": "true downloads prebuilt hg38 indexes at run time; false reuses existing references or builds missing indexes locally.",
@@ -826,6 +827,9 @@ def _command_setup(args: argparse.Namespace) -> int:
         samples = parse_ont_samples(values)
         _check_ont_fastqs(samples)
     values.update(getattr(args, "_wizard_values", {}))
+    from .cna_options import NEW_PROJECT_PROFILE, validate_profile
+    if analysis != "methylation":
+        values["cna_profile"] = validate_profile(values.get("cna_profile", getattr(args, "cna_profile", None) or NEW_PROJECT_PROFILE))
     # Validate variant configuration before creating any project files. Browser
     # and terminal discoveries use exactly the same flat YAML contract.
     if "run_variants" not in getattr(args, "_wizard_values", {}):
@@ -1074,6 +1078,8 @@ def command_check(args: argparse.Namespace) -> int:
             wait_hours(config.get('gpu_wait_hours', 120))
         except ValueError as error:
             errors.append(str(error))
+        from .cna_options import resolve_policy
+        resolve_policy(config)
         mode = config.get("mode")
         if mode not in {"illumina", "ont"}:
             errors.append("mode: choose illumina or ont")
@@ -1280,6 +1286,8 @@ def add_setup_commands(subparsers) -> None:
         "--manual", action="store_true",
         help="use per-file/barcode prompts instead of the folder wizard",
     )
+    from .cna_options import add_arguments as add_cna_arguments
+    add_cna_arguments(parser)
     parser.add_argument(
         "--mode", choices=("illumina", "ont"), help="sequencing platform"
     )
