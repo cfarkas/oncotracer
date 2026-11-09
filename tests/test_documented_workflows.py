@@ -114,6 +114,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 "Analysis (--analysis; cna=copy-number)": "cna",
                 "CPU threads (--threads)": "4" if terminal_questions else "",
                 "ONT CNA method": "ichorcna",
+                "CNA sensitivity (sensitive includes control evidence checks)": "sensitive",
                 "CNA bin size (kb)": "100",
                 "Add CNA interpretation reports?": "no",
                 "Add small-variant calling?": "no",

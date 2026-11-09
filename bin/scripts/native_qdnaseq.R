@@ -341,9 +341,12 @@ run_analysis <- function(options) {
 
   set.seed(1L)
   segmented <- QDNAseq::segmentBins(copy_numbers, transformFun = "sqrt")
-  called <- if (policy$profile == "standard") QDNAseq::callBins(segmented, method = "cutoff") else
-    QDNAseq::callBins(segmented, method = "cutoff", cutoffs=c(deletion=-2,
+  if (policy$profile == "standard") {
+    called <- QDNAseq::callBins(segmented, method = "cutoff")
+  } else {
+    called <- QDNAseq::callBins(segmented, method = "cutoff", cutoffs=c(deletion=-2,
       loss=policy$calling$loss, gain=policy$calling$gain, amplification=log2(5)))
+  }
   if (!"calls" %in% Biobase::assayDataElementNames(called)) {
     fail("QDNAseq::callBins() did not add the required 'calls' assay element")
   }
