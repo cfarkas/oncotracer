@@ -1745,7 +1745,7 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
     )
     inputs.add_argument(
         "--modbam",
-        help="existing modified-base BAM file or directory; reuses calls and aligns on CPU",
+        help="existing modified-base BAM file or directory; alignment policy is methylation_modbam_alignment",
     )
     parser.add_argument(
         "--methylation-only",
@@ -1792,6 +1792,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_results_command(subparsers)
     add_reports_command(subparsers)
     add_paper_report_command(subparsers)
+    from .ichor_rescue import add_rescue_command
+    add_rescue_command(subparsers)
     add_variants_command(subparsers)
     from .haplotype_command import add_haplotype_command
     add_haplotype_command(subparsers)
@@ -1890,6 +1892,7 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "results",
             "reports",
             "paper-report",
+            "rescue-cna",
             "variants",
             "haplotype-evidence",
             "check",

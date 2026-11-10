@@ -49,6 +49,7 @@ if (anyNA(probes$ref_position) || any(!nzchar(probes$probe_id))) {
   fail("MARLIN probe BED has invalid position or probe identifiers")
 }
 
+if (anyDuplicated(probes, by = c("chrom", "ref_position", "probe_id"))) fail("Duplicate MARLIN probe coordinate annotations would double count calls")
 calls <- fread(
   options$bedmethyl,
   header = FALSE,

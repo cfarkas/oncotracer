@@ -190,12 +190,14 @@ class FakeRunner:
             Path(argv[-1] + ".bai").write_bytes(b"index")
         elif stage.startswith("methylation-split-"):
             Path(argv[argv.index("-o") + 1]).write_bytes(b"sample-bam")
-        elif stage.startswith("methylation-count-"):
+        elif stage.startswith(("methylation-count-", "methylation-probe-count-")):
             kwargs["stdout"].write(f"{self.matching_reads}\n")
         elif stage.startswith("methylation-adjust-"):
             Path(argv[3]).write_bytes(b"combined-bam")
         elif stage.startswith("methylation-pileup-"):
             Path(argv[3]).write_text(self.pileup, encoding="utf-8")
+        elif stage.startswith("methylation-extract-"):
+            Path(argv[4]).write_text("reference CpG per-read fixture\n")
         elif stage.startswith("methylation-sturgeon-inputtobed-"):
             destination = Path(argv[argv.index("-o") + 1])
             destination.write_text(
@@ -487,7 +489,7 @@ class NativeMethylationTests(unittest.TestCase):
                 force=False,
             )
             self.assertEqual(status["overall_status"], "no_classifier_probes", status)
-            self.assertGreater(status["samples"][0]["modified_cpg_calls"], 0)
+            self.assertEqual(status["samples"][0]["covered_classifier_probes"], 0)
             self.assertEqual(status["samples"][0]["modbam_records"], 4)
             trace = (output / "trace.tsv").read_text()
             self.assertNotIn("basecaller", trace)
@@ -717,8 +719,10 @@ class NativeMethylationTests(unittest.TestCase):
         self.assertEqual(dorado[dorado.index("--device") + 1], "cuda:0")
         self.assertEqual(dorado[dorado.index("--batchsize") + 1], "32")
         for stage, command in runner.calls:
-            if stage.startswith("methylation-sturgeon-"):
+            if stage.startswith("methylation-sturgeon-predict-"):
                 self.assertEqual(command[1], "--no-logfile")
+            elif stage.startswith("methylation-sturgeon-inputtobed-"):
+                self.assertEqual(Path(command[1]).name, "native_sturgeon_prepare.py")
         self.assertTrue(
             any(
                 stage.startswith("methylation-sturgeon-predict")

@@ -3148,6 +3148,8 @@ def run_refinement_and_outputs(
     from .cna_quality import publish_assessment, invalidate_derived_cna, summary_fields
     cna_policy = resolve_policy(config)
     assessment = None
+    rescue = None
+    from .ichor_rescue import publish_rescue, rescue_summary
     if selected_caller in {"qdnaseq", "ichorcna"}:
         status_path = qdna_or_ichor_dir / ("qdnaseq_sample_status.json" if selected_caller == "qdnaseq" else "ichorcna_sample_status.json")
         bin_size = _as_int(config.get("illumina_binsize_kb" if mode == "illumina" else "ont_binsize_kb"), 100 if mode == "illumina" else 500)
@@ -3156,12 +3158,16 @@ def run_refinement_and_outputs(
             invalidate_derived_cna(outdir, status_path, qdna_or_ichor_dir / ("all_segments.seg" if selected_caller == "qdnaseq" else "segments_logR_corrected_gistic.seg"))
             from .broad_cna import publish_screen
             publish_screen(outdir, qdna_or_ichor_dir, selected_caller, assessment, cytoband, policy=cna_policy)
+            if selected_caller == "qdnaseq":
+                rescue = publish_rescue(root, config, assessment,
+                    samurai_outdir / "input/native.bam.samplesheet.csv", outdir, runner, toolchain, force=force)
             if not any(row["assessment"] == "assessable" for row in assessment["samples"]):
                 summary = {"oncotracer_version": __version__, "engine": "native", "nextflow_used": False,
                            "mode": mode, "caller": selected_caller, "outdir": str(outdir),
                            "workflow_status": "partial_failure", "cna_status": "not_assessable",
                            "completed_samples": [], "failed_samples": [r["sample"] for r in assessment["samples"]],
                            selected_caller + "_sample_status": str(status_path), "completed_at": utc_now(), **summary_fields(assessment)}
+                summary.update(rescue_summary(rescue))
                 atomic_write_workflow_summary(outdir / "06_workflow_summary", summary)
                 print("CNA: no samples assessable at the selected bin size. See 06_workflow_summary/cna_assessment.html", flush=True)
                 return
@@ -3438,6 +3444,7 @@ def run_refinement_and_outputs(
             }
         )
     summary.update(summary_fields(assessment))
+    summary.update(rescue_summary(rescue))
     atomic_write_workflow_summary(summary_dir, summary)
 
 
@@ -3454,6 +3461,10 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "06_workflow_summary/workflow_summary.txt",
         "06_workflow_summary/workflow_summary.json",
         "06_workflow_summary/cna_assessment.json",
+        "06_workflow_summary/selected_cna_assessment.json",
+        "08_ichorcna_fallback/summary.json",
+        "08_ichorcna_fallback/summary.tsv",
+        "08_ichorcna_fallback/index.html",
         "06_workflow_summary/cna_assessment.tsv",
         "06_workflow_summary/cna_assessment.html",
         "06_workflow_summary/experimental_broad_cna/index.html",
@@ -3799,7 +3810,7 @@ def _run_ont_cna_branch(
         )
     run_refinement_and_outputs(
         root,
-        config,
+        dict(config, threads=threads),
         "ont",
         samurai_out,
         caller_dir,
@@ -4120,7 +4131,7 @@ def _run_native_impl(
             )
             run_refinement_and_outputs(
                 root,
-                config,
+                dict(config, threads=cpu),
                 mode,
                 samurai_out,
                 qdna_dir,

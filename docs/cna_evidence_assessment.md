@@ -217,3 +217,43 @@ that evidence. [TRIPOD statement](https://www.bmj.com/content/350/bmj.g7594).
 
 The clinician HTML/PDF reports expose these limits alongside the underlying CNA
 findings. CNA-flat or missing results do not establish absence of cancer.
+
+## Automatic ichorCNA rescue of QDNAseq quality failures
+
+Native QDNAseq runs now evaluate quality-failing libraries with unpaired
+ichorCNA at 500 kb and 1 Mb. A primary library that passes quality checks retains
+its primary result, including a legitimate zero accepted-event count. Tumors and
+controls use identical rescue rules. Set `ichorcna_fallback: false` only to
+explicitly disable this additional analysis; `ichorcna_fallback_workers` controls
+concurrency within the run's thread budget.
+
+A rescue needs at least 5,000 primary autosomal MAPQ-20 reads after excluding
+unmapped, secondary, supplementary, duplicate and QC-failed records. Both
+resolutions require adequate read support and finite, sufficiently smooth
+normalized profiles. Accepted relative events additionally need a span of at
+least 10 Mb, 20 finite 500-kb bins, 80% coverage, absolute median log2 of 0.2,
+consistent odd/even directions, a five-bin block-bootstrap interval excluding
+zero, and agreement at 1 Mb. The exact versioned rules, native fits, rejected
+segments and output checksums are saved under `08_ichorcna_fallback/`.
+
+`06_workflow_summary/selected_cna_assessment.json` identifies the selected method
+for each library. The final report includes these rescue results while retaining
+the original QDNAseq quality assessment. Coarse relative profiles do not enter
+the primary classifier or GISTIC as if they were refined primary segments.
+An HMM fit alone does not establish assessability, absolute ploidy, tumor fraction
+or clinical accuracy. The second resolution uses the same reads.
+
+Existing completed alignments can be reassessed in a new output directory:
+
+```bash
+oncotracer rescue-cna \
+  --primary-status /path/to/qdnaseq/qdnaseq_sample_status.json \
+  --bam-manifest /path/to/input/native.bam.samplesheet.csv \
+  --outdir /path/to/new-rescue-results \
+  --cna-profile sensitive --binsize 50 --threads 8 --workers 2
+```
+
+Use the primary run's actual CNA profile and bin size. The command reads the
+source BAMs and status without modifying them. The installed ichorCNA environment
+must provide the pinned hg38 500/1000-kb reference assets; a read-only alternative
+can be supplied with `--assets`. Missing tools or evidence remain explicit failures.

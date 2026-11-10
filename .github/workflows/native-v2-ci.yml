@@ -95,6 +95,7 @@ jobs:
             tests/test_fontconfig_safety.py \
             tests/test_command_runner_containment.py \
             tests/test_native_methylation.py \
+            tests/test_cpg_native_policy.py tests/test_ichor_rescue.py tests/test_marlin_strand_aggregation.py tests/test_sturgeon_reference_cpg.py \
             tests/test_named_methylation.py \
             tests/test_beginner_runtime.py \
             tests/test_run_readiness.py tests/test_runtime_bytecode_integrity.py \
@@ -203,6 +204,10 @@ jobs:
               'payload/bin/scripts/MARLIN-MIT-LICENSE.txt',
               'oncotracer_cli/classifier.py',
               'oncotracer_cli/methylation.py',
+              'oncotracer_cli/ichor_rescue.py',
+              'payload/bin/scripts/native_ichor_fallback.py',
+              'payload/bin/scripts/ichor_fallback_assets.json',
+              'payload/bin/scripts/native_sturgeon_prepare.py',
               'oncotracer_cli/web.py',
               'oncotracer_cli/web_ui.py',
               'oncotracer_cli/results.py',

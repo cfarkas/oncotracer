@@ -42,3 +42,7 @@ pathology_biomed_local_files_only: false
 
 # Protect an existing real-project output directory.
 force: false
+
+# Coarse relative ichorCNA rescue for QDNAseq quality failures.
+ichorcna_fallback: true
+ichorcna_fallback_workers: 1

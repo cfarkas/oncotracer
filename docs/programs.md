@@ -75,7 +75,7 @@ for FFPERASE, license acknowledgment. No automatic ANNOVAR installation occurs.
 | Sturgeon | User-installed/licensed CNS-tumor research classification | `07_methylation/sturgeon/` |
 | MARLIN adapter | Checksum-pinned leukemia research model preparation/prediction | `07_methylation/marlin/` |
 
-This optional branch is not part of the five managed core CNA environments or the stable container. Users provide exact local executables/models/resources. `--gpu` targets Dorado and exposes the device to MARLIN; it does not make Modkit or Sturgeon GPU programs. The branch aborts classification on zero usable modified-CpG calls while CNA continues.
+This optional branch is not part of the five managed core CNA environments or the stable container. Users provide exact local executables/models/resources. `--gpu` targets Dorado and exposes the device to MARLIN; it does not make Modkit or Sturgeon GPU programs. The branch aborts classification on zero covered CpG calls while CNA continues.
 
 ## Optional interpretation route
 

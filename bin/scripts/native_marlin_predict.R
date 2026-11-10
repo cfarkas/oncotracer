@@ -63,6 +63,8 @@ if (!length(feature_names) || anyDuplicated(feature_names)) {
 
 input <- fread(options$input, header = FALSE, showProgress = FALSE)
 if (ncol(input) < 5L || !nrow(input)) fail("MARLIN input BED is empty or malformed")
+if (anyDuplicated(input[[5L]])) fail("MARLIN input must contain one row per unique probe ID; aggregate strand counts first")
+if (any(!is.na(input[[4L]]) & (!is.finite(input[[4L]]) | input[[4L]] < 0 | input[[4L]] > 1))) fail("MARLIN beta values must be NA or finite in [0,1]")
 ordered_beta <- input[[4L]][match(feature_names, input[[5L]])]
 transformed <- ifelse(ordered_beta >= 0.5, 1, -1)
 transformed[is.na(transformed)] <- 0

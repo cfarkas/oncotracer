@@ -57,9 +57,8 @@ permission required by the upstream terms.
 explicit POD5 directory + selected barcode FASTQ read IDs
   -> Dorado hg38 basecalling with an explicit 5mCG/5hmCG model
   -> one aligned modBAM, then one read-ID-filtered modBAM per sample
-  -> Modkit conversion of 5hmC to 5mC at CpG sites
-  -> deterministic CpG bedMethyl pileup
-  -> stop this sample's methylation branch if zero usable modified-CpG calls
+  -> classifier-specific reference-CpG extraction and unique-probe aggregation
+  -> stop this sample's methylation branch if zero covered classifier probes
   -> Sturgeon (CNS) or MARLIN (leukemia) classification
 ```
 
@@ -69,11 +68,11 @@ The BAM route reuses the modification calls and skips basecalling.
 
 Methylation starts before the CNA branch. The two outcomes are independent:
 
-- if methylation fails or has no usable modified-CpG calls, CNA still runs;
+- if methylation fails or has no covered CpG calls, CNA still runs;
 - if CNA fails, a completed methylation result remains available;
 - the final summary records both statuses and returns nonzero when a requested branch is incomplete.
 
-No classifier is launched for a sample with zero usable modified-CpG calls. Its status is `no_cpg_modifications`, not a fabricated negative classification.
+No classifier is launched for a sample with zero covered CpG calls. Its status is `no_cpg_modifications`, not a fabricated negative classification.
 
 ## What you must provide
 
@@ -250,3 +249,27 @@ Use `--force` only to deliberately invalidate these outputs. For a different POD
 `methylation_status.json` reports each sample as `complete`, `no_cpg_modifications`, `no_classifier_probes` (MARLIN), or `failed`. `methylation_provenance.json` records the explicit POD5 or BAM inventory digest, device choice, supported classifier interface commit, external-runtime disclosure, executable SHA-256 values, resource SHA-256 values, and final status. The interface commit is not an assertion about the installed external package's source. Review these files before interpreting any prediction.
 
 OncoTracer excludes secondary and supplementary alignments before Modkit conversion: these may lack MM tags and must not be double-counted. Pileup uses explicit sampling settings. MARLIN probe overlap is checked before prediction; zero overlap produces `no_classifier_probes` with `covered_classifier_probes: 0`.
+
+## Reproduce existing hg38 CpG calls
+
+Set `methylation_modbam_alignment: preserve` to reuse existing hg38 coordinates
+from an MM/ML-tagged BAM. OncoTracer still selects the exact FASTQ read IDs,
+rejects duplicate primary records and checks the BAM reference dictionary against
+the supplied FASTA. This option requires no Dorado executable. The default,
+`realign`, continues to realign existing calls on CPU. Record the chosen policy:
+changing alignments can change the measured probes and classifier scores.
+
+MARLIN now piles up reference CpGs at its exact probe coordinates, combines
+5mC/5hmC counts and aggregates both strand annotations into **one row per probe
+ID**. Each beta is total modified coverage divided by total valid coverage;
+uncovered probes remain missing. Duplicate prepared probe IDs are rejected.
+Sturgeon uses reference-CpG-filtered per-read extraction and bounded majority
+voting in its native probe neighborhoods. `sturgeon_python` can explicitly select
+the Python interpreter in the user-licensed Sturgeon environment; otherwise the
+interpreter next to `sturgeon_executable` is used.
+
+Valid unmethylated CpGs remain measured data. Zero covered CpGs or zero measured
+classifier probes produce explicit no-call statuses. Old processing receipts and
+changed prediction/probe files cannot satisfy the new resume checks. Native
+class scores and measured-probe counts are retained at full precision under
+`07_methylation/`; no target score is supplied to the classifier.

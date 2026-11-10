@@ -93,6 +93,7 @@ class BcftoolsRuntimeTests(unittest.TestCase):
             with self.subTest(bam=use_bam, panel=build_panel), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory); args = self.workflow_fixture(root)
                 args.allow_test_reference = False; args.memory = 4; args.no_ancestry = True
+                args.clinvar = str(root/'deliberately-missing-clinvar.vcf.gz')
                 (root/'genome.fa.fai').write_text('chr1\t248956422\t6\t4\t5\n')
                 (root/'sample.bam').write_bytes(b'fixture')
                 reads = root/'SAMPLE.fastq'; reads.write_text('@r\nAC\n+\nII\n')

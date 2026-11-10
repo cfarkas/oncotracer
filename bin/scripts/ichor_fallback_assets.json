@@ -1,0 +1,38 @@
+{
+  "500": {
+    "gc": {
+      "filename": "gc_hg38_500kb.wig",
+      "sha256": "4ae9c5d7f3e8260b3d192e88b21e717ac7f761946ba16e896b7d375557e85b57"
+    },
+    "map": {
+      "filename": "map_hg38_500kb.wig",
+      "sha256": "18efe127d1fde052b5537d4bf0494f73710fe38eb3ec0e7e49fa483b4c647d89"
+    },
+    "reptime": {
+      "filename": "Koren_repTiming_hg38_500kb.wig",
+      "sha256": "d7d20a549fb2a54a91dd73562ca820524a33b8bf33ab45bee881b1e031c96c8c"
+    },
+    "centromere": {
+      "filename": "GRCh38.GCA_000001405.2_centromere_acen.txt",
+      "sha256": "5ca2fed871adaa395773d932b94d40866690f69797694a21b057e8e1b3681e22"
+    }
+  },
+  "1000": {
+    "gc": {
+      "filename": "gc_hg38_1000kb.wig",
+      "sha256": "bd113cdc9f0ce7aaf169cf41631ea7ca2a087ed3414ca29cf961721aba63357e"
+    },
+    "map": {
+      "filename": "map_hg38_1000kb.wig",
+      "sha256": "1126f232d2a994bd9dfba1a8cacd0ae6262c7a55ab0ba70ebaa0d91d31e8a0d1"
+    },
+    "reptime": {
+      "filename": "Koren_repTiming_hg38_1000kb.wig",
+      "sha256": "89526f08f9ac7dd29feba145ac67c32a7ed6b8fec7723797f9fc2cfac7f2f04a"
+    },
+    "centromere": {
+      "filename": "GRCh38.GCA_000001405.2_centromere_acen.txt",
+      "sha256": "5ca2fed871adaa395773d932b94d40866690f69797694a21b057e8e1b3681e22"
+    }
+  }
+}

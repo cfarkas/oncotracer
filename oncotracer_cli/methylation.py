@@ -31,6 +31,8 @@ from .runtime import (
 
 
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+CPG_POLICY = "reference-CpG-native-probe-aggregation-v3"
+
 COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 SUPPORTED_CLASSIFIER_INTERFACE_COMMITS = {
     "sturgeon": "4c742ddea49b0077a8f8ff3d99daafb238d00706",
@@ -57,7 +59,7 @@ class MethylationRequest:
     pod5_dir: Path | None
     pod5_files: tuple[Path, ...]
     gpu: bool
-    dorado: Path
+    dorado: Path | None
     modkit: Path
     samtools: Path
     dorado_model: Path | None
@@ -72,6 +74,7 @@ class MethylationRequest:
     modbam_files: tuple[Path, ...] = ()
     modbam_inventory_sha256: str = ""
     sample_signals: tuple[MethylationSignalGroup, ...] = ()
+    modbam_alignment: str = "realign"
 
     @property
     def dorado_device(self) -> str:
@@ -433,9 +436,14 @@ def resolve_methylation_request(
         )
     from .gpu_runtime import enabled
     gpu = enabled(config, gpu_override)
-    dorado = _configured_executable(
+    alignment = str(config.get("methylation_modbam_alignment") or "realign").lower()
+    if alignment not in {"realign", "preserve"}:
+        raise OncoTracerError("methylation_modbam_alignment must be realign or preserve")
+    if alignment == "preserve" and modbam_input is None:
+        raise OncoTracerError("preserve alignment requires an explicit --modbam")
+    dorado = (_configured_executable(
         config, "methylation_dorado_executable", "dorado", "Dorado"
-    )
+    ) if alignment == "realign" else None)
     modkit = _configured_executable(
         config, "methylation_modkit_executable", "modkit", "Modkit"
     )
@@ -511,6 +519,11 @@ def resolve_methylation_request(
         classifier_executable = _configured_executable(
             config, "sturgeon_executable", "sturgeon", "user-licensed Sturgeon"
         )
+        classifier_paths["python"] = _configured_executable(
+            config, "sturgeon_python", str(classifier_executable.parent / "python"),
+            "Python from the user-licensed Sturgeon environment"
+        )
+        asset_sha256["sturgeon_python"] = sha256_file(classifier_paths["python"])
         classifier_paths["model"] = _configured_path(
             config, "sturgeon_model", "Sturgeon model"
         )
@@ -552,7 +565,7 @@ def resolve_methylation_request(
             )
 
     executable_sha256 = {
-        "dorado": sha256_file(dorado),
+        "dorado": sha256_file(dorado) if dorado else "",
         "modkit": sha256_file(modkit),
         "samtools": sha256_file(samtools),
         classifier: (
@@ -580,6 +593,7 @@ def resolve_methylation_request(
         ),
         classifier_interface_contract_commit=configured_commit,
         modbam_input=modbam_input,
+        modbam_alignment=alignment,
         modbam_files=modbam_files,
         sample_signals=sample_signals,
         modbam_inventory_sha256=(
@@ -597,6 +611,8 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
     return {
         "enabled": True,
         "classifier": request.classifier,
+        "cpg_processing_policy": CPG_POLICY,
+        "modbam_alignment": request.modbam_alignment,
         "input_kind": "modbam" if request.modbam_input else "pod5",
         "pod5_dir": str(request.pod5_dir) if request.pod5_dir else None,
         "modbam_input": str(request.modbam_input) if request.modbam_input else None,
@@ -621,7 +637,7 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
         "stages": [
             "fastq-read-id-selection",
             (
-                "modbam-cpu-alignment"
+                ("modbam-preserve-validated-alignment" if request.modbam_alignment == "preserve" else "modbam-cpu-alignment")
                 if request.modbam_input
                 else "dorado-modified-base-basecalling"
             ),
@@ -697,6 +713,8 @@ def _status_payload(
         "schema": "oncotracer-native-ont-methylation-status-v1",
         "overall_status": overall,
         "classifier": request.classifier,
+        "cpg_processing_policy": CPG_POLICY,
+        "modbam_alignment": request.modbam_alignment,
         "gpu_requested": request.gpu,
         "dorado_device": request.dorado_device,
         "modkit_acceleration": "cpu_threads",
@@ -729,6 +747,8 @@ def _provenance_payload(
     payload: dict[str, object] = {
         "schema": "oncotracer-native-ont-methylation-provenance-v2",
         "classifier": request.classifier,
+        "cpg_processing_policy": CPG_POLICY,
+        "modbam_alignment": request.modbam_alignment,
         "classifier_interface_contract_commit": (
             request.classifier_interface_contract_commit
         ),
@@ -747,7 +767,7 @@ def _provenance_payload(
         "modkit_acceleration": "cpu_threads",
         "executables": {
             "dorado": {
-                "path": str(request.dorado),
+                "path": str(request.dorado) if request.dorado else None,
                 "sha256": request.executable_sha256["dorado"],
             },
             "modkit": {
@@ -933,7 +953,32 @@ def _load_reusable_sample_record(path: Path, outdir: Path, sample: str):
             or not classification.stat().st_size
         ):
             return None
+    outputs = payload.get("output_sha256")
+    if not isinstance(outputs, dict) or not outputs:
+        return None
+    for value, digest in outputs.items():
+        output = _safe_result_path(outdir, value)
+        if output is None or not output.is_file() or sha256_file(output) != digest:
+            return None
     return payload
+
+
+def _seal_sample_record(record, outdir):
+    paths = [record.get(key) for key in ("bedmethyl", "classification", "probe_bed")]
+    record["output_sha256"] = {value: sha256_file(outdir / value) for value in paths if value}
+    record["cpg_processing_policy"] = CPG_POLICY
+
+
+def _validate_preserved_reference(header, fai):
+    """Require exact lengths for every aligned contig before preserving coordinates."""
+    expected = {f[0]: int(f[1]) for line in fai.read_text().splitlines() if (f := line.split("\t")) and len(f) >= 2}
+    observed = {}
+    for line in header.read_text().splitlines():
+        if line.startswith("@SQ\t"):
+            fields = dict(part.split(":", 1) for part in line.split("\t")[1:])
+            observed[fields["SN"]] = int(fields["LN"])
+    if not observed or any(expected.get(chrom) != length for chrom, length in observed.items()):
+        raise OncoTracerError("Preserved modBAM reference dictionary differs from the supplied FASTA; use realign or the exact reference")
 
 
 def _bedmethyl_counts(path: Path) -> tuple[int, int, int]:
@@ -1105,12 +1150,13 @@ def _select_named_modbam_input(
 
 
 def _run_sturgeon(
+    root: Path,
     request: MethylationRequest,
     sample: str,
     bedmethyl: Path,
     output: Path,
     runner: CommandRunner,
-) -> Path:
+) -> Path | None:
     executable = request.classifier_executable
     assert executable is not None
     converted = output / f"{sample}.sturgeon.bed"
@@ -1131,21 +1177,20 @@ def _run_sturgeon(
     runner.run(
         f"methylation-sturgeon-inputtobed-{sample}",
         [
-            executable,
-            "--no-logfile",
-            "inputtobed",
+            request.classifier_paths["python"],
+            root / "bin/scripts/native_sturgeon_prepare.py",
             "-i",
             bedmethyl,
             "-o",
             converted,
-            "-s",
-            "modkit_pileup",
             "--probes-file",
             request.classifier_paths["probes"],
         ],
         env=_accelerator_environment(False),
     )
     converted = _nonempty(converted, f"Sturgeon converted BED for {sample}")
+    if _line_count(converted) <= 1:
+        return None
     runner.run(
         f"methylation-sturgeon-predict-{sample}",
         [
@@ -1450,9 +1495,13 @@ def run_methylation(
             request.dorado,
             request.samtools,
         ]
+    if request.modbam_input and request.modbam_alignment == "preserve":
+        basecall_stage = "methylation-modbam-preserve"
+        dorado_command = [request.samtools, "view", "-b", modbam_out / ".selected_input.bam"]
+    basecall_inputs = [value for value in basecall_inputs if value is not None]
     if request.sample_signals:
         basecall_inputs.extend(read_id_paths[group.sample] for group in request.sample_signals)
-    signature_command = ["primary-mm-ml-input-v1", *[str(value) for value in dorado_command]]
+    signature_command = ["primary-mm-ml-input-v2", request.modbam_alignment, *[str(value) for value in dorado_command]]
     if request.sample_signals:
         signature_command.extend(["named-pass-signal-selection-v1", json.dumps(_signal_plan(request), sort_keys=True)])
     signature = ledger.signature(basecall_stage, signature_command, basecall_inputs)
@@ -1464,6 +1513,11 @@ def run_methylation(
                 _select_named_modbam_input(request, read_id_paths, modbam_out, runner, max(1, threads))
             else:
                 _select_modbam_input(request, union_ids, modbam_out, runner, max(1, threads))
+        if request.modbam_input and request.modbam_alignment == "preserve":
+            header = modbam_out / "preserved_input.header.sam"
+            with header.open("w") as output:
+                runner.run("methylation-preserved-header", [request.samtools, "view", "-H", modbam_out / ".selected_input.bam"], stdout=output)
+            _validate_preserved_reference(header, reference["fai"])
         if request.pod5_dir and request.sample_signals:
             _basecall_named_pod5(request, dorado_command, read_id_paths, unsorted, logs_out, runner, max(1, threads))
         else:
@@ -1540,6 +1594,7 @@ def run_methylation(
         combined_bam = modbam_out / f"{name}.5mC_5hmC_combined.sorted.bam"
         combined_bai = Path(str(combined_bam) + ".bai")
         bedmethyl = bed_out / f"{name}.CpG.combined_5mC_5hmC.bed"
+        extract = bed_out / f"{name}.reference_cpg_extract.tsv"
         record_count = logs_out / f"{name}.modbam_record_count.txt"
         record_path = sample_status_out / f"{name}.json"
         sample_stage = f"methylation-sample-{name}"
@@ -1561,10 +1616,12 @@ def run_methylation(
                     root / "bin" / "scripts" / "native_marlin_predict.R",
                 ]
             )
+        if request.classifier == "sturgeon":
+            sample_inputs.append(root / "bin/scripts/native_sturgeon_prepare.py")
         sample_signature = ledger.signature(
             sample_stage,
             [
-                "native-ont-methylation-v2-primary-probe-qc",
+                CPG_POLICY,
                 request.classifier,
                 request.classifier_interface_contract_commit,
                 f"threads={max(1, threads)}",
@@ -1601,6 +1658,7 @@ def run_methylation(
                 combined_bai,
                 bedmethyl,
                 record_count,
+                extract,
                 record_path,
                 *previous_predictions,
             ):
@@ -1642,57 +1700,79 @@ def run_methylation(
                 raise OncoTracerError(
                     f"sample {name} has no FASTQ-selected reads in the methylation input; check the FASTQ and POD5/BAM sample mapping"
                 )
-            runner.run(
-                f"methylation-adjust-{name}",
-                [
-                    request.modkit,
-                    "adjust-mods",
-                    raw_bam,
-                    combined_bam,
-                    "--convert",
-                    "h",
-                    "m",
-                    "--cpg",
-                    "--threads",
-                    str(max(1, threads)),
-                    "--log-filepath",
-                    logs_out / f"{name}.adjust_mods.log",
-                    "--ff",
-                ],
-                env=_accelerator_environment(False),
-            )
-            runner.run(
-                f"methylation-index-{name}",
-                [request.samtools, "index", "-@", str(max(1, threads)), combined_bam],
-            )
-            _nonempty(combined_bai, f"sample modified-base BAM index for {name}")
-            runner.run(
-                f"methylation-pileup-{name}",
-                [
-                    request.modkit,
-                    "pileup",
-                    combined_bam,
-                    bedmethyl,
-                    "--cpg",
-                    "--combine-strands",
-                    "--modified-bases",
-                    "5mC",
-                    "--reference",
-                    fasta,
-                    "--threads",
-                    str(max(1, threads)),
-                    "--sampling-threads",
-                    str(max(1, min(threads, 4))),
-                    "--sampling-frac",
-                    "1.0",
-                    "--seed",
-                    "1",
-                    "--log-filepath",
-                    logs_out / f"{name}.modkit_pileup.log",
-                    "--suppress-progress",
-                ],
-                env=_accelerator_environment(False),
-            )
+            if request.classifier == "marlin":
+                runner.run(f"methylation-index-{name}", [request.samtools, "index", "-@", str(max(1, threads)), raw_bam])
+                probe_count = logs_out / f"{name}.probe_overlapping_reads.txt"
+                with probe_count.open("w") as output:
+                    runner.run(f"methylation-probe-count-{name}", [request.samtools, "view", "-c", "-L", request.classifier_paths["probes"], raw_bam], stdout=output)
+                if int(probe_count.read_text().strip()) == 0:
+                    bedmethyl.write_text("")
+                    record.update(status="no_classifier_probes", stage="classifier_probe_coverage",
+                                  error="No selected alignments overlap the supplied MARLIN probes",
+                                  covered_classifier_probes=0, cpg_rows=0, covered_cpg_rows=0,
+                                  modified_cpg_calls=0, bedmethyl=str(bedmethyl.relative_to(outdir)))
+                    _seal_sample_record(record, outdir)
+                    atomic_write_json(record_path, record)
+                    ledger.complete(sample_stage, sample_signature, [record_path])
+                    _write_status(status_path, request, records)
+                    continue
+                runner.run(f"methylation-pileup-{name}", [
+                    request.modkit, "pileup", raw_bam, bedmethyl,
+                    "--reference", fasta, "--include-bed", request.classifier_paths["probes"],
+                    "--motif", "CG", "0", "--combine-mods", "--threads", str(max(1, threads)),
+                    "--log-filepath", logs_out / f"{name}.modkit_pileup.log",
+                ], env=_accelerator_environment(False))
+            else:
+                runner.run(
+                    f"methylation-adjust-{name}",
+                    [
+                        request.modkit,
+                        "adjust-mods",
+                        raw_bam,
+                        combined_bam,
+                        "--convert",
+                        "h",
+                        "m",
+                        "--threads",
+                        str(max(1, threads)),
+                        "--log-filepath",
+                        logs_out / f"{name}.adjust_mods.log",
+                        "--ff",
+                    ],
+                    env=_accelerator_environment(False),
+                )
+                runner.run(
+                    f"methylation-index-{name}",
+                    [request.samtools, "index", "-@", str(max(1, threads)), combined_bam],
+                )
+                _nonempty(combined_bai, f"sample modified-base BAM index for {name}")
+                runner.run(
+                    f"methylation-pileup-{name}",
+                    [
+                        request.modkit,
+                        "pileup",
+                        combined_bam,
+                        bedmethyl,
+                        "--cpg",
+                        "--combine-strands",
+                        "--modified-bases",
+                        "5mC",
+                        "--reference",
+                        fasta,
+                        "--threads",
+                        str(max(1, threads)),
+                        "--sampling-threads",
+                        str(max(1, min(threads, 4))),
+                        "--sampling-frac",
+                        "1.0",
+                        "--seed",
+                        "1",
+                        "--log-filepath",
+                        logs_out / f"{name}.modkit_pileup.log",
+                        "--suppress-progress",
+                    ],
+                    env=_accelerator_environment(False),
+                )
             # An empty pileup is a meaningful negative result: no callable CpG
             # modifications. Preserve and classify it instead of converting it
             # into an opaque command failure.
@@ -1706,7 +1786,7 @@ def run_methylation(
                     "bedmethyl": str(bedmethyl.relative_to(outdir)),
                 }
             )
-            if modified_calls == 0:
+            if covered_rows == 0:
                 record.update(
                     {
                         "status": "no_cpg_modifications",
@@ -1714,6 +1794,7 @@ def run_methylation(
                         "error": "no_usable_cpg_cytosine_modification_calls",
                     }
                 )
+                _seal_sample_record(record, outdir)
                 atomic_write_json(record_path, record)
                 ledger.complete(sample_stage, sample_signature, [record_path])
                 _write_status(status_path, request, records)
@@ -1730,15 +1811,22 @@ def run_methylation(
                             "error": "CpG calls were found, but none cover the supplied MARLIN probes. No leukemia prediction was made. Check human alignment, hg38 probe coordinates and usable read yield.",
                         }
                     )
+                    _seal_sample_record(record, outdir)
                     atomic_write_json(record_path, record)
                     ledger.complete(sample_stage, sample_signature, [record_path])
                     _write_status(status_path, request, records)
                     continue
             if request.classifier == "sturgeon":
+                runner.run(f"methylation-extract-{name}", [
+                    request.modkit, "extract", "full", combined_bam, extract,
+                    "--cpg", "--reference", fasta, "--threads", str(max(1, threads)),
+                    "--log-filepath", logs_out / f"{name}.modkit_extract.log",
+                ], env=_accelerator_environment(False))
                 prediction = _run_sturgeon(
+                    root,
                     request,
                     name,
-                    bedmethyl,
+                    extract,
                     classifier_out / name,
                     runner,
                 )
@@ -1751,6 +1839,17 @@ def run_methylation(
                     classifier_out / name,
                     runner,
                 )
+            probe_bed = classifier_out / name / (f"{name}.marlin_input.bed" if request.classifier == "marlin" else f"{name}.sturgeon.bed")
+            record["probe_bed"] = str(probe_bed.relative_to(outdir))
+            if request.classifier == "sturgeon":
+                record["covered_classifier_probes"] = max(0, _line_count(probe_bed) - 1)
+            if prediction is None:
+                record.update(status="no_classifier_probes", stage="classifier_probe_coverage", error="No measured reference CpG probes; no prediction made")
+                _seal_sample_record(record, outdir)
+                atomic_write_json(record_path, record)
+                ledger.complete(sample_stage, sample_signature, [record_path])
+                _write_status(status_path, request, records)
+                continue
             record.update(
                 {
                     "status": "complete",
@@ -1759,6 +1858,7 @@ def run_methylation(
                     "classification": str(prediction.relative_to(outdir)),
                 }
             )
+            _seal_sample_record(record, outdir)
             atomic_write_json(record_path, record)
             ledger.complete(sample_stage, sample_signature, [record_path])
         except (OSError, OncoTracerError, ValueError) as error:

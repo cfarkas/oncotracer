@@ -50,3 +50,9 @@ run_cna_classifier: false
 
 # Protect an existing real-project output directory.
 force: false
+
+# Automatically check QDNAseq QC failures at 500 kb and 1 Mb; primary passing calls remain primary.
+ichorcna_fallback: true
+ichorcna_fallback_workers: 1
+# With --modbam: realign (default) or preserve verified existing hg38 coordinates.
+methylation_modbam_alignment: realign
