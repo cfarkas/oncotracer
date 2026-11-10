@@ -34,6 +34,17 @@ ACTIVE = [
 
 class NativeDocumentationTests(unittest.TestCase):
     def before_release_3_0(self, relative, content):
+        correction = json.loads((ROOT / "docs/assets/tutorial/native-cpg-rescue-compatibility.json").read_text())
+        self.assertEqual(correction["schema"], 1)
+        transition = correction["files"].get(relative)
+        if transition:
+            self.assertEqual(transition["current_sha256"], hashlib.sha256(content).hexdigest())
+            value = content.decode()
+            for change in reversed(transition["changes"]):
+                self.assertEqual(value[change["start"]:change["end"]], change["current"])
+                value = value[:change["start"]] + change["recorded"] + value[change["end"]:]
+            content = value.encode()
+            self.assertEqual(transition["recorded_sha256"], hashlib.sha256(content).hexdigest())
         record = json.loads((ROOT / "docs/assets/tutorial/release-3.0-compatibility.json").read_text())
         transition = record["files"].get(relative)
         if not transition:

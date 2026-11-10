@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "base_commit": "bb869ca3e782700cd94c8b1c044422ea2fbe43d8",
+  "scope": "Exact reversible source differences for the native CpG correction and ichorCNA rescue. Retained tutorial media and capture hashes are unchanged. The videos demonstrate their original setup, not these later scientific processing changes.",
+  "files": {
+    "oncotracer_cli/cli.py": {
+      "current_sha256": "f6763c74bc2c0c7bb1d3ce30def0e8e82205224197105368c301cf5091e542f0",
+      "recorded_sha256": "da400f989138b238c469ca78977cf3f2aa9f9046bb050dbf36c9d1ea289994ae",
+      "changes": [
+        {
+          "start": 71512,
+          "end": 71623,
+          "current": "        help=\"existing modified-base BAM file or directory; alignment policy is methylation_modbam_alignment\",\n",
+          "recorded": "        help=\"existing modified-base BAM file or directory; reuses calls and aligns on CPU\",\n"
+        },
+        {
+          "start": 73553,
+          "end": 73637,
+          "current": "    from .ichor_rescue import add_rescue_command\n    add_rescue_command(subparsers)\n",
+          "recorded": ""
+        },
+        {
+          "start": 78116,
+          "end": 78142,
+          "current": "            \"rescue-cna\",\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "tests/test_native_methylation.py": {
+      "current_sha256": "ff07a6af0d9745330314a4ec5103f6b2407ab49b8ce2824e00d930005db5a45f",
+      "recorded_sha256": "1f80800772e8d13ef847eecd40a2569404cba1414065a45990b9bc9d427df363",
+      "changes": [
+        {
+          "start": 7349,
+          "end": 7432,
+          "current": "        elif stage.startswith((\"methylation-count-\", \"methylation-probe-count-\")):\n",
+          "recorded": "        elif stage.startswith(\"methylation-count-\"):\n"
+        },
+        {
+          "start": 7726,
+          "end": 7854,
+          "current": "        elif stage.startswith(\"methylation-extract-\"):\n            Path(argv[4]).write_text(\"reference CpG per-read fixture\\n\")\n",
+          "recorded": ""
+        },
+        {
+          "start": 21325,
+          "end": 21408,
+          "current": "            self.assertEqual(status[\"samples\"][0][\"covered_classifier_probes\"], 0)\n",
+          "recorded": "            self.assertGreater(status[\"samples\"][0][\"modified_cpg_calls\"], 0)\n"
+        },
+        {
+          "start": 32166,
+          "end": 32232,
+          "current": "            if stage.startswith(\"methylation-sturgeon-predict-\"):\n",
+          "recorded": "            if stage.startswith(\"methylation-sturgeon-\"):\n"
+        },
+        {
+          "start": 32293,
+          "end": 32450,
+          "current": "            elif stage.startswith(\"methylation-sturgeon-inputtobed-\"):\n                self.assertEqual(Path(command[1]).name, \"native_sturgeon_prepare.py\")\n",
+          "recorded": ""
+        }
+      ]
+    }
+  }
+}

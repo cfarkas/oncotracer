@@ -96,7 +96,7 @@ def final_report(root: Path, summary: dict) -> tuple[str, dict]:
         selected = json.loads(selected_path.read_text())
         data["selected_cna_assessment"] = selected
         body += rescue_html(selected)
-        body += '<p>' + link('08_ichorcna_fallback/index.html', 'Open native ichorCNA rescue evidence') + '</p>' 
+        body += '<p>' + link('08_ichorcna_fallback/index.html', 'Open native ichorCNA rescue evidence') + '</p>'
     if (root / "03_cna_codification/cna_evidence.html").is_file():
         body += '<p>' + link('03_cna_codification/cna_evidence.html', 'Control and sparse-sample CNA evidence checks') + '</p>'
     if (root / "06_workflow_summary/experimental_broad_cna/index.html").is_file():
