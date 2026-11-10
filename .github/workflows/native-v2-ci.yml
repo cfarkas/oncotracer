@@ -109,6 +109,7 @@ jobs:
             tests/test_web.py \
             tests/test_native_picker.py \
             tests/test_results.py \
+            tests/test_results_scale.py \
             tests/test_final_report.py \
             tests/test_report_command.py \
             tests/test_literature_retrieval.py \

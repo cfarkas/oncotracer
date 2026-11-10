@@ -242,6 +242,22 @@ def _variant_presentation(directory: Path, files: list[Path], *, status_path: Pa
     return data, body
 
 
+def _partition_result_files(stage, directory, files):
+    """Classify each path once, preserving the existing order and precedence."""
+    diagnostics, quality, primary, remaining = [], [], [], []
+    for path in files:
+        relative = path.relative_to(directory)
+        if _diagnostic(stage, relative):
+            diagnostics.append(path)
+        elif _quality(stage, relative):
+            quality.append(path)
+        elif _important(stage, relative):
+            primary.append(path)
+        else:
+            remaining.append(path)
+    return diagnostics, quality, primary, remaining
+
+
 def write_results_index(outdir: Path) -> Path:
     """Refresh presentation files only, reading either legacy or organized output."""
     outdir = Path(outdir).absolute()
@@ -305,10 +321,7 @@ def write_results_index(outdir: Path) -> Path:
         files = [path for path in files if not any(parent.is_symlink() for parent in path.parents if parent != outdir)]
         files = [path for path in files if not (path.name == "index.html" and
                  path.read_text(encoding="utf-8", errors="replace").startswith(MARKER))]
-        diagnostics = [path for path in files if _diagnostic(stage, path.relative_to(directory))]
-        visible = [path for path in files if path not in diagnostics]
-        quality = [path for path in visible if _quality(stage, path.relative_to(directory))]
-        primary = [path for path in visible if path not in quality and _important(stage, path.relative_to(directory))]
+        diagnostics, quality, primary, remaining = _partition_result_files(stage, directory, files)
         if stage == "05_cna_classifier":
             preferred = {name: i for i, name in enumerate(("final_report.pdf", "final_report.html", "clinician_report.pdf", "clinician_report.html", "cohort_report.html"))}
             primary.sort(key=lambda path: (len(path.relative_to(directory).parts) > 1, preferred.get(path.name, 99), str(path)))
@@ -342,7 +355,6 @@ def write_results_index(outdir: Path) -> Path:
             body += '<section class="card"><h2>Primary results</h2>' + _table(page, directory, other_primary) + "</section>"
         if quality:
             body += '<section class="card"><h2>Quality control</h2>' + _table(page, directory, quality) + "</section>"
-        remaining = [path for path in visible if path not in primary and path not in quality]
         if canonical_classifier:
             evidence = directory / "evidence"
             if evidence.is_dir() and not evidence.is_symlink():
