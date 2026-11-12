@@ -22,7 +22,7 @@ jobs:
   source-and-binary:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ env.CANDIDATE_SHA }}
           fetch-depth: 0
@@ -41,7 +41,7 @@ jobs:
             printf 'source_commit=%s\n' "$SOURCE_COMMIT"
             printf 'source_sha256=%s\n' "$SOURCE_SHA256"
           } | tee "$RUNNER_TEMP/native-v2-source-provenance.txt"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.11"
       - name: Install source-test dependencies
@@ -258,7 +258,7 @@ jobs:
         run: |
           python3 -m pip install -r docs/requirements.txt
           mkdocs build --strict
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: native-v2-binary-${{ github.run_id }}
           retention-days: 30
@@ -290,13 +290,13 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ env.CANDIDATE_SHA }}
           fetch-depth: 0
       - name: Verify the exact candidate
         run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v4.1.0
         with:
           miniforge-version: latest
           activate-environment: base
@@ -451,7 +451,7 @@ jobs:
             conda list --explicit --prefix "$PREFIX" \
               > "$RUNNER_TEMP/${{ matrix.environment }}.explicit.txt"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: native-v2-environment-${{ matrix.environment }}-${{ github.run_id }}
@@ -468,7 +468,7 @@ jobs:
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-24.04' || vars.ONCOTRACER_HEAVY_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 360
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ env.CANDIDATE_SHA }}
           fetch-depth: 0
@@ -711,7 +711,7 @@ jobs:
             test "$GISTIC_STATUS" -eq 0
             grep -F "Usage: gp_gistic2_from_seg" /tmp/gistic2-probe.txt
           '
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: native-v2-docker-provenance-${{ github.run_id }}

@@ -233,10 +233,10 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn('Path("site/build-info.json")', text)
         self.assertIn('"source_commit": os.environ["GITHUB_SHA"]', text)
         self.assertEqual(build["steps"][0]["with"]["persist-credentials"], "false")
-        for action in ("actions/configure-pages@v5", "actions/upload-pages-artifact@v4"):
+        for action in ("actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d", "actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9"):
             step = next(step for step in build["steps"] if step.get("uses") == action)
             self.assertEqual(step["if"], trusted_main)
-        self.assertEqual(deploy["steps"][0]["uses"], "actions/deploy-pages@v4")
+        self.assertEqual(deploy["steps"][0]["uses"], "actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346")
 
     def test_beginner_guides_stay_short_and_use_public_commands(self) -> None:
         budgets = {
