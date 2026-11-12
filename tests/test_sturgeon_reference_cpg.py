@@ -3,11 +3,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'bin/scripts'))
+STURGEON_AVAILABLE=True
 try:
  from native_sturgeon_prepare import streaming_modkit_file_to_bed
  from sturgeon.callmapping import modkit_file_to_bed
-except ModuleNotFoundError:
- raise unittest.SkipTest('Run converter parity in the user-licensed Sturgeon environment')
+except ModuleNotFoundError as error:
+ if error.name != 'sturgeon' and not str(error.name).startswith('sturgeon.'):
+  raise
+ STURGEON_AVAILABLE=False
+@unittest.skipUnless(STURGEON_AVAILABLE,'Run converter parity in the user-licensed Sturgeon environment')
 class StreamingParityTests(unittest.TestCase):
  def test_exact_parity_across_chunks_ties_thresholds_and_boundaries(self):
   with tempfile.TemporaryDirectory() as d:

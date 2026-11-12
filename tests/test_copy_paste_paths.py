@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,20 +61,18 @@ def require_order(block: str, fragments: tuple[str, ...], label: str) -> None:
 
 
 def check_pip_install(relative_path: str) -> None:
-    # Preview features are distributed in a pinned public GitHub wheel until
-    # their independent stable-release gates permit a new PyPI publication.
-    # Keep the currently published preview usable while 3.0 release gates run.
-    version = "2.3.1rc2"
-    tag = "v2.3.1-rc.2"
+    # The versioned release stays explicit while PyPI publication is separate.
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    tag = "v" + version
     url = f"https://github.com/cfarkas/oncotracer/releases/download/{tag}/oncotracer-{version}-py3-none-any.whl"
     block = find_block(relative_path, url)
     require(first_command(block) == f'python3 -m pip install --upgrade --force-reinstall "{url}"',
-            f"{relative_path} must start with the pinned public preview wheel")
+            f"{relative_path} must start with the versioned release wheel")
     text = read(relative_path)
     require("pip install oncotracer" in text and "separately published PyPI" in text,
-            f"{relative_path} must distinguish the preview from the PyPI version")
-    require("not a stable scientific-parity release" in text,
-            f"{relative_path} must identify the preview's scientific validation limits")
+            f"{relative_path} must distinguish the release asset from the PyPI version")
+    require("benchmark" in text.lower(),
+            f"{relative_path} must distinguish software release from study benchmark completion")
     require("git clone" not in block, f"{relative_path} pip installation must not need a checkout")
     require("sudo" not in block, f"{relative_path} launcher install must not need administrator access")
     require("nextflow" not in block.casefold(), f"{relative_path} install invoked Nextflow")
