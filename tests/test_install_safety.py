@@ -101,9 +101,9 @@ def _snapshot(root: Path) -> dict[str, tuple[str, int, bytes]]:
 
 class InstallerSourceIdentityTests(unittest.TestCase):
     def test_known_prior_installation_sources_remain_recognized(self):
-        for version in ("2.1.0", "2.3.0", "2.3.1rc2", "2.3.1", "2.3.2", __version__):
+        for version in ("2.1.0", "2.3.0", "2.3.1rc2", "2.3.1", "2.3.2", "3.0.0", __version__):
             self.assertTrue(install_safety._valid_source({**SOURCE, "oncotracer_version": version}))
-        for version in ("1.1.0", "2.3.99", "4.0.0", None):
+        for version in ("1.1.0", "2.3.99", "5.0.0", None):
             self.assertFalse(install_safety._valid_source({**SOURCE, "oncotracer_version": version}))
         self.assertFalse(install_safety._valid_source({**SOURCE, "source_sha256": "invalid"}))
 

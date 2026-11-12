@@ -18,6 +18,11 @@ class SampleCancelled(Exception):
     pass
 
 
+class SampleFailed(OncoTracerError):
+    """A reported sample failure cancelled the remaining cohort workers."""
+    pass
+
+
 class SampleRunner(CommandRunner):
     """Independent trace and child process group, cancellable without a shell."""
     def __init__(self,parent,trace,stop):
@@ -148,12 +153,13 @@ def cancellation():
             signal.signal(sig, handler)
 
 
-def run_jobs(jobs, execute, allocation, parent, trace_dir, *, update=None):
+def run_jobs(jobs, execute, allocation, parent, trace_dir, *, update=None, stop_on_failure=False):
     """Only the controller publishes status; workers own separate sample paths.
 
     jobs contains (sample name, payload). execute(payload, runner) returns a
     result. Ordinary per-sample failures may be returned by execute; raised
-    exceptions stop siblings and leave queued work untouched.
+    exceptions stop siblings and leave queued work untouched. With stop_on_failure,
+    returned fatal sample/caller failures also cancel the remaining cohort.
     """
     jobs = list(jobs)
     pending = iter(jobs)
@@ -210,6 +216,9 @@ def run_jobs(jobs, execute, allocation, parent, trace_dir, *, update=None):
                             update(name, 'finished', result)
                         if progress is not None:
                             progress.state(name, result.get('status', 'complete') if isinstance(result, dict) else 'complete')
+                        if stop_on_failure and isinstance(result,dict) and (result.get('status')=='failed' or any(c.get('status')=='failed' for c in result.get('callers',[]))):
+                            stop.set()
+                            raise SampleFailed('Sample '+name+' failed; remaining sample workers cancelled. '+str(result.get('error','See the sample status and trace for details.')))
                     if stop.is_set():
                         raise SampleCancelled('Analysis interrupted; completed outputs retained')
                     if done:

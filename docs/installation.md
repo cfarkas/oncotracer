@@ -2,13 +2,13 @@
 
 Use 64-bit Linux and Python 3.10–3.13. Install the application, then choose **Conda or Docker** for analysis tools.
 
-## Quick start: current GitHub preview
+## Quick start: OncoTracer 4.0.0
 
 ```bash
-python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.3.1-rc.2/oncotracer-2.3.1rc2-py3-none-any.whl"
+python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v4.0.0/oncotracer-4.0.0-py3-none-any.whl"
 ```
 
-No Git checkout is needed. This preview contains the GPU and experimental haplotype features. It is not a stable scientific-parity release: the historical frozen CNA comparison remains unresolved. `pip install oncotracer` installs the separately published PyPI version, which does not yet contain these preview features. If system Python requires a separate environment, use the [Python environment instructions](#python-environment) below.
+No Git checkout is needed. The command `pip install oncotracer` follows the separately published PyPI version. Install the versioned release above and choose one backend below. The ongoing 4.0.0 study benchmark is separate from software regression and installation checks. If system Python requires a separate environment, use the [Python environment instructions](#python-environment) below.
 
 ### Conda
 
@@ -27,14 +27,14 @@ Installation prepares alignment, QDNAseq, ichorCNA, classifier/reporting, GISTIC
 Docker must be running and accessible to your user. Host Conda is unnecessary:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.3.1-rc.2
+oncotracer install --docker --image carlosfarkas/oncotracer:4.0.0
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
 
 Installation saves the selected image; doctor and setup reuse it. Select small variants in the browser when needed. See [Docker variants](variants.md#run-cna-and-variants-with-docker) for models, FFPERASE licensing and ANNOVAR. Use [Conda for ONT methylation](configuration/methylation.md).
 
-### Podman (3.0.0 candidate)
+### Podman
 
 Use `--podman` for installation or `--backend podman` for run, doctor and
 interactive setup. Select your image from Podman's store.
@@ -82,7 +82,7 @@ For a dedicated application environment:
 ```bash
 python3 -m venv oncotracer-env
 source oncotracer-env/bin/activate
-python -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.3.1-rc.2/oncotracer-2.3.1rc2-py3-none-any.whl"
+python -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v4.0.0/oncotracer-4.0.0-py3-none-any.whl"
 ```
 
 Keep this environment. Backend installation creates an extra `~/.local/bin/oncotracer` command when needed and preserves a pip-owned command already there. Follow the installer’s PATH instruction if necessary; `--no-launcher` opts out. See [advanced installation](installation_details.md) for source, standalone, Poetry and Apptainer routes.

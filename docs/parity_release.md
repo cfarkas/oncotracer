@@ -38,8 +38,8 @@ Each artifact includes `parity_report.json`, `parity_report.md`, `event_matches.
 
 ## Release automation
 
-The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v3.0.0`. A release cannot be created from a stale or partially validated commit. The new
-`v3.0.0` tag and versioned container aliases preserve the published `v2.0.0`
+The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v4.0.0`. A release cannot be created from a stale or partially validated commit. The new
+`v4.0.0` tag and versioned container aliases preserve the published `v2.0.0`
 release; an ordinary main update does not replace an existing release.
 
 ## Hosted-runner capacity limits

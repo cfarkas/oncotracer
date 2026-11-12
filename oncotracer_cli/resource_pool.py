@@ -1,11 +1,11 @@
 """Live, bounded ONT chunk scheduling without changing scientific worker inputs.
 
-Samples keep their running task settings. Freed sample slots increase the queue
-limits of remaining samples. Lower live limits delay new tasks; running tasks
-finish. GNU Parallel receives a jobs file from the beginning of each phase.
+Samples keep their running task settings. Freed sample slots increase admission
+for remaining samples. GNU Parallel gets a constant numeric ceiling; live limits
+are enforced by process leases, never by rewriting a GNU Parallel jobs file.
 """
 from __future__ import annotations
-import json,math,os,shlex,shutil,subprocess,sys,threading,time,uuid
+import fcntl,json,math,os,shlex,shutil,subprocess,sys,threading,time,uuid
 from pathlib import Path
 from .runtime import OncoTracerError,atomic_write_json
 from .source_runtime import python_code,package_bootstrap
@@ -90,17 +90,9 @@ class DynamicResources:
             for sample,path in self.samples.items():
                 value=values.get(sample,{'cpu_threads':0,'memory_gb':0,'worker_limit':0})
                 budget={'state':'running' if sample in self.remaining else 'complete',
-                        'owner':self.owner,'updated_at':time.time(),**value}
+                        'owner':self.owner,'updated_at':time.time(),
+                        'maximum_workers':max(1,min(self.allocation['total_threads'],int(self.allocation['total_memory_gb']//8))),**value}
                 atomic_write_json(path/'budget.json',budget)
-                for registration in path.glob('parallel-*.json'):
-                    try:
-                        phase=json.loads(registration.read_text())
-                        if process_identity(phase['pid'])!=phase['start']:continue
-                        count=min(value['worker_limit'],max(1,math.floor(value['cpu_threads']*phase['initial_jobs']/phase['initial_threads'])))
-                        # GNU Parallel interprets zero as unlimited. Admission gates
-                        # below pause new computation when the live allowance is zero.
-                        atomic_text(path/phase['jobs_file'],str(max(1,count))+'\n')
-                    except (OSError,ValueError,KeyError,TypeError):continue
             self.last={'state':'running','updated_at':time.time(),'remaining_samples':len(self.remaining),
                        'active_samples':sorted(self.active),'allocations':values,'owner':self.owner,
                        'maximum_threads':self.allocation['total_threads'],'maximum_memory_gb':self.allocation['total_memory_gb']}
@@ -133,10 +125,64 @@ def read_budget(directory):
     return value
 
 
-def task_main(directory,argv):
+def claim_worker(directory,initial_jobs=1,initial_threads=1):
+    """Acquire a bounded process lease; never signal a recorded process ID.
+
+    PID plus start time detects stale leases across PID reuse. Counting and
+    claiming are serialized. Shrinking budgets let running work finish and
+    delay admission until active work falls below the new allowance.
+    """
+    path=Path(directory)
+    with (path/'admission.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        value=read_budget(path)
+        limit=min(value['worker_limit'],max(1,math.floor(value['cpu_threads']*initial_jobs/initial_threads)))
+        live=0
+        for lease in path.glob('worker-*.json'):
+            owner=json.loads(lease.read_text())
+            if owner.get('start') is not None and process_identity(owner['pid'])==owner['start']:live+=1
+            else:lease.unlink()
+        if live>=limit:return None
+        lease=path/('worker-'+str(os.getpid())+'-'+uuid.uuid4().hex+'.json')
+        atomic_write_json(lease,{'pid':os.getpid(),'start':process_identity(os.getpid()),'started_at':time.time()})
+        return lease
+
+
+def task_main(directory,argv,initial_jobs=1,initial_threads=1):
     if not argv:raise OncoTracerError('No task supplied to the resource admission gate')
-    while read_budget(directory)['worker_limit']<1:time.sleep(.5)
-    os.execvp(argv[0],argv)
+    lease=None
+    try:
+        while lease is None:
+            lease=claim_worker(directory,initial_jobs,initial_threads)
+            if lease is None:time.sleep(.2)
+        # exec preserves the lease identity. A subsequent admission removes the
+        # lease after the worker exits, including signal-induced termination.
+        os.execvp(argv[0],argv)
+    finally:
+        if lease is not None:lease.unlink(missing_ok=True)
+
+
+def supervise_parallel(argv,directory,*,idle_timeout=120,poll_interval=.2):
+    """Fail a runner that remains alive with no worker children, not a busy task."""
+    from .sample_execution import SampleRunner
+    process=subprocess.Popen(argv,start_new_session=True)
+    empty_since=None
+    try:
+        while process.poll() is None:
+            read_budget(directory)
+            try:
+                children=Path(f'/proc/{process.pid}/task/{process.pid}/children').read_text().strip()
+            except FileNotFoundError:
+                if process.poll() is not None:break
+                raise
+            if children:empty_since=None
+            elif empty_since is None:empty_since=time.monotonic()
+            elif time.monotonic()-empty_since>=idle_timeout:
+                raise OncoTracerError('GNU Parallel stalled with no worker processes; unfinished work retained for recovery')
+            time.sleep(poll_interval)
+        return process.wait()
+    finally:
+        if process.poll() is None:SampleRunner._stop_group(process)
 
 
 def parallel_main(directory,initial_threads):
@@ -151,16 +197,12 @@ def parallel_main(directory,initial_threads):
         os.execv(real,[real,*argv])
     template=argv.index('::::')-1
     if template<=index:os.execv(real,[real,*argv])
-    path=Path(directory);identifier='parallel-'+str(os.getpid())+'-'+uuid.uuid4().hex
-    registration=path/(identifier+'.json');jobs=path/(identifier+'.jobs')
+    path=Path(directory)
     value=read_budget(path)
-    count=min(value['worker_limit'],max(1,math.floor(value['cpu_threads']*int(initial)/initial_threads)))
-    atomic_text(jobs,str(max(1,count))+'\n')
-    atomic_write_json(registration,{'pid':os.getpid(),'start':process_identity(os.getpid()),
-        'initial_jobs':int(initial),'initial_threads':initial_threads,'jobs_file':jobs.name})
-    prefix=python_code('from oncotracer_cli.resource_pool import task_main; import sys; task_main(sys.argv[1],sys.argv[2:])')
+    ceiling=max(1,int(value['maximum_workers']))
+    prefix=python_code('from oncotracer_cli.resource_pool import task_main; import sys; task_main(sys.argv[1],sys.argv[2:],'+str(int(initial))+','+str(initial_threads)+')')
     argv[template]=shlex.join([*prefix,str(path)])+' '+argv[template]
-    argv[index:index+span]=['-j',str(jobs)]
-    try:code=subprocess.call([real,*argv])
-    finally:registration.unlink(missing_ok=True);jobs.unlink(missing_ok=True)
-    raise SystemExit(code)
+    # GNU Parallel 20250822 retains stale probe PIDs when jobs files change.
+    # Use a numeric ceiling; process leases enforce changing admission limits.
+    argv[index:index+span]=['-j',str(ceiling)]
+    raise SystemExit(supervise_parallel([real,*argv],path))

@@ -58,7 +58,7 @@ class CompatibleStageSignatureTests(unittest.TestCase):
             source.write_bytes(b'unchanged alignment')
             with patch.object(runtime, '__version__', '2.3.0'):
                 previous = runtime.StageLedger.signature('alignment', ['samtools', 'sort'], [source])
-            with patch.object(runtime, '__version__', '3.0.0'):
+            with patch.object(runtime, '__version__', '4.0.0'):
                 current = runtime.StageLedger.signature('alignment', ['samtools', 'sort'], [source])
                 self.assertEqual(previous, current)
                 self.assertNotEqual(current, runtime.StageLedger.signature('alignment', ['samtools', 'different'], [source]))

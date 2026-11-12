@@ -68,7 +68,7 @@ oncotracer install --conda \
 ### FASTQ to CNA and variants
 
 The current Linux x86-64 image is
-`carlosfarkas/oncotracer:2.3.1-rc.2`. It includes the complete
+`carlosfarkas/oncotracer:4.0.0`. It includes the complete
 Illumina GLIMPSE2 workflow, FFPE repairs, integrated ONT callers and concurrent
 project support. `oncotracer install --docker` selects this image by default.
 
@@ -124,10 +124,10 @@ preparation before parallel samples start.
 
 ### Versioned release
 
-Current preview image (stable scientific-parity gates remain pending):
+Version 4 image (the study benchmark is reported separately):
 
 ```text
-carlosfarkas/oncotracer:2.3.1-rc.2
+carlosfarkas/oncotracer:4.0.0
 ```
 
 Install and run:
@@ -151,7 +151,7 @@ Select a local image tag or immutable registry digest:
 ```bash
 oncotracer run \
   --backend docker \
-  --image carlosfarkas/oncotracer:2.3.1-rc.2 \
+  --image carlosfarkas/oncotracer:4.0.0 \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 

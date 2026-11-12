@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "base_commit": "dc773e26d8459bc7acb2c782bbcc3188d1b34803",
+  "scope": "Version 4 changes the default image tag only in the recorded terminal source. Retained videos show the original interface; no media or capture hashes are changed. Exact reversible differences authenticate both sources.",
+  "files": {
+    "oncotracer_cli/cli.py": {
+      "current_sha256": "578fc619dbc1e2f1100881f99d0c7dbe02f5017fdfbb9707422669e35ab91e8f",
+      "recorded_sha256": "f6763c74bc2c0c7bb1d3ce30def0e8e82205224197105368c301cf5091e542f0",
+      "changes": [
+        {
+          "start": 1655,
+          "end": 1703,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:4.0.0\"\n",
+          "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:3.0.0\"\n"
+        }
+      ]
+    }
+  }
+}

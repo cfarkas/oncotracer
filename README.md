@@ -9,10 +9,10 @@ Analyze Illumina and Oxford Nanopore (ONT) copy-number changes and small variant
 Use Linux and Python 3.10–3.13. No Git checkout is required. Install in your Python environment:
 
 ```bash
-python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v2.3.1-rc.2/oncotracer-2.3.1rc2-py3-none-any.whl"
+python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v4.0.0/oncotracer-4.0.0-py3-none-any.whl"
 ```
 
-This **GitHub preview** is not a stable scientific-parity release; frozen CNA parity remains unresolved. `pip install oncotracer` installs the separately published PyPI 2.1.0 without these updates. Choose **one** backend:
+OncoTracer 4.0.0 includes safe dynamic ONT scheduling and prompt reporting of failed sample workers. The full FFPE/ONT/fresh benchmark is being rerun from raw reads; its completion is reported separately. The command `pip install oncotracer` follows the separately published PyPI version. Choose **one** backend:
 
 ### Conda
 
@@ -29,7 +29,7 @@ oncotracer --interactive --backend conda
 With Docker running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:2.3.1-rc.2
+oncotracer install --docker --image carlosfarkas/oncotracer:4.0.0
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
@@ -38,7 +38,7 @@ The image is saved for later commands. See [installation](docs/installation.md) 
 
 Use `oncotracer --detect-resources` (also `--detect_resources`) for [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) based on CPU/RAM. Choose the allocation during setup or **Review and run**.
 
-The [3.0.0 candidate](docs/releases/3.0.0.md) adds dynamic ONT scheduling, compact storage, QUILT2 hash reuse, [Podman setup](docs/installation_details.md#podman-300-candidate) and FFPE report recovery. New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md) with read-support checks; existing settings persist. Options: `--resource-mode fixed` and `--no-merge-vcfs`. Study and parity validation are pending.
+The [4.0.0 release notes](docs/releases/4.0.0.md) describe the scheduler correction, corrected reference-CpG aggregation and evidence-gated ichorCNA rescue. New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md) with read-support checks; existing settings persist. Options: `--resource-mode fixed` and `--no-merge-vcfs`.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 
@@ -54,21 +54,15 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 
 ## Recorded study commands
 
-These local 3.0.0 candidate commands resumed the saved studies on 8 November 2026
-with dynamic resources, compact storage and their saved budgets:
+The 4.0.0 benchmark starts from original FASTQs with empty result directories. Public reference indexes and models may be reused. Completion and measured performance will be published after all three cohorts pass validation.
 
 ```bash
-runner=/media/server/storage_disk4/oncotracer_benchmark_07_11_2026/artifacts-395f2e3/oncotracer
-"$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_Fresh/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
-"$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/Illumina_FFPE/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
-"$runner" run --config /media/server/STORAGE/LPWGS_2025/Paper/oncotracer_outputs/ONT_Fresh/config/run.yml --backend docker --image carlosfarkas/oncotracer:3.0.0-candidate-395f2e3 --cpu --resource-mode dynamic --storage-mode compact
+oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
+oncotracer run --config /path/to/ONT/config/run.yml --backend docker --image carlosfarkas/oncotracer:4.0.0 --cpu --resource-mode dynamic --storage-mode compact
+oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
 ```
 
-Local measurements are retained in
-`/media/server/storage_disk4/oncotracer_benchmark_07_11_2026`.
-See [measured performance and its limits](docs/benchmarks/2026-11-07.md).
-The candidate is locally built; stable installation commands will be updated after
-study validation and both GitHub scientific parity checks pass.
+The interrupted 3.0.0 attempt is not a successful benchmark. See [release notes](docs/releases/4.0.0.md) for the correction and validation scope.
 
 ## Set up your analysis
 

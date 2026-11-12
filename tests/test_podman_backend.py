@@ -122,7 +122,7 @@ class PodmanBackendTests(unittest.TestCase):
     def test_resume_identity_comes_from_selected_podman_image(self):
         from oncotracer_cli.output_safety import _IDENTITY_KEYS
         identity = {key: 'a' * 64 for key in _IDENTITY_KEYS}
-        identity['oncotracer_version'] = '3.0.0'
+        identity['oncotracer_version'] = '4.0.0'
         response = subprocess.CompletedProcess([], 0, json.dumps(identity), '')
         with patch.object(project_resume.subprocess, 'run', return_value=response) as run:
             self.assertEqual(project_resume._runtime('podman', self.config), identity)

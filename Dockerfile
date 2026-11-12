@@ -105,7 +105,7 @@ ARG SOURCE_COMMIT
 ARG SOURCE_SHA256
 
 LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="3.0.0" \
+      org.opencontainers.image.version="4.0.0" \
       org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
       org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
@@ -116,7 +116,7 @@ COPY . ${ONCOTRACER_HOME}/
 
 # Run the same isolated tool and synthetic-call probes used by Conda installation.
 RUN python -B -c "from pathlib import Path; from oncotracer_cli.variant_install_checks import verify_variant_environment; verify_variant_environment(Path('/opt/oncotracer-envs/variants'))"
-RUN PATH="${ONCOTRACER_VARIANTS_PREFIX}/bin:/opt/micromamba/envs/clairs-to/bin:${PATH}" /opt/conda/bin/python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_glimpse_preflight_parallel tests.test_haplotype_evidence tests.test_variant_postcalling tests.test_quilt2_recovery tests.test_gpu_resources tests.test_glimpse_joint tests.test_glimpse_resume tests.test_optional_cohort tests.test_glimpse_storage tests.test_dynamic_resources tests.test_quilt_parallel tests.test_gistic_eligibility tests.test_project_resume tests.test_podman_backend tests.test_cna_sensitivity tests.test_broad_cna -q
+RUN PATH="${ONCOTRACER_VARIANTS_PREFIX}/bin:/opt/micromamba/envs/clairs-to/bin:${PATH}" /opt/conda/bin/python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_glimpse_preflight_parallel tests.test_haplotype_evidence tests.test_variant_postcalling tests.test_quilt2_recovery tests.test_gpu_resources tests.test_glimpse_joint tests.test_glimpse_resume tests.test_optional_cohort tests.test_glimpse_storage tests.test_dynamic_resources tests.test_scheduler_recovery tests.test_quilt_parallel tests.test_gistic_eligibility tests.test_project_resume tests.test_podman_backend tests.test_cna_sensitivity tests.test_broad_cna -q
 RUN "${ONCOTRACER_QDNASEQ_PREFIX}/bin/Rscript" --vanilla tests/test_cna_coverage.R
 RUN "${ONCOTRACER_CLASSIFIER_PREFIX}/bin/python" -B -m unittest tests.test_native_classifier.NativeClassifierTests.test_required_gistic_with_one_eligible_sample_finishes_reports_and_preserves_qc -q
 

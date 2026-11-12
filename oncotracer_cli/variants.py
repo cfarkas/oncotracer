@@ -646,7 +646,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
         if Path(bams[tumor]).samefile(Path(bams[normal])):
             raise OncoTracerError('Strelka2 tumor and matched normal must be different physical BAM files')
     from .sample_resources import allocate, announce
-    from .sample_execution import run_jobs, SampleCancelled
+    from .sample_execution import run_jobs, SampleCancelled, SampleFailed
     allocation = allocate(threads, len(bams), parallel=request.parallel_samples, memory=request.memory)
     if request.mode=='ont' and request.resource_mode=='dynamic':
         from .resource_pool import safe_allocation
@@ -906,9 +906,15 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
     try:
         if resources:resources.start()
         run_jobs([(sample, (sample, bam)) for sample, bam in bams.items()], execute,
-                 allocation, runner, root/'sample_logs', update=update)
+                 allocation, runner, root/'sample_logs', update=update, stop_on_failure=True)
         any_success = any(r.get('status') in {'complete','partial_failure'} for s in status['samples'] for r in s['callers'])
         status['overall_status'] = 'complete' if not status['failed_samples'] else 'partial_failure' if any_success else 'failed'
+    except SampleFailed as error:
+        status['overall_status']='failed'
+        status['error']=str(error)
+        for row in status['samples']:
+            if row['status']=='running':row['status']='interrupted'
+            elif row['status']=='queued':row['status']='not_started'
     except (SampleCancelled, KeyboardInterrupt):
         status['overall_status'] = 'interrupted'
         for row in status['samples']:

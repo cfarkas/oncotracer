@@ -70,7 +70,7 @@ jobs:
             tests/test_sample_parallelism.py \
             tests/test_terminal_progress.py tests/test_cna_quality.py tests/test_broad_cna.py tests/test_cna_sensitivity.py \
             tests/test_sample_resource_web.py tests/test_gpu_resources.py tests/test_haplotype_evidence.py tests/test_variant_postcalling.py \
-            tests/test_quilt2_recovery.py tests/test_dynamic_resources.py tests/test_quilt_parallel.py \
+            tests/test_quilt2_recovery.py tests/test_dynamic_resources.py tests/test_scheduler_recovery.py tests/test_quilt_parallel.py \
             tests/test_native_variants.py tests/test_variant_artifact_names.py \
             tests/test_variant_command.py \
             tests/test_variant_engine.py \
@@ -175,7 +175,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/outside-checkout"
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
-          ./oncotracer --version | grep -F 'OncoTracer 3.0.0'
+          ./oncotracer --version | grep -F 'OncoTracer 4.0.0'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA and variant analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
@@ -248,7 +248,7 @@ jobs:
           python3 -m pip install 'poetry>=2,<3'
           poetry check --lock
           poetry install --no-interaction
-          poetry run oncotracer --version | grep -F 'OncoTracer 3.0.0'
+          poetry run oncotracer --version | grep -F 'OncoTracer 4.0.0'
       - name: Verify GPU controls in Firefox without starting analysis
         run: |
           python3 -m pip install playwright
@@ -607,7 +607,7 @@ jobs:
             --work-dir "$RUNNER_TEMP/podman-resume-smoke" | tee "$RUNNER_TEMP/podman-resume.log"
       - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
-          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 3.0.0'
+          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 4.0.0'
           docker run --rm oncotracer:v2-ci provenance --json \
             | tee "$RUNNER_TEMP/docker-provenance.json"
           jq -e \

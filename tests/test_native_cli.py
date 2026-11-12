@@ -42,7 +42,7 @@ from oncotracer_cli.runtime import (  # noqa: E402
 
 class NativeCliTests(unittest.TestCase):
     def test_version_is_v2(self) -> None:
-        self.assertEqual(__version__, "3.0.0")
+        self.assertEqual(__version__, "4.0.0")
 
     def test_parser_exposes_native_commands(self) -> None:
         parser = build_parser()
@@ -70,7 +70,7 @@ class NativeCliTests(unittest.TestCase):
     def test_docker_install_default_still_pulls(self) -> None:
         from oncotracer_cli import cli
         for flags, image in [
-            ([], "carlosfarkas/oncotracer:3.0.0"),
+            ([], "carlosfarkas/oncotracer:4.0.0"),
             (["--image", "registry/image:tag"], "registry/image:tag"),
         ]:
             with self.subTest(image=image):

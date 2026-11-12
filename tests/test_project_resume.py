@@ -39,7 +39,7 @@ class ResumeTests(unittest.TestCase):
         self.patch.start()
         self.addCleanup(self.patch.stop)
 
-    def test_v23_to_v30_migration_keeps_checkpoints_and_audit_history(self):
+    def test_v23_to_v40_migration_keeps_checkpoints_and_audit_history(self):
         owner_path = self.output / OUTPUT_OWNER_RELATIVE
         owner = json.loads(owner_path.read_text())
         owner["runtime_identity"]["oncotracer_version"] = "2.3.1rc2"
@@ -49,7 +49,7 @@ class ResumeTests(unittest.TestCase):
         ledger = StageLedger(self.output / ".oncotracer-native/state.json")
         ledger.complete("fixture", "original-signature", [artifact])
         before = ledger.path.read_bytes()
-        target = dict(self.identity, oncotracer_version="3.0.0")
+        target = dict(self.identity, oncotracer_version="4.0.0")
         with patch("oncotracer_cli.project_resume._runtime", return_value=target):
             resume_project(self.project)
             receipt = json.loads((self.project / "config/resume.json").read_text())
@@ -64,8 +64,8 @@ class ResumeTests(unittest.TestCase):
             self.assertEqual(repeated["migrations"], receipt["migrations"])
 
     def test_unreviewed_major_transitions_leave_project_untouched(self):
-        for old_version, new_version in [("2.2.1", "3.0.0"), ("2.3.99", "3.0.0"),
-                                         ("2.3.1rc2", "4.0.0"), ("3.0.0", "2.3.2")]:
+        for old_version, new_version in [("2.2.1", "4.0.0"), ("2.3.99", "4.0.0"),
+                                         ("2.3.1rc2", "5.0.0"), ("4.0.0", "2.3.2")]:
             with self.subTest(previous=old_version, target=new_version):
                 owner_path = self.output / OUTPUT_OWNER_RELATIVE
                 owner = json.loads(owner_path.read_text())
