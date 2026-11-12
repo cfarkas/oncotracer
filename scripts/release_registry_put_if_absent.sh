@@ -33,7 +33,7 @@ REFERENCE_PREFIX="$REGISTRY/$REPOSITORY:"
 [[ "$EXPECTED_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
 [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
 for target_reference in "${TARGET_REFERENCES[@]}"; do
-  [[ "$target_reference" =~ ^ghcr[.]io/cfarkas/oncotracer:(3[.]0[.]0|v4[.]0[.]0)$ ]]
+  [[ "$target_reference" =~ ^ghcr[.]io/cfarkas/oncotracer:(4[.]0[.]0|v4[.]0[.]0)$ ]]
   [[ "$SOURCE_REFERENCE" != "$target_reference" ]]
 done
 if [[ "${#TARGET_REFERENCES[@]}" -eq 2 ]]; then
