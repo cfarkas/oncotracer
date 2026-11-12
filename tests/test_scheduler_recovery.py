@@ -65,7 +65,13 @@ class SchedulerRecoveryTests(unittest.TestCase):
                 self.assertEqual(calls.count('bad'),2)
                 for name in ['good1','good2','good3']:self.assertEqual(calls.count(name),1)
                 self.assertFalse(list(pool.sample_directory('a').glob('*.jobs')))
-                self.assertIn('\t137\t9\t',(root/'joblog').read_text())
+                rows=[line.split('\t',8) for line in (root/'joblog').read_text().splitlines()[1:]]
+                killed=[row for row in rows if row[-1].endswith(' bad')]
+                self.assertEqual(len(killed),1)
+                # Shells can encode SIGKILL as exit 137 or a separate signal 9.
+                self.assertEqual(killed[0][6],'137')
+                self.assertIn(killed[0][7],{'0','9'})
+                self.assertEqual(sum(row[6:8]==['0','0'] for row in rows),3)
             finally:
                 pool.close()
                 if process is not None and process.poll() is None:
