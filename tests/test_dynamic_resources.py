@@ -25,6 +25,54 @@ class ResourceBoundsTests(unittest.TestCase):
         self.assertEqual(safe_allocation(allocation(cpu=2,slots=8))['parallel_samples'],2)
         with self.assertRaises(OncoTracerError):safe_allocation(allocation(memory=4))
 
+    def test_partial_memory_capacity_keeps_work_admitted_with_22_samples(self):
+        names=[f'sample{i:02}' for i in range(22)]
+        a=allocation(cpu=22,slots=22,memory=224)
+        # Includes memory consumed by the controller and waiting task wrappers.
+        for available in [10,40,160,208,224]:
+            limits=bounds(a,22,names,hardware(cpu=22,memory=available))
+            expected=min(22,int(available*.8//8))
+            self.assertEqual(sum(x['worker_limit'] for x in limits.values()),expected)
+            self.assertLessEqual(sum(x['memory_gb'] for x in limits.values()),available*.8+1e-8)
+            for value in limits.values():
+                self.assertGreaterEqual(value['memory_gb'],value['worker_limit']*8)
+        remaining=list(names)
+        while remaining:
+            limits=bounds(a,len(remaining),remaining,hardware(cpu=22,memory=40))
+            admitted=[name for name,value in limits.items() if value['worker_limit']]
+            self.assertTrue(admitted,'Memory rounding must not stop all samples')
+            remaining=[name for name in remaining if name not in admitted]
+
+    def test_real_admission_recovers_all_22_samples_after_memory_pressure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);names=[f'sample{i:02}' for i in range(22)]
+            pool=DynamicResources(root,names,allocation(cpu=22,slots=22,memory=224),
+                interval=.05,hardware=lambda:hardware(cpu=22,memory=208)).start()
+            processes={}
+            try:
+                for name in names:pool.update(name,'running')
+                from oncotracer_cli.source_runtime import python_code
+                body='from pathlib import Path; import sys; Path(sys.argv[1]).write_text("complete")'
+                for name in names:
+                    command=python_code('from oncotracer_cli.resource_pool import task_main; import sys; task_main(sys.argv[1],sys.argv[2:])')
+                    processes[name]=subprocess.Popen([*command,str(pool.sample_directory(name)),sys.executable,'-c',body,str(root/name)],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                pending=set(names);deadline=time.monotonic()+25
+                while pending and time.monotonic()<deadline:
+                    for name in list(pending):
+                        process=processes[name]
+                        if process.poll() is not None:
+                            stdout,stderr=process.communicate()
+                            self.assertEqual(process.returncode,0,stderr.decode())
+                            self.assertEqual((root/name).read_text(),'complete')
+                            pending.remove(name);pool.update(name,'finished')
+                    time.sleep(.03)
+                self.assertFalse(pending,'Waiting samples must progress as admitted samples finish')
+            finally:
+                for process in processes.values():
+                    if process.poll() is None:process.kill()
+                    process.communicate()
+                pool.close()
+
     def test_mode_and_scientific_settings_do_not_change_checkpoint_identity(self):
         from dataclasses import replace
         from oncotracer_cli.variants import VariantRequest

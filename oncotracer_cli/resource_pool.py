@@ -30,13 +30,21 @@ def bounds(allocation,remaining,active,hardware):
     memory=allocation['total_memory_gb']
     available=hardware.get('ram_available_bytes')
     if available is not None:memory=min(memory,max(0,available/GIB*.8))
-    # Retain the existing 8 GiB ONT admission floor for each concurrent chunk.
-    memory_workers=math.floor(memory/capacity/8)
+    # Divide whole 8 GiB admission slots before distributing the remainder.
+    # Dividing RAM equally first can give every sample less than 8 GiB and
+    # deadlock all waiting workers even when many slots are available.
+    whole_slots=math.floor(memory/8)
+    per_sample,extra=divmod(whole_slots,capacity)
     ordered=sorted(active)
-    return {sample:{'cpu_threads':cpu//capacity if cpu>=capacity else int(i<cpu),
-                    'memory_gb':memory/capacity,
-                    'worker_limit':max(0,min(cpu//capacity if cpu>=capacity else int(i<cpu),memory_workers))}
-            for i,sample in enumerate(ordered)}
+    result={}
+    for i,sample in enumerate(ordered):
+        memory_slots=per_sample+int(i<extra)
+        cpu_threads=cpu//capacity if cpu>=capacity else int(i<cpu)
+        result[sample]={'cpu_threads':cpu_threads,
+                        'memory_gb':memory_slots*8+(memory-whole_slots*8)/capacity,
+                        'worker_limit':min(cpu_threads,memory_slots)}
+    return result
+
 
 
 def safe_allocation(allocation):
