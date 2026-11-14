@@ -563,6 +563,15 @@ def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str)
     image = image_reference(args.image or config.get("docker_image") or install.get("image"), backend)
     from .docker_runtime import (docker_mounts, docker_resource_environment,
                                  validate_docker_variants, variants_enabled)
+    methylation = _methylation_requested(config_path, args)
+    effective_config = dict(config)
+    if methylation:
+        effective_config['methylation'] = True
+        for argument, key in (('modbam', 'methylation_modbam'), ('pod5_dir', 'methylation_pod5_dir'),
+                              ('methylation_classifier', 'methylation_classifier')):
+            value = getattr(args, argument, None)
+            if value is not None:
+                effective_config[key] = value
     enabled = variants_enabled(config)
     validate_docker_variants(config)
     command: list[str | Path] = [
@@ -574,20 +583,21 @@ def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str)
     command.extend(["--env", "HOME=/tmp", "--env", "MPLCONFIGDIR=/tmp/matplotlib"])
     from .gpu_runtime import docker_arguments
     command.extend(docker_arguments(config, args.gpu, create=not args.dry_run, backend=backend))
-    if enabled:
-        environment = docker_resource_environment(config, backend=backend)
+    if enabled or methylation:
+        environment = docker_resource_environment(effective_config, backend=backend)
         for key, value in environment.items():
             command.extend(["--env", f"{key}={value}"])
         command.extend(["--workdir", Path.cwd()])
-        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image, backend=backend):
+        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image, backend=backend, config_override=effective_config):
             command.extend(["--volume", f"{mount}:{mount}:{access}"])
-        # Fail early if the selected image lacks callers/resources, before an
-        # expensive alignment. Execute image code, never the mounted host tree.
-        preflight = [*command, "--entrypoint", "/opt/conda/bin/python", image, "-I", "-c",
-                     "import sys; sys.path.insert(0, '/opt/oncotracer'); "
-                     "from oncotracer_cli.docker_runtime import preflight; preflight(sys.argv[1])",
-                     config_path]
-        _run(preflight, dry_run=args.dry_run)
+        if enabled:
+            # Fail early if the selected image lacks callers/resources, before an
+            # expensive alignment. Execute image code, never the mounted host tree.
+            preflight = [*command, "--entrypoint", "/opt/conda/bin/python", image, "-I", "-c",
+                         "import sys; sys.path.insert(0, '/opt/oncotracer'); "
+                         "from oncotracer_cli.docker_runtime import preflight; preflight(sys.argv[1])",
+                         config_path]
+            _run(preflight, dry_run=args.dry_run)
     else:
         for mount in _project_mounts(config_path):
             command.extend(["--volume", f"{mount}:{mount}"])
@@ -610,6 +620,10 @@ def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str)
         command.extend(["--resource-mode", args.variant_resource_mode])
     if args.force:
         command.append("--force")
+    if getattr(args, "methylation_only", False):
+        command.append("--methylation-only")
+    if getattr(args, "modbam", None):
+        command.extend(["--modbam", Path(args.modbam).expanduser().resolve()])
     if args.methylation:
         command.append("--methylation")
     if args.methylation_classifier:

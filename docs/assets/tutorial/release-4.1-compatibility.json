@@ -5,7 +5,7 @@
   "files": {
     "oncotracer_cli/cli.py": {
       "recorded_sha256": "578fc619dbc1e2f1100881f99d0c7dbe02f5017fdfbb9707422669e35ab91e8f",
-      "current_sha256": "2fae78d2fd00a4b503c86fe845294817bb8b4bdb3a71d6e36eaaaec859fd43b7",
+      "current_sha256": "c239cdf04e8487af2898737dba469936d34d157aede0e9f8d24f8a20d6ee7f12",
       "changes": [
         {
           "start": 1655,
@@ -20,20 +20,50 @@
           "current": "                one_cpu_per_sample=getattr(args, \"variant_one_cpu_per_sample\", None),\n"
         },
         {
-          "start": 24606,
-          "end": 24711,
+          "start": 22788,
+          "end": 23268,
+          "recorded": "",
+          "current": "    methylation = _methylation_requested(config_path, args)\n    effective_config = dict(config)\n    if methylation:\n        effective_config['methylation'] = True\n        for argument, key in (('modbam', 'methylation_modbam'), ('pod5_dir', 'methylation_pod5_dir'),\n                              ('methylation_classifier', 'methylation_classifier')):\n            value = getattr(args, argument, None)\n            if value is not None:\n                effective_config[key] = value\n"
+        },
+        {
+          "start": 23692,
+          "end": 23808,
+          "recorded": "    if enabled:\n        environment = docker_resource_environment(config, backend=backend)\n",
+          "current": "    if enabled or methylation:\n        environment = docker_resource_environment(effective_config, backend=backend)\n"
+        },
+        {
+          "start": 23961,
+          "end": 24132,
+          "recorded": "        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image, backend=backend):\n",
+          "current": "        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image, backend=backend, config_override=effective_config):\n"
+        },
+        {
+          "start": 24202,
+          "end": 24754,
+          "recorded": "        # Fail early if the selected image lacks callers/resources, before an\n        # expensive alignment. Execute image code, never the mounted host tree.\n        preflight = [*command, \"--entrypoint\", \"/opt/conda/bin/python\", image, \"-I\", \"-c\",\n                     \"import sys; sys.path.insert(0, '/opt/oncotracer'); \"\n                     \"from oncotracer_cli.docker_runtime import preflight; preflight(sys.argv[1])\",\n                     config_path]\n        _run(preflight, dry_run=args.dry_run)\n",
+          "current": "        if enabled:\n            # Fail early if the selected image lacks callers/resources, before an\n            # expensive alignment. Execute image code, never the mounted host tree.\n            preflight = [*command, \"--entrypoint\", \"/opt/conda/bin/python\", image, \"-I\", \"-c\",\n                         \"import sys; sys.path.insert(0, '/opt/oncotracer'); \"\n                         \"from oncotracer_cli.docker_runtime import preflight; preflight(sys.argv[1])\",\n                         config_path]\n            _run(preflight, dry_run=args.dry_run)\n"
+        },
+        {
+          "start": 25193,
+          "end": 25298,
           "recorded": "",
           "current": "    if getattr(args, \"variant_one_cpu_per_sample\", None):\n        command.append(\"--one-cpu-per-sample\")\n"
         },
         {
-          "start": 29076,
-          "end": 29181,
+          "start": 25888,
+          "end": 26099,
+          "recorded": "",
+          "current": "    if getattr(args, \"methylation_only\", False):\n        command.append(\"--methylation-only\")\n    if getattr(args, \"modbam\", None):\n        command.extend([\"--modbam\", Path(args.modbam).expanduser().resolve()])\n"
+        },
+        {
+          "start": 29874,
+          "end": 29979,
           "recorded": "",
           "current": "    if getattr(args, \"variant_one_cpu_per_sample\", None):\n        command.append(\"--one-cpu-per-sample\")\n"
         },
         {
-          "start": 35538,
-          "end": 35613,
+          "start": 36336,
+          "end": 36411,
           "recorded": "    if backend in {\"docker\", \"podman\", \"singularity\", \"apptainer\"} and _methylation_requested(\n",
           "current": "    if backend in {\"singularity\", \"apptainer\"} and _methylation_requested(\n"
         }

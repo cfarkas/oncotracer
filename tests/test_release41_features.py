@@ -136,6 +136,27 @@ class DockerMethylationBindings(unittest.TestCase):
             for path in (bam,Path(str(bam)+'.bai'),metadata,fixture.assets['model'],fixture.assets['probes'],fixture.bin.parent):
                 self.assertEqual(mounts[path],'ro')
 
+    def test_container_dispatch_mounts_classifier_prefixes_and_forwards_cli_inputs(self):
+        from oncotracer_cli import cli
+        from oncotracer_cli.runtime import render_flat_yaml
+        from tests.test_native_methylation import Fixture
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);resources=root/'resources';resources.mkdir();fixture=Fixture(resources)
+            bam=root/'source.bam';bam.write_bytes(b'fixture')
+            values=fixture.config();values.update(outdir=str(root/'output'),lpwgs_root=str(root/'project'),methylation=False)
+            values.pop('methylation_pod5_dir');config=root/'run.yml';config.write_text(render_flat_yaml(values));before=config.read_bytes()
+            for backend in ('docker','podman'):
+                args=cli.build_parser().parse_args(['run','--config',str(config),'--backend',backend,'--methylation-only','--modbam',str(bam),'--cpu','--dry-run'])
+                with patch.object(Path,'cwd',return_value=root),patch.object(cli,'_load_install_config',return_value={}),patch.object(cli,'_run') as run,patch.object(cli,'_project_mounts',side_effect=AssertionError('coarse mounts selected')):
+                    cli._run_container(config,args,backend=backend)
+                run.assert_called_once() # No variant preflight for a methylation-only request.
+                command=list(map(str,run.call_args.args[0]))
+                self.assertIn(f'{fixture.bin.parent}:{fixture.bin.parent}:ro',command)
+                self.assertIn(f'{bam}:{bam}:ro',command)
+                self.assertIn('--methylation-only',command)
+                self.assertEqual(command[command.index('--modbam')+1],str(bam))
+                self.assertEqual(config.read_bytes(),before)
+
     def test_mixed_workers_keep_sample_identity_and_native_receipts(self):
         from oncotracer_cli.runtime import CommandRunner, StageLedger
         with tempfile.TemporaryDirectory() as directory:

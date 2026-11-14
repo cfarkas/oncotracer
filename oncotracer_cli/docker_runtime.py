@@ -154,7 +154,7 @@ def docker_resource_environment(config: Mapping[str, object], *, backend="docker
 
 
 def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: bool = False,
-                  image=None, backend="docker") -> list[tuple[Path, str]]:
+                  image=None, backend="docker", config_override: Mapping | None = None) -> list[tuple[Path, str]]:
     """Return read-only inputs plus writable output and reference cache.
 
     The output directory is precreated empty; ownership remains with the native
@@ -162,7 +162,7 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
     Both lexical and resolved paths are preserved for symlinked datasets.
     """
     from .engine import parse_illumina_samplesheet, parse_ont_samples, _fastq_files
-    config = load_flat_yaml(config_path)
+    config = dict(config_override) if config_override is not None else load_flat_yaml(config_path)
     mounts: dict[Path, str] = {}
     inputs: set[Path] = set()
     resource_directories: list[Path] = []
