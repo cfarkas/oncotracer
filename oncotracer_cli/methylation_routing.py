@@ -30,6 +30,7 @@ class TissueMethylationRequest:
     classifier: str = "tissue"
     gpu: bool = False
     modbam_alignment: str = "preserve"
+    memory: float | str = "auto"
 
 
 def resolve(config, *, mode, gpu_override=None):
@@ -77,15 +78,17 @@ def resolve(config, *, mode, gpu_override=None):
         child.pop("methylation_pod5_dir", None)
         request = resolve_methylation_request(child, mode=mode, enabled_override=True, gpu_override=gpu_override)
         requests.append((row["sample"], request))
+    from .sample_resources import memory_gb
+    memory = memory_gb(config.get("analysis_memory", "auto"))
     return TissueMethylationRequest(tuple(assignments), tuple(requests), path, sha256_file(path),
-                                   gpu=any(child.gpu for _, child in requests))
+                                   gpu=any(child.gpu for _, child in requests), memory=memory)
 
 
 def plan(request):
     from .methylation import methylation_plan
     return {"enabled": True, "classifier": "tissue", "input_kind": "modbam",
             "metadata": str(request.metadata), "metadata_sha256": request.metadata_sha256,
-            "assignments": list(request.assignments), "threads_per_sample": 1,
+            "assignments": list(request.assignments), "threads_per_sample": 1, "memory_budget_gb": request.memory,
             "stages": ["tissue-routing", "reference-CpG-processing", "eligible-classifier"],
             "samples": [{"sample": name, **methylation_plan(child)} for name, child in request.requests]}
 
@@ -125,11 +128,28 @@ def run(root, request, samples, reference, outdir, runner, ledger, *, threads, f
         raise OncoTracerError("Tissue assignments do not match the selected samples")
     publish(outdir, request, list(records.values()))
 
+    from .sample_resources import allocate, worker_environment
+    workers = max(1, min(threads, len(request.requests) or 1))
+    environment = dict(runner.environment)
+    if request.requests:
+        allocation = allocate(threads, len(request.requests), parallel=workers,
+                              memory=request.memory, minimum_gb=8, preferred_threads=1)
+        workers = min(workers, allocation['total_threads'])
+        if workers != allocation['parallel_samples']:
+            allocation = allocate(threads, len(request.requests), parallel=workers,
+                                  memory=request.memory, minimum_gb=8, preferred_threads=1)
+        allocation.update(threads_per_sample=1, allocated_threads=workers,
+                          unallocated_threads=allocation['total_threads']-workers)
+        environment.update(worker_environment(allocation))
+        environment.update({key:'1' for key in ('TF_NUM_INTRAOP_THREADS','TF_NUM_INTEROP_THREADS',
+                           'OMP_THREAD_LIMIT','R_DATATABLE_NUM_THREADS','RAYON_NUM_THREADS','NUMBA_NUM_THREADS')})
+        atomic_write_json(outdir/'07_methylation/resource_allocation.json',allocation)
+
     def process(name, child):
         directory = outdir / "07_methylation" / "samples" / name
         directory.mkdir(parents=True, exist_ok=True)
         child_runner = CommandRunner(directory / "trace.tsv", validators=runner.validators,
-                                     environment=runner.environment, protected_environment=runner.protected_environment,
+                                     environment=environment, protected_environment=runner.protected_environment,
                                      dry_run=runner.dry_run, echo=runner.echo)
         child_ledger = StageLedger(directory / ".oncotracer-native/stages.json")
         try:
@@ -145,7 +165,7 @@ def run(root, request, samples, reference, outdir, runner, ledger, *, threads, f
         except (OSError, ValueError, OncoTracerError) as error:
             return {**records[name], "status": "failed", "error": str(error), "reason": str(error)}
 
-    with ThreadPoolExecutor(max_workers=max(1, min(threads, len(request.requests) or 1))) as pool:
+    with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(process, name, child): name for name, child in request.requests}
         for future in as_completed(futures):
             name = futures[future]

@@ -127,6 +127,24 @@ class CohortFigureTests(unittest.TestCase):
             self.assertIn('0.92454',svg);self.assertIn('Unassigned',svg)
             self.assertNotIn('TISSUE:',svg)
 
+class MethylationSortMemoryTests(unittest.TestCase):
+    def test_sort_receives_the_worker_memory_budget(self):
+        from tests.test_native_methylation import Fixture, FakeRunner
+        from oncotracer_cli.engine import OntSample
+        from oncotracer_cli.methylation import resolve_methylation_request, run_methylation
+        from oncotracer_cli.runtime import StageLedger
+        with tempfile.TemporaryDirectory() as directory:
+            fixture=Fixture(Path(directory));request=resolve_methylation_request(fixture.config(),mode='ont')
+            fasta=fixture._asset('genome.fa','>chr1\nACGT\n');fai=fixture._asset('genome.fa.fai','chr1\t4\t6\t4\t5\n')
+            runner=FakeRunner('');runner.environment={'ONCOTRACER_SAMPLE_MEMORY_MB':'16384'}
+            out=fixture.root/'result'
+            run_methylation(Path(__file__).parents[1],request,[OntSample('sample1','barcode01',fixture.fastq)],{'fasta':fasta,'fai':fai},out,runner,StageLedger(out/'state.json'),threads=1,force=False)
+            command=next(command for stage,command in runner.calls if stage=='methylation-dorado-sort')
+            memory=command[command.index('-m')+1]
+            self.assertTrue(memory.endswith('M'))
+            self.assertGreater(int(memory[:-1]),768)
+            self.assertLessEqual(int(memory[:-1])*2,16384*.2)
+
 class DockerMethylationBindings(unittest.TestCase):
     def test_modbams_indexes_and_external_classifiers_are_read_only(self):
         from oncotracer_cli.docker_runtime import docker_mounts
@@ -172,6 +190,9 @@ class DockerMethylationBindings(unittest.TestCase):
             request=routing.TissueMethylationRequest(assignments,(('A',SimpleNamespace(classifier='marlin')),('B',SimpleNamespace(classifier='sturgeon'))),metadata,sha256_file(metadata))
             def run(source,child,selected,reference,output,runner,ledger,**options):
                 self.assertEqual(len(selected),1);self.assertEqual(options['threads'],1)
+                for key in ('OMP_NUM_THREADS','TF_NUM_INTRAOP_THREADS','TF_NUM_INTEROP_THREADS','OMP_THREAD_LIMIT'):
+                    self.assertEqual(runner.environment[key],'1')
+                self.assertGreater(int(runner.environment['ONCOTRACER_SAMPLE_MEMORY_MB']),0)
                 name=selected[0].sample;path=output/'07_methylation'/('prediction.'+('tsv' if child.classifier=='marlin' else 'csv'));path.parent.mkdir(parents=True)
                 path.write_text('fixture score vector')
                 return {'samples':[dict(sample=name,status='complete',classification=str(path.relative_to(output)),output_sha256={'classification':sha256_file(path)})]}

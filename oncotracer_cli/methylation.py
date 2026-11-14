@@ -1549,18 +1549,11 @@ def run_methylation(
                     stderr=error_log,
                 )
         _nonempty(unsorted, "Dorado modified-base BAM stream")
-        runner.run(
-            "methylation-dorado-sort",
-            [
-                request.samtools,
-                "sort",
-                "-@",
-                str(max(1, threads)),
-                "-o",
-                all_bam,
-                unsorted,
-            ],
-        )
+        sort_command = [request.samtools, "sort", "-@", str(max(1, threads)),
+                        "-o", all_bam, unsorted]
+        from .engine import _sort_memory
+        _sort_memory(sort_command, runner)
+        runner.run("methylation-dorado-sort", sort_command)
         runner.run(
             "methylation-dorado-index",
             [request.samtools, "index", "-@", str(max(1, threads)), all_bam],
