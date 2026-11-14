@@ -110,7 +110,7 @@ def publish(outdir, request, records):
                        "samples": records, "overall_status": payload["overall_status"]})
     cells = "".join("<tr>" + "".join("<td>" + html.escape(str(r.get(k, ""))) + "</td>"
                                      for k in ("sample", "tissue", "classifier", "status", "reason")) + "</tr>" for r in records)
-    atomic_write_text(directory / "index.html", '<!doctype html><meta charset="utf-8"><title>Methylation</title>'
+    atomic_write_text(directory / "tissue_routing_summary.html", '<!doctype html><meta charset="utf-8"><title>Methylation</title>'
                       '<h1>Tissue-routed methylation</h1><p>MARLIN: peripheral blood or marrow. Sturgeon: CNS. '
                       'Unspecified or other tissues remain unassigned. Scores do not establish diagnoses.</p>'
                       '<table><tr><th>Sample</th><th>Tissue</th><th>Model</th><th>Status</th><th>Reason</th></tr>' + cells + '</table>')

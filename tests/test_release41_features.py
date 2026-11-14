@@ -57,6 +57,26 @@ class RoutingTests(unittest.TestCase):
             self.assertEqual(result['failed_samples'],[])
 
 
+    def test_tissue_summary_and_managed_results_can_be_refreshed_together(self):
+        from oncotracer_cli.results import MARKER, write_results_index
+        for state in ('complete','no_classifier_probes'):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);metadata=root/'metadata';metadata.write_text('fixture')
+                records=[dict(sample='A',tissue='marrow',classifier='marlin',status=state,covered_classifier_probes=0),
+                         dict(sample='B',tissue='unknown',classifier=None,status='not_applicable')]
+                request=routing.TissueMethylationRequest(tuple(records),(),metadata,sha256_file(metadata))
+                routing.publish(root,request,records)
+                atomic_write_json(root/'06_workflow_summary/workflow_summary.json',dict(workflow_status='complete' if state=='complete' else 'partial_failure',cna_status='not_requested',methylation_status=state,methylation_completed_samples=['A'] if state=='complete' else []))
+                for _ in range(2):
+                    write_results_index(root)
+                    managed=root/'07_methylation/index.html';before=managed.read_bytes()
+                    self.assertTrue(before.startswith(MARKER.encode()))
+                    self.assertIn('tissue_routing_summary.html',managed.read_text())
+                    routing.publish(root,request,records)
+                    self.assertEqual(managed.read_bytes(),before)
+                self.assertIn('marlin',(root/'07_methylation/tissue_routing_summary.html').read_text())
+
+
 class SchedulingTests(ResourceFixtureCase):
     def test_all_26_and_11_samples_receive_exactly_one_cpu(self):
         for count,memory in ((26,'416GB'),(11,'176GB')):
