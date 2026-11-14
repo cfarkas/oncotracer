@@ -324,7 +324,7 @@ VARIANT_RESOURCE_FIELDS = (
     "variant_varlociraptor_scenario", "variant_quilt2_reference_dir", "variant_quilt2_cache",
 )
 VARIANT_ASSESSMENT_FIELDS = ("variant_ffperase", "variant_varlociraptor", "variant_varlociraptor_fdr", "variant_varlociraptor_events", "variant_varlociraptor_sample")
-VARIANT_BOOLEAN_FIELDS = ("variant_merge_vcfs", "variant_download_resources", "variant_accept_ffperase_license", "variant_monte_carlo_linkage")
+VARIANT_BOOLEAN_FIELDS = ("variant_one_cpu_per_sample", "variant_merge_vcfs", "variant_download_resources", "variant_accept_ffperase_license", "variant_monte_carlo_linkage")
 VARIANT_GLIMPSE_FIELDS = (
     "variant_storage_mode",
     "variant_engine", "variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir",

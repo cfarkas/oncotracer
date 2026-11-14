@@ -22,6 +22,10 @@ _ALLOWED_INCLUDE_PREFIXES = {None, "default", "xdg"}
 
 
 def prepare_project_runtime_removal(project: Path) -> None:
+    prepare_output_runtime_removal(project / "results")
+
+
+def prepare_output_runtime_removal(project: Path) -> None:
     """Unseal generated include guards before deleting a stopped project.
 
     Fontconfig guards are deliberately mode 0500 while tools are running.
@@ -57,7 +61,7 @@ def prepare_project_runtime_removal(project: Path) -> None:
         root = directory(project)
         if root is None:
             return
-        for component in ("results", ".oncotracer-native", "runtime-cache"):
+        for component in (".oncotracer-native", "runtime-cache"):
             root = directory(component, root)
             if root is None:
                 return

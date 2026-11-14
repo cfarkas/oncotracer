@@ -394,6 +394,9 @@ def resolve_methylation_request(
         classifier_override
         or str(config.get("methylation_classifier") or "").strip().lower()
     )
+    if classifier in {"auto", "tissue"}:
+        from .methylation_routing import resolve
+        return resolve(config, mode=mode, gpu_override=gpu_override)
     if classifier not in {"sturgeon", "marlin"}:
         raise OncoTracerError(
             "methylation requires exactly one classifier: --sturgeon or --marlin"
@@ -608,6 +611,9 @@ def resolve_methylation_request(
 
 
 def methylation_plan(request: MethylationRequest) -> dict[str, object]:
+    from .methylation_routing import TissueMethylationRequest, plan
+    if isinstance(request, TissueMethylationRequest):
+        return plan(request)
     return {
         "enabled": True,
         "classifier": request.classifier,
@@ -797,6 +803,9 @@ def write_global_methylation_failure(
     request: MethylationRequest,
     error: BaseException,
 ) -> dict[str, object]:
+    from .methylation_routing import TissueMethylationRequest, failure
+    if isinstance(request, TissueMethylationRequest):
+        return failure(outdir, request, error)
     methylation_out = outdir / "07_methylation"
     record = {
         "sample": "all",
@@ -1366,6 +1375,9 @@ def run_methylation(
     force: bool,
 ) -> dict[str, object]:
     """Run modified-base basecalling/classification before CNA execution."""
+    from .methylation_routing import TissueMethylationRequest, run
+    if isinstance(request, TissueMethylationRequest):
+        return run(root, request, samples, reference, outdir, runner, ledger, threads=threads, force=force)
     if request.sample_signals and {group.sample for group in request.sample_signals} != {
         str(getattr(sample, "sample")) for sample in samples
     }:

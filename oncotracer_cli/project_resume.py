@@ -234,7 +234,7 @@ def resume_project(value, *, backend=None, image=None, resources=None, variant_o
                 # Reviewed native v2.3 ownership/checkpoint schemas remain unchanged.
                 # This authorizes the runtime transition, never an output or stage.
                 compatible = {"2.3.0", "2.3.1rc1", "2.3.1rc2", "2.3.1rc3", "2.3.1", "2.3.2", "3.0.0"}
-                if previous_version not in compatible or target_version != "4.0.0":
+                if previous_version not in compatible or target_version not in {"4.0.0", "4.1.0"}:
                     raise OncoTracerError("Resume across different major versions requires an explicit data migration.")
                 migration = {"schema": "oncotracer-project-migration-v1", "from_version": previous_version,
                              "to_version": target_version, "prepared_at": utc_now(),

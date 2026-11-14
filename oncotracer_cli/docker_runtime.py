@@ -252,6 +252,32 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
             for path in _fastq_files(sample.fastq_dir, 0):
                 if path.is_symlink():
                     add(path, resource=True)
+    if config.get("methylation") or config.get("methylation_only"):
+        # These are explicitly configured, user-licensed external resources.
+        # The public image contains neither classifier models nor licensed Sturgeon.
+        metadata = config.get("methylation_sample_metadata")
+        if metadata:
+            add(metadata, resource=True)
+            with absolute(metadata).open(newline="") as handle:
+                for row in csv.DictReader(handle, delimiter="\t"):
+                    if row.get("modbam"):
+                        bam = Path(row["modbam"]).expanduser()
+                        if not bam.is_absolute(): bam = absolute(metadata).parent / bam
+                        add(bam, resource=True)
+                        for extension in ('.bai', '.csi'):
+                            if Path(str(bam)+extension).is_file(): add(str(bam)+extension, resource=True)
+        for key in ("methylation_modbam", "methylation_pod5_dir", "methylation_dorado_model",
+                    "methylation_dorado_modbase_model", "marlin_model", "marlin_features",
+                    "marlin_class_annotations", "marlin_probe_bed", "sturgeon_model", "sturgeon_probes"):
+            if config.get(key): add(config[key], resource=True)
+        for key in ("methylation_dorado_executable", "methylation_modkit_executable",
+                    "methylation_samtools_executable", "marlin_rscript", "marlin_python",
+                    "sturgeon_executable", "sturgeon_python"):
+            if config.get(key) and Path(str(config[key])).is_absolute():
+                executable = absolute(config[key])
+                if executable.is_file():
+                    prefix = executable.parent.parent if executable.parent.name == 'bin' else executable.parent
+                    add(prefix, resource=True)
     # Path.rglob deliberately does not descend into directory symlinks. Queue
     # their physical targets explicitly so nested model/checkpoint symlinks also
     # remain visible. Scan only selected resource trees, each physical tree once.

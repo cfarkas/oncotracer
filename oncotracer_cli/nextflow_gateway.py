@@ -141,6 +141,8 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         argv += ['--threads', str(args.threads)]
     if args.parallel_samples is not None:
         argv += ['--parallel-samples', str(args.parallel_samples)]
+    if getattr(args, "variant_one_cpu_per_sample", None):
+        argv.append("--one-cpu-per-sample")
     if args.variant_merge_vcfs is not None:
         argv.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
     if args.cna_profile is not None:

@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "scope": "Existing saved-only tutorial selections remain unchanged; additional runtime choices are explicit opt-ins",
+  "baseline_commit": "09e5207",
+  "files": {
+    "oncotracer_cli/cli.py": {
+      "recorded_sha256": "578fc619dbc1e2f1100881f99d0c7dbe02f5017fdfbb9707422669e35ab91e8f",
+      "current_sha256": "2fae78d2fd00a4b503c86fe845294817bb8b4bdb3a71d6e36eaaaec859fd43b7",
+      "changes": [
+        {
+          "start": 1655,
+          "end": 1703,
+          "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:4.0.0\"\n",
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:4.1.0\"\n"
+        },
+        {
+          "start": 18863,
+          "end": 18949,
+          "recorded": "",
+          "current": "                one_cpu_per_sample=getattr(args, \"variant_one_cpu_per_sample\", None),\n"
+        },
+        {
+          "start": 24606,
+          "end": 24711,
+          "recorded": "",
+          "current": "    if getattr(args, \"variant_one_cpu_per_sample\", None):\n        command.append(\"--one-cpu-per-sample\")\n"
+        },
+        {
+          "start": 29076,
+          "end": 29181,
+          "recorded": "",
+          "current": "    if getattr(args, \"variant_one_cpu_per_sample\", None):\n        command.append(\"--one-cpu-per-sample\")\n"
+        },
+        {
+          "start": 35538,
+          "end": 35613,
+          "recorded": "    if backend in {\"docker\", \"podman\", \"singularity\", \"apptainer\"} and _methylation_requested(\n",
+          "current": "    if backend in {\"singularity\", \"apptainer\"} and _methylation_requested(\n"
+        }
+      ]
+    },
+    "oncotracer_cli/setup.py": {
+      "recorded_sha256": "203fb7fc4ed75bf75286953e5d946a7cbfcd79eb75e5e51575e4542e32fadad8",
+      "current_sha256": "6607c263e2c8e1fd421fbf0fa966576402d73972b8031a45c5a8668a08df0b65",
+      "changes": [
+        {
+          "start": 14416,
+          "end": 14590,
+          "recorded": "VARIANT_BOOLEAN_FIELDS = (\"variant_merge_vcfs\", \"variant_download_resources\", \"variant_accept_ffperase_license\", \"variant_monte_carlo_linkage\")\n",
+          "current": "VARIANT_BOOLEAN_FIELDS = (\"variant_one_cpu_per_sample\", \"variant_merge_vcfs\", \"variant_download_resources\", \"variant_accept_ffperase_license\", \"variant_monte_carlo_linkage\")\n"
+        }
+      ]
+    },
+    "oncotracer_cli/__init__.py": {
+      "recorded_sha256": "6b419dae3b92839840cba4f93287b997b40c9c81cf7933c14fe69894c2a6fcc7",
+      "current_sha256": "fec46a71d6f8e4e5d293db7b46d2beae8bd4b854d3f532e1560c796ee1e83d23",
+      "changes": [
+        {
+          "start": 43,
+          "end": 65,
+          "recorded": "__version__ = \"4.0.0\"\n",
+          "current": "__version__ = \"4.1.0\"\n"
+        }
+      ]
+    },
+    "tests/test_native_methylation.py": {
+      "recorded_sha256": "ff07a6af0d9745330314a4ec5103f6b2407ab49b8ce2824e00d930005db5a45f",
+      "current_sha256": "e4dfe213d3dbc230f013cb5f580ed36f42c0af6d3d099443822fc32af39d5789",
+      "changes": [
+        {
+          "start": 9436,
+          "end": 9575,
+          "recorded": "                    self.assertRaisesRegex(OncoTracerError, \"requires backend host\"),\n",
+          "current": "                    self.assertRaisesRegex(OncoTracerError, \"requires --methylation\" if backend == \"docker\" else \"requires backend host\"),\n"
+        },
+        {
+          "start": 39809,
+          "end": 39889,
+          "recorded": "    def test_container_backends_reject_unbundled_methylation_resources(self) -> None:\n",
+          "current": "    def test_singularity_rejects_unbundled_methylation_resources(self) -> None:\n"
+        },
+        {
+          "start": 40265,
+          "end": 40300,
+          "recorded": "                    \"docker\",\n",
+          "current": "                    \"singularity\",\n"
+        }
+      ]
+    }
+  }
+}

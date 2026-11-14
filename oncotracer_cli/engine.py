@@ -3777,6 +3777,7 @@ def _run_ont_cna_branch(
         parallel_samples=config.get("parallel_samples", "auto"),
         memory=config.get("analysis_memory", "auto"),
     )
+    _write_bam_sheet(samples, bams, samurai_out / "input/native.bam.samplesheet.csv")
     binsize = _as_int(config.get("ont_binsize_kb"), 500)
     if caller == "ichorcna":
         caller_dir = run_ichorcna(
@@ -3851,6 +3852,7 @@ def run_native(
     threads: int | None = None,
     parallel_samples: int | None = None,
     merge_vcfs: bool | None = None,
+    one_cpu_per_sample: bool | None = None,
     storage_mode: str | None = None,
     resource_mode: str | None = None,
     cna_profile: str | None = None,
@@ -3870,6 +3872,7 @@ def run_native(
         threads=threads,
         parallel_samples=parallel_samples,
         merge_vcfs=merge_vcfs,
+        one_cpu_per_sample=one_cpu_per_sample,
         storage_mode=storage_mode,
         resource_mode=resource_mode,
         cna_profile=cna_profile,
@@ -3895,6 +3898,7 @@ def _run_native_impl(
     threads: int | None,
     parallel_samples: int | None,
     merge_vcfs: bool | None,
+    one_cpu_per_sample: bool | None,
     storage_mode: str | None,
     resource_mode: str | None,
     cna_profile: str | None,
@@ -3934,6 +3938,8 @@ def _run_native_impl(
         from .sample_resources import parallel_value
         config["parallel_samples"] = parallel_value(parallel_samples)
         config["variant_parallel_samples"] = parallel_value(parallel_samples)
+    if one_cpu_per_sample is not None:
+        config["variant_one_cpu_per_sample"] = one_cpu_per_sample
     if merge_vcfs is not None:
         config["variant_merge_vcfs"] = merge_vcfs
     if storage_mode is not None:
@@ -4008,6 +4014,7 @@ def _run_native_impl(
                 threads=threads,
                 parallel_samples=parallel_samples,
                 merge_vcfs=merge_vcfs,
+        one_cpu_per_sample=one_cpu_per_sample,
                 storage_mode=storage_mode,
                 resource_mode=resource_mode,
                 cna_profile=cna_profile,
@@ -4277,6 +4284,14 @@ def _run_native_impl(
     summary["requested_branches"] += (["reports"] if not only_methylation and _as_bool(config.get("run_cna_classifier"), False) else [])
     summary.setdefault("cna_status", "not_requested" if only_methylation else summary["workflow_status"])
     atomic_write_workflow_summary(summary_path.parent, summary)
+
+    if not only_methylation and cna_error is None:
+        from .cohort_figure import publish as publish_cohort_figure
+        figure = publish_cohort_figure(root, config, samples, reference, outdir, runner, toolchain)
+        if figure is not None:
+            summary['cohort_figure_status'] = figure['status']
+            summary['cohort_figure'] = '09_cohort_figure/04_cohort_figure.pdf'
+            atomic_write_workflow_summary(summary_path.parent, summary)
 
     trace_text = trace.read_text(encoding="utf-8", errors="replace")
     if "nextflow" in trace_text.lower():

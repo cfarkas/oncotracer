@@ -235,7 +235,7 @@ class NativeMethylationTests(unittest.TestCase):
                 )
                 with (
                     self.subTest(backend=backend),
-                    self.assertRaisesRegex(OncoTracerError, "requires backend host"),
+                    self.assertRaisesRegex(OncoTracerError, "requires --methylation" if backend == "docker" else "requires backend host"),
                 ):
                     execute_run(config, args)
 
@@ -897,7 +897,7 @@ class NativeMethylationTests(unittest.TestCase):
                 stages.index("hmmcopy-ichorcna"),
             )
 
-    def test_container_backends_reject_unbundled_methylation_resources(self) -> None:
+    def test_singularity_rejects_unbundled_methylation_resources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / "run.yml"
             config.write_text("mode: ont\noutdir: /tmp/out\n", encoding="utf-8")
@@ -907,7 +907,7 @@ class NativeMethylationTests(unittest.TestCase):
                     "--config",
                     str(config),
                     "--backend",
-                    "docker",
+                    "singularity",
                     "--methylation",
                     "--sturgeon",
                     "--pod5-dir",

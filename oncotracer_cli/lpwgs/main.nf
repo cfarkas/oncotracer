@@ -565,7 +565,7 @@ process FINDING_EXPLANATIONS {
 process INTERPRETATION_REPORT {
     tag sample
     cpus { report_threads }
-    memory params.memory_gb != null ? "${Math.min(32.0, params.memory_gb as double)} GB" : "${Math.min(32, nextflow.util.MemoryUnit.of(params.memory.toString().trim() ==~ /[0-9]+(?:\.[0-9]+)?/ ? params.memory.toString()+'GB' : params.memory.toString().trim().replaceAll(/(?i)([GMT])I?B?$/, '$1B')).toGiga())} GB"
+    memory params.llm_memory_gb != null ? "${params.llm_memory_gb} GB" : params.memory_gb != null ? "${Math.min(32.0, params.memory_gb as double)} GB" : "${Math.min(32, nextflow.util.MemoryUnit.of(params.memory.toString().trim() ==~ /[0-9]+(?:\.[0-9]+)?/ ? params.memory.toString()+'GB' : params.memory.toString().trim().replaceAll(/(?i)([GMT])I?B?$/, '$1B')).toGiga())} GB"
     publishDir { "${output_dir}/interpretation" }, mode: 'copy'
     input:
     path explanations

@@ -2093,7 +2093,7 @@ class HostedCiStorageSafetyTests(unittest.TestCase):
         self.assertEqual(errors, [])
         required_scripts = {
             ROOT / "bin" / "scripts" / "prepare_qdnaseq_bin_data.sh",
-            ROOT / "scripts" / "ci_native_parity.sh",
+            ROOT / "scripts" / "ci_native_science.sh",
             ROOT / "scripts" / "ci_resource_preflight.sh",
             ROOT / "scripts" / "release_registry_digest.sh",
             ROOT / "scripts" / "release_registry_pair.sh",
@@ -2102,6 +2102,9 @@ class HostedCiStorageSafetyTests(unittest.TestCase):
         for path in (*ACTIVE_WORKFLOWS, *hosted_scripts):
             self.assertTrue(path.is_file(), path)
         self.assertEqual(active_surface_violations(), [])
+        driver = (ROOT / "scripts/ci_native_science.py").read_text()
+        self.assertEqual(python_cleanup_violations(driver, 1), [])
+        self.assertEqual(python_process_cleanup_violations(driver), [])
 
     def test_rejects_global_cleanup_variants(self) -> None:
         fixtures = (
@@ -3271,7 +3274,7 @@ run_native_environment_probe ichorcna readcounter 255 \\
             "scripts/verify_ci_resource_preflight.py",
             '--min-free-gib "$MIN_FREE_GIB"',
             '--min-addressable-gib "$MIN_ADDRESSABLE_GIB"',
-            "trap cleanup_job_swap EXIT",
+            "trap cleanup_parity_job EXIT",
             'sudo -n swapon "$SWAP_FILE"',
             'if ! sudo -n swapoff -- "$SWAP_FILE"',
             "active swap could not be established",

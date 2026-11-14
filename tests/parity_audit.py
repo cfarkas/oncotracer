@@ -1512,6 +1512,13 @@ def verify_audit(
 ) -> dict[str, object]:
     if check_checksums:
         verify_checksums(audit)
+    if (audit / "native_science.json").is_file():
+        if __package__:
+            from .native_science_audit import verify
+        else:
+            from native_science_audit import verify
+        return verify(audit, suite, candidate_sha, source_sha256, binary_sha256,
+                      check_checksums=check_checksums, write_summary=write_summary)
     nested = verify_nested(audit, suite)
     parity = verify_parity_reports(audit, suite)
     context = verify_context(audit, suite, candidate_sha, source_sha256, binary_sha256)

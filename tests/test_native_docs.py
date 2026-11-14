@@ -34,6 +34,16 @@ ACTIVE = [
 
 class NativeDocumentationTests(unittest.TestCase):
     def before_release_3_0(self, relative, content):
+        version41 = json.loads((ROOT / "docs/assets/tutorial/release-4.1-compatibility.json").read_text())
+        transition = version41["files"].get(relative)
+        if transition:
+            self.assertEqual(transition["current_sha256"], hashlib.sha256(content).hexdigest())
+            value = content.decode()
+            for change in reversed(transition["changes"]):
+                self.assertEqual(value[change["start"]:change["end"]], change["current"])
+                value = value[:change["start"]] + change["recorded"] + value[change["end"]:]
+            content = value.encode()
+            self.assertEqual(transition["recorded_sha256"], hashlib.sha256(content).hexdigest())
         version4 = json.loads((ROOT / "docs/assets/tutorial/release-4.0-compatibility.json").read_text())
         transition = version4["files"].get(relative)
         if transition:
@@ -820,7 +830,7 @@ class NativeDocumentationTests(unittest.TestCase):
             record_path = Path(directory) / "doctor.json"
             groups = ("core", "qdnaseq", "ichorcna", "classifier", "gistic", "variants")
             record = {
-                "schema": "oncotracer-doctor-v1", "oncotracer_version": "4.0.0",
+                "schema": "oncotracer-doctor-v1", "oncotracer_version": "4.1.0",
                 "backend": "conda", "nextflow_required": False, "success": True,
                 "source": {
                     "source_commit": "a" * 40, "source_sha256": "b" * 64,

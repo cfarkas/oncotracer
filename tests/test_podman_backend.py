@@ -107,7 +107,7 @@ class PodmanBackendTests(unittest.TestCase):
             self.assertEqual(cli._execute_run(self.path, self.args('--dry-run')), self.output)
         podman.assert_called_once(); docker.assert_not_called()
         with patch.object(cli, '_run_podman') as podman:
-            with self.assertRaisesRegex(OncoTracerError, 'methylation branch requires'):
+            with self.assertRaisesRegex(OncoTracerError, 'restricted to mode: ont'):
                 cli._execute_run(self.path, self.args('--dry-run', '--methylation'))
         podman.assert_not_called()
 
@@ -122,7 +122,7 @@ class PodmanBackendTests(unittest.TestCase):
     def test_resume_identity_comes_from_selected_podman_image(self):
         from oncotracer_cli.output_safety import _IDENTITY_KEYS
         identity = {key: 'a' * 64 for key in _IDENTITY_KEYS}
-        identity['oncotracer_version'] = '4.0.0'
+        identity['oncotracer_version'] = '4.1.0'
         response = subprocess.CompletedProcess([], 0, json.dumps(identity), '')
         with patch.object(project_resume.subprocess, 'run', return_value=response) as run:
             self.assertEqual(project_resume._runtime('podman', self.config), identity)

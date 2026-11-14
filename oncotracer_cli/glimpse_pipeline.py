@@ -27,7 +27,7 @@ from .runtime import CommandRunner, CommandResult, OncoTracerError, atomic_write
 SCHEMA='oncotracer-glimpse2-v1'
 MIN_SAMPLE_MEMORY_GB=32 # Complete workflow includes the default CPU float32 local LLM.
 BUNDLE=Path(__file__).parent/'lpwgs'
-OPTION_KEYS=('storage_mode','merge_vcfs','parallel_samples','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','confidence_gwas','patients','reuse_from','reference_reuse_from','nextflow','workflow_source','clinvar','memory','pgs_cache','ancestry_explorer_cache','literature_cache','llm_model','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites')
+OPTION_KEYS=('one_cpu_per_sample','storage_mode','merge_vcfs','parallel_samples','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','confidence_gwas','patients','reuse_from','reference_reuse_from','nextflow','workflow_source','clinvar','memory','pgs_cache','ancestry_explorer_cache','literature_cache','llm_model','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites')
 PATH_KEYS={'workflow_source','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','patients','reuse_from','reference_reuse_from','clinvar','pgs_cache','ancestry_explorer_cache','literature_cache','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites'}
 
 
@@ -64,6 +64,10 @@ def validate_options(config):
     if type(merge) is not bool:
         raise OncoTracerError('variant_merge_vcfs must be true or false')
     result['merge_vcfs'] = merge
+    one_cpu = config.get('variant_one_cpu_per_sample', False)
+    if type(one_cpu) is not bool:
+        raise OncoTracerError('variant_one_cpu_per_sample must be true or false')
+    result['one_cpu_per_sample'] = one_cpu
     from .storage_options import validate_mode
     result['storage_mode'] = validate_mode(config.get('variant_storage_mode'))
     if result['storage_mode'] == 'compact' and config.get('variant_workflow_source'):
@@ -175,7 +179,7 @@ def sample_parameters(request,sample,bam,reference,output,resources,threads,veri
         'literature_cache':str(resources/'literature'),'clinvar':str(resources/'clinvar/clinvar_GRCh38.vcf.gz'),
         'min_mapping_quality':request.min_mapping_quality,'min_base_quality':request.min_base_quality}
     for key in OPTION_KEYS:
-        if key in options and key not in {'storage_mode','merge_vcfs','parallel_samples','analysis_reuse_from','reuse_from','nextflow','workflow_source','memory'}:params[key]=options[key]
+        if key in options and key not in {'storage_mode','merge_vcfs','parallel_samples','analysis_reuse_from','reuse_from','nextflow','workflow_source','memory','one_cpu_per_sample'}:params[key]=options[key]
     if request.gpu_usage:
         from .gpu_runtime import native_prefix
         params['llm_python'] = str(native_prefix('gpu-reports') / 'bin/python')
@@ -311,6 +315,23 @@ def _memory_gb(value):
 def resource_allocation(request, threads, sample_count):
     from .sample_resources import allocate
     options = request.glimpse_config or {}
+    if options.get('one_cpu_per_sample'):
+        allocation = allocate(threads, sample_count, parallel=sample_count,
+                              memory=options.get('memory', 'auto'), minimum_gb=8)
+        if allocation['total_threads'] < sample_count:
+            raise OncoTracerError('One CPU per sample requires at least one available CPU for every selected sample')
+        # Each sample has 8 GiB for analysis; report models borrow 24 GiB more
+        # from a shared pool. Waiting for a model never blocks another sample's caller.
+        base = 8 * sample_count
+        slots = min(sample_count, int((allocation['total_memory_gb'] - base) // 24))
+        if slots < 1:
+            raise OncoTracerError(f'One CPU per sample requires at least {base + 24}GiB after the system reserve')
+        allocation.update(threads_per_sample=1, allocated_threads=sample_count,
+                          unallocated_threads=allocation['total_threads']-sample_count,
+                          memory_gb_per_sample=8, memory_per_sample='8192MB',
+                          allocated_memory_gb=base, report_memory_slots=slots,
+                          report_memory_gb=32, one_cpu_per_sample=True, warnings=[])
+        return allocation
     return allocate(threads, sample_count, parallel=options.get('parallel_samples', 'auto'),
                     memory=options.get('memory', 'auto'), minimum_gb=MIN_SAMPLE_MEMORY_GB)
 
@@ -506,6 +527,9 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
         sample_root=root/'samples'/sample;sample_root.mkdir(parents=True,exist_ok=True)
         params,audit=sample_parameters(request,sample,bam,reference,sample_root,resources,
             allocation['threads_per_sample'],verified_imports=imported_calls[sample],memory=allocation['memory_per_sample'])
+        if allocation.get('one_cpu_per_sample'):
+            params.update(llm_memory_pool=str(root/'report_memory_pool'),
+                          llm_memory_slots=allocation['report_memory_slots'], llm_memory_gb=32)
         retain_memory_budget(params, previous_runtimes.get(sample, {}))
         normal=dict(request.matched_normals).get(sample)
         if normal:

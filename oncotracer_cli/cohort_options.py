@@ -2,6 +2,9 @@
 
 
 def add_arguments(parser):
+    parser.add_argument('--one-cpu-per-sample', dest='variant_one_cpu_per_sample',
+                        action='store_true', default=None,
+                        help='start every Illumina sample with one CPU; share memory admission for report models')
     choice = parser.add_mutually_exclusive_group()
     choice.add_argument(
         '--merge-vcfs', '--merge_vcfs', '--variant-merge-vcfs',

@@ -21,6 +21,7 @@ STAGES = (
     ("04_cna_custom_plots", "04 · CNA plots", "Primary PDFs and per-sample copy-number plots."),
     ("05_cna_classifier", "05 · Interpretation and evidence", "CNA-pattern classifications, clinician summaries, and literature evidence."),
     ("06_workflow_summary", "06 · Final report and run status", "Combined CNA, literature and methylation report, status and provenance."),
+    ("09_cohort_figure", "09 · Cohort figure", "Genome-wide CNA profiles, measured depth, selected methods and tissue-eligible methylation calls."),
     ("07_methylation", "07 · Methylation", "Per-sample status, CpG results, classifier predictions, and scores."),
     ("08_variants", "08 · Small variants", "Independent caller VCFs, genotype evidence, annotation and completion status."),
 )

@@ -113,7 +113,7 @@ class GPUResourcesTests(unittest.TestCase):
                             launch.assert_called_once_with(config,args)
             args=cli.build_parser().parse_args(['run','--config',str(config),
                 '--backend','docker','--dry-run','--gpu','--methylation'])
-            with self.assertRaisesRegex(OncoTracerError,'optional methylation branch'):
+            with self.assertRaisesRegex(OncoTracerError,'restricted to mode: ont'):
                 cli.execute_run(config,args)
 
     def test_doctor_inside_docker_uses_image_prefixes_and_bounded_probes(self):

@@ -195,7 +195,7 @@ oncotracer install --docker
 oncotracer doctor --backend docker
 ```
 
-The default installer pulls `carlosfarkas/oncotracer:4.0.0`, validates its tools and saves the image reference. The older `ghcr.io/cfarkas/oncotracer:2.1.0` remains available for earlier CNA workflows. It does not install Docker, alter daemon settings, or request administrator privileges silently.
+The default installer pulls `carlosfarkas/oncotracer:4.1.0`, validates its tools and saves the image reference. The older `ghcr.io/cfarkas/oncotracer:2.1.0` remains available for earlier CNA workflows. It does not install Docker, alter daemon settings, or request administrator privileges silently.
 
 Run an analysis with:
 
@@ -214,7 +214,7 @@ Choose the current image explicitly when installing. Later doctor and run comman
 use the saved image selection:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:4.0.0
+oncotracer install --docker --image carlosfarkas/oncotracer:4.1.0
 oncotracer doctor --backend docker
 oncotracer run --backend docker \
   --config /absolute/path/project/config/run.yml
@@ -335,21 +335,21 @@ Before a large analysis:
 
 <a id="podman-300-candidate"></a>
 
-## Podman (4.0.0)
+## Podman (4.1.0)
 
-The 4.0.0 launcher offers Podman in CLI, browser and terminal setup, including
+The 4.1.0 launcher offers Podman in CLI, browser and terminal setup, including
 project continuation. Podman runs the same image and scientific environments as
 Docker.
 
-After building or loading the 4.0.0 image into **Podman's** local image
+After building or loading the 4.1.0 image into **Podman's** local image
 store, select its tag explicitly:
 
 ```bash
-oncotracer install --podman --image docker.io/carlosfarkas/oncotracer:4.0.0 --no-pull
+oncotracer install --podman --image docker.io/carlosfarkas/oncotracer:4.1.0 --no-pull
 oncotracer doctor --backend podman
 oncotracer --interactive --backend podman
 oncotracer setup --terminal --backend podman
-oncotracer run --backend podman --image docker.io/carlosfarkas/oncotracer:4.0.0 --config /absolute/path/to/my-study/config/run.yml
+oncotracer run --backend podman --image docker.io/carlosfarkas/oncotracer:4.1.0 --config /absolute/path/to/my-study/config/run.yml
 ```
 
 Docker and Podman maintain separate image stores. Remote images should use their

@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:4.0.0"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:4.1.0"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -488,6 +488,7 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
                 threads=args.threads,
                 parallel_samples=getattr(args, "parallel_samples", None),
                 merge_vcfs=getattr(args, "variant_merge_vcfs", None),
+                one_cpu_per_sample=getattr(args, "variant_one_cpu_per_sample", None),
                 storage_mode=getattr(args, "variant_storage_mode", None),
                 cna_profile=getattr(args, "cna_profile", None),
                 resource_mode=getattr(args, "variant_resource_mode", None),
@@ -597,6 +598,8 @@ def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str)
         command.extend(["--threads", str(args.threads)])
     if getattr(args, "parallel_samples", None) is not None:
         command.extend(["--parallel-samples", str(args.parallel_samples)])
+    if getattr(args, "variant_one_cpu_per_sample", None):
+        command.append("--one-cpu-per-sample")
     if getattr(args, "variant_merge_vcfs", None) is not None:
         command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
     if getattr(args, "cna_profile", None) is not None:
@@ -693,6 +696,8 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--threads", str(args.threads)])
     if getattr(args, "parallel_samples", None) is not None:
         command.extend(["--parallel-samples", str(args.parallel_samples)])
+    if getattr(args, "variant_one_cpu_per_sample", None):
+        command.append("--one-cpu-per-sample")
     if getattr(args, "variant_merge_vcfs", None) is not None:
         command.append("--merge-vcfs" if args.variant_merge_vcfs else "--no-merge-vcfs")
     if getattr(args, "cna_profile", None) is not None:
@@ -829,7 +834,7 @@ def _execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
                 "the optional variants branch requires backend host, conda, poetry, docker, or podman; "
                 "integrated variants are not supported by the Singularity backend"
             )
-    if backend in {"docker", "podman", "singularity", "apptainer"} and _methylation_requested(
+    if backend in {"singularity", "apptainer"} and _methylation_requested(
         config_path, args
     ):
         raise OncoTracerError(

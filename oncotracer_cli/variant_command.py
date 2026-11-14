@@ -174,6 +174,8 @@ def _command_variants(args) -> int:
     config = load_flat_yaml(config_path)
     if sha256_file(config_path) != digest:
         raise OncoTracerError("Variant configuration changed while being read")
+    if getattr(args, "variant_one_cpu_per_sample", None) is not None:
+        config["variant_one_cpu_per_sample"] = args.variant_one_cpu_per_sample
     if getattr(args, "variant_merge_vcfs", None) is not None:
         config["variant_merge_vcfs"] = args.variant_merge_vcfs
     if getattr(args, "variant_storage_mode", None) is not None:

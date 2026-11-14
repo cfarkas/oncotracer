@@ -808,6 +808,27 @@ docker image inspect "$V1_DOCKER_IMAGE" \
 grep -Fx "$V1_DOCKER_IMAGE" "$RUNNER_TEMP/v1-docker-repodigests.txt"
 printf '%s\n' "$V1_DOCKER_IMAGE" > "$RUNNER_TEMP/v1-docker-digest.txt"
 
+# Unseal only this stopped job's generated Fontconfig guards so the next
+# actions/checkout can clean its workspace. No inputs/references are followed.
+cleanup_native_runtime() {
+  PYTHONPATH="$REPO" python3 - "$TEST_ROOT/v2" <<'PY_CLEANUP'
+import sys
+from pathlib import Path
+from oncotracer_cli.fontconfig_safety import prepare_output_runtime_removal
+root = Path(sys.argv[1])
+for name in ("illumina", "ont", "hcc1143"):
+    prepare_output_runtime_removal(root / name)
+PY_CLEANUP
+}
+cleanup_parity_job() {
+  local status=$?
+  set +e
+  cleanup_native_runtime || { (( status != 0 )) || status=1; }
+  (exit "$status")
+  cleanup_job_swap
+}
+trap cleanup_parity_job EXIT
+
 log "Add addressable-memory headroom"
 if (( PARITY_SWAP_GIB > 0 )); then
   [[ ! -e "$SWAP_FILE" && ! -L "$SWAP_FILE" ]] || {
@@ -818,7 +839,6 @@ if (( PARITY_SWAP_GIB > 0 )); then
     echo "ERROR: this low-memory runner needs a 32-GiB job-owned swap file, but passwordless sudo is unavailable." >&2
     exit 1
   }
-  trap cleanup_job_swap EXIT
   sudo -n fallocate -l "${PARITY_SWAP_GIB}G" "$SWAP_FILE"
   sudo -n chmod 600 "$SWAP_FILE"
   sudo -n mkswap "$SWAP_FILE"

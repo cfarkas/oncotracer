@@ -37,7 +37,7 @@ ACCEPTANCE_ROOT="$ACCEPTANCE_PARENT/$ACCEPTANCE_NAME"
 expected_assets=(
   SHA256SUMS
   oncotracer
-  oncotracer-v4.0.0-parity-audit.tar.gz
+  oncotracer-v4.1.0-parity-audit.tar.gz
   release-provenance.json
 )
 shopt -s dotglob nullglob
@@ -48,7 +48,7 @@ for entry in "${release_entries[@]}"; do
   test ! -L "$entry"
   test "$(stat -c '%h' -- "$entry")" -eq 1
   case "${entry##*/}" in
-    SHA256SUMS|oncotracer|oncotracer-v4.0.0-parity-audit.tar.gz|release-provenance.json)
+    SHA256SUMS|oncotracer|oncotracer-v4.1.0-parity-audit.tar.gz|release-provenance.json)
       ;;
     *)
       echo "unexpected release entry: ${entry##*/}" >&2
@@ -94,7 +94,7 @@ chmod 0755 "$ACCEPTANCE_RELEASE/oncotracer"
 
 cd "$ACCEPTANCE_RELEASE"
 test "$(wc -l < SHA256SUMS)" -eq 3
-for asset in oncotracer oncotracer-v4.0.0-parity-audit.tar.gz release-provenance.json; do
+for asset in oncotracer oncotracer-v4.1.0-parity-audit.tar.gz release-provenance.json; do
   awk -v expected="$asset" '
     BEGIN { count = 0 }
     NF == 2 && $1 ~ /^[0-9a-f]{64}$/ && $2 == expected { count++ }
@@ -103,7 +103,7 @@ for asset in oncotracer oncotracer-v4.0.0-parity-audit.tar.gz release-provenance
 done
 sha256sum --strict -c SHA256SUMS
 test "$(sha256sum oncotracer | awk '{print $1}')" = "$BINARY_SHA256"
-PARITY_SHA256="$(sha256sum oncotracer-v4.0.0-parity-audit.tar.gz | awk '{print $1}')"
+PARITY_SHA256="$(sha256sum oncotracer-v4.1.0-parity-audit.tar.gz | awk '{print $1}')"
 [[ "$PARITY_SHA256" =~ ^[0-9a-f]{64}$ ]]
 
 BEGINNER_CONFIG="$ACCEPTANCE_ROOT/config"
@@ -131,7 +131,7 @@ beginner() {
 }
 
 beginner "$ACCEPTANCE_RELEASE/oncotracer" --version \
-  | grep -Fx 'OncoTracer 4.0.0'
+  | grep -Fx 'OncoTracer 4.1.0'
 beginner "$ACCEPTANCE_RELEASE/oncotracer" --help \
   | grep -F 'Native LP-WGS CNA analysis.'
 beginner "$ACCEPTANCE_RELEASE/oncotracer" provenance --json \
@@ -154,7 +154,7 @@ jq -e \
     def sha256_digest:
       type == "string" and test("^sha256:[0-9a-f]{64}$");
     .schema == "oncotracer-v2-release-provenance-v3" and
-    .version == "4.0.0" and .release_tag == "v4.0.0" and
+    .version == "4.1.0" and .release_tag == "v4.1.0" and
     .source_commit == $commit and .source_sha256 == $source and
     .source_tree_dirty == false and .binary_sha256 == $binary and
     .parity_audit_bundle_sha256 == $parity and
@@ -162,16 +162,11 @@ jq -e \
     .container.reference == ("ghcr.io/cfarkas/oncotracer@" + $digest) and
     .container.digest == $digest and .container.nextflow_present == true and
     .frozen_comparator.oncotracer_commit ==
-      "032c1268fa7fdcadc48087055066d7a9fc59bd89" and
-    .frozen_comparator.oncotracer_image ==
-      "carlosfarkas/oncotracer@sha256:4856aed020e1102f891b91de54d6acf365d6b8a57e2283a4f7b670b0bd5b07ed" and
-    .frozen_comparator.samurai_commit ==
-      "6a901940288b008237703c6b181d447e7dee4fcf" and
-    .frozen_comparator.nextflow_version == "26.04.6" and
-    .frozen_comparator.nextflow_sha256 ==
-      "182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c" and
-    .frozen_comparator.qdnaseq_source_commit ==
-      "cf7c07e39de0ac64a9c38cb030cba4626e2aae83" and
+      "4b8a1d320360c16df210843bce906d2116a1551b" and
+    .frozen_comparator.source_sha256 ==
+      "08a981f0148e79768def515426e113d3d98940dd34032ee48466196f3e40d921" and
+    .frozen_comparator.version == "3.0.0" and
+    .frozen_comparator.engine == "native" and
     .workflows.native_v2_ci.sha == $commit and
     .workflows.quickstart1.sha == $commit and
     .workflows.quickstart2.sha == $commit and
@@ -246,7 +241,7 @@ for entry in "${release_entries_after[@]}"; do
   test ! -L "$entry"
   test "$(stat -c '%h' -- "$entry")" -eq 1
   case "${entry##*/}" in
-    SHA256SUMS|oncotracer|oncotracer-v4.0.0-parity-audit.tar.gz|release-provenance.json)
+    SHA256SUMS|oncotracer|oncotracer-v4.1.0-parity-audit.tar.gz|release-provenance.json)
       ;;
     *)
       echo "acceptance command added an unexpected release entry: ${entry##*/}" >&2
@@ -312,7 +307,7 @@ jq -n \
     release_assets: {
       "SHA256SUMS": $sums,
       "oncotracer": $binary,
-      "oncotracer-v4.0.0-parity-audit.tar.gz": $parity,
+      "oncotracer-v4.1.0-parity-audit.tar.gz": $parity,
       "release-provenance.json": $provenance
     },
     checks: [

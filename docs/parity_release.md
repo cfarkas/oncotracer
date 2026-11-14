@@ -1,4 +1,17 @@
-# Parity and stable-release gate
+# Native scientific regression and release
+
+Version 4.1 gates both public QuickStarts against native 3.0.0 commit `4b8a1d320360c16df210843bce906d2116a1551b`, source archive SHA256 `08a981f0148e79768def515426e113d3d98940dd34032ee48466196f3e40d921`. This is the pinned scientific pipeline validated for Figure 1. Baseline and candidate independently start from authenticated public FASTQs and use the same committed scientific environment definitions. No study samples enter public CI.
+
+The current audit requires exact accepted CNA event coordinates, states and mean log2 values; matching QC decisions; complete dense-sample workflows; and the expected QC-limited outcome for sparse ONT. Corrected profile correlation, shared bins, event coverage recall and precision must each reach 0.9999, with median corrected-profile difference at most 0.0001. The multi-sample candidate must also produce its complete cohort figure. The publisher recomputes comparisons from sealed evidence and checks both executable/source identities.
+
+The native regression preflight requires 64 GiB free and 15 GiB available physical/addressable RAM. Environment and output directories belong to the individual run. Generated Fontconfig guards are unsealed only after execution stops. Current scripts are `scripts/ci_native_science.sh` and `tests/native_science_audit.py`.
+
+The workflow/artifact names retain their established `native-v2` identifiers for continuity. Their 4.1 scientific baseline is native 3.0.0. Full numerical parity with v1.1 is not claimed: v1.1 used logarithmic segmentation and lacked the current sparse-CNA safeguards. The historical driver and comparator remain available below for investigating those method differences.
+
+
+## Historical v1.1 gate
+
+The former v2 release process was as follows.
 
 A v2 tag is not created from file-existence smoke tests. Two full public-data workflows run both the frozen v1.1 implementation and the candidate native v2 implementation from the same inputs and shared reference cache.
 
@@ -38,11 +51,11 @@ Each artifact includes `parity_report.json`, `parity_report.md`, `event_matches.
 
 ## Release automation
 
-The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v4.0.0`. A release cannot be created from a stale or partially validated commit. The new
-`v4.0.0` tag and versioned container aliases preserve the published `v2.0.0`
+The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v4.1.0`. A release cannot be created from a stale or partially validated commit. The new
+`v4.1.0` tag and versioned container aliases preserve the published `v2.0.0`
 release; an ordinary main update does not replace an existing release.
 
-## Hosted-runner capacity limits
+## Hosted-runner capacity limits (historical v1.1)
 
 The full parity gates and container build are intentionally
 fail-closed before they download public reads, install scientific environments,
@@ -148,7 +161,7 @@ The driver is CPU-only (`CUDA_VISIBLE_DEVICES` is empty and `NVIDIA_VISIBLE_DEVI
 
 The driver refuses an empty path, `/`, the repository checkout or any path inside it, a validation/reference path overlap, a dirty checkout, or a non-empty validation directory without its release-driver sentinel and `--resume`. Its content-derived stage signatures include the exact source, command, inputs, tool identity, and explicit Conda specifications; complete output manifests are regenerated and compared before a completed stage is reused. The driver validates all six default native environments: the five CNA environments and the required variants environment. It records and rechecks their explicit Conda specifications and requires every variant semantic probe, including QUILT2 and the synthetic variant call. These probes use exact prefix executables; in particular, GISTIC derives the one usable `share/mcr-*/v*` runtime exclusively from its exact prefix and must return the real `gp_gistic2_from_seg` usage signature with exit status zero. It downloads the official self-contained Nextflow 26.04.6 distribution and verifies SHA-256 `182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c`; that executable runs only the immutable v1.1 comparator at commit `032c1268fa7fdcadc48087055066d7a9fc59bd89`. Before any baseline starts, the nested SAMURAI v1.4.0 source must resolve to commit `6a901940288b008237703c6b181d447e7dee4fcf`. The copied v2 executable runs every native operation from outside the checkout with Python path injection disabled, and any scientific parity failure stops the script.
 
-The final `bundles/` directory contains separate QuickStart audit archives, a deterministic combined `oncotracer-v4.0.0-parity-audit.tar.gz`, and `SHA256SUMS`. The audits retain input and output manifests, exact Conda specifications, qDNAseq annotation provenance, native traces, frozen-comparator traces/reports, stage logs, source identities, and the stage-ledger snapshot. The driver creates evidence only; it does not merge, tag, or publish a release.
+The final `bundles/` directory contains separate QuickStart audit archives, a deterministic combined `oncotracer-v4.1.0-parity-audit.tar.gz`, and `SHA256SUMS`. The audits retain input and output manifests, exact Conda specifications, qDNAseq annotation provenance, native traces, frozen-comparator traces/reports, stage logs, source identities, and the stage-ledger snapshot. The driver creates evidence only; it does not merge, tag, or publish a release.
 
 ## Frozen v1.1 ichorCNA plotting compatibility
 
