@@ -94,7 +94,7 @@ jobs:
             tests/test_boundary_refinement_gaps.py \
             tests/test_fontconfig_safety.py \
             tests/test_command_runner_containment.py \
-            tests/test_native_methylation.py \
+            tests/test_native_methylation.py tests/test_release41_features.py tests/test_native_science_audit.py \
             tests/test_cpg_native_policy.py tests/test_ichor_rescue.py tests/test_marlin_strand_aggregation.py tests/test_sturgeon_reference_cpg.py \
             tests/test_named_methylation.py \
             tests/test_beginner_runtime.py \

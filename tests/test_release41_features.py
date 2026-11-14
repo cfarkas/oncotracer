@@ -112,6 +112,8 @@ class CohortFigureTests(unittest.TestCase):
             summary=root/'06_workflow_summary';summary.mkdir()
             (summary/'cna_assessment.tsv').write_text('sample\tassessment\tbin_size_kb\nA\tassessable\t50\nB\tnot_assessable\t50\n')
             atomic_write_json(summary/'experimental_broad_cna/screen.json',{'samples':[{'sample':'B','status':'experimental_screen_available','regions':[{'region':'1p','status':'candidate_broad_gain','start':1,'end':1000000,'log2_ratio':.6}]}]})
+            atomic_write_json(root/'07_methylation/methylation_status.json',{'classifier':'tissue','samples':[{'sample':'A','classifier':'marlin','status':'complete','classification':'07_methylation/prediction.tsv'},{'sample':'B','classifier':None,'status':'not_applicable'}]})
+            (root/'07_methylation/prediction.tsv').write_text('sample\tTop\tOther\nA\t0.924540460109711\t0.075459539890289\n')
             spec=dict(samples=['A','B'],outdir=str(root),reference_fai=str(fai),bam_samplesheet=str(sheet),title='Synthetic cohort',technology='FFPE')
             path=root/'spec.json';atomic_write_json(path,spec);result=figures.build(path)
             self.assertEqual(result['status'],'complete');self.assertEqual(result['exploratory'],1)
@@ -120,6 +122,10 @@ class CohortFigureTests(unittest.TestCase):
             self.assertEqual(data[1]['assignments'],'1p gain');self.assertEqual(int(data[0]['aligned_bases']),100)
             self.assertAlmostEqual(float(data[0]['mean_depth_x']),100/44000000)
             self.assertTrue((root/'09_cohort_figure/04_cohort_figure.pdf').read_bytes().startswith(b'%PDF'))
+            self.assertEqual(data[1]['methylation_model'],'')
+            svg=(root/'09_cohort_figure/04_cohort_figure.svg').read_text()
+            self.assertIn('0.92454',svg);self.assertIn('Unassigned',svg)
+            self.assertNotIn('TISSUE:',svg)
 
 class DockerMethylationBindings(unittest.TestCase):
     def test_modbams_indexes_and_external_classifiers_are_read_only(self):

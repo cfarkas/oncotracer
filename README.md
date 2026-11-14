@@ -12,7 +12,7 @@ Use Linux and Python 3.10–3.13. No Git checkout is required. Install in your P
 python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v4.1.0/oncotracer-4.1.0-py3-none-any.whl"
 ```
 
-OncoTracer 4.1.0 includes safe dynamic ONT scheduling and prompt reporting of failed sample workers. The full FFPE/ONT/fresh benchmark is being rerun from raw reads; its completion is reported separately. The command `pip install oncotracer` follows the separately published PyPI version. Choose **one** backend:
+OncoTracer 4.1.0 includes tissue-routed MARLIN/Sturgeon, corrected CpG processing, ichorCNA fallback, automatic cohort figures, and one CPU per sample with shared report memory. The full FFPE/ONT/fresh benchmark is being rerun from raw reads; its completion is reported separately. The command `pip install oncotracer` follows the separately published PyPI version. Choose **one** backend:
 
 ### Conda
 
@@ -54,15 +54,15 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 
 ## Recorded study commands
 
-The 4.1.0 benchmark starts from original FASTQs with empty result directories. Public reference indexes and models may be reused. Completion and measured performance will be published after all three cohorts pass validation.
+All runs start from original FASTQs, reusing references and models. Results follow validation.
 
 ```bash
-oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
-oncotracer run --config /path/to/ONT/config/run.yml --backend docker --image carlosfarkas/oncotracer:4.1.0 --cpu --resource-mode dynamic --storage-mode compact
-oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --cpu --resource-mode dynamic --storage-mode compact
+oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 26 --parallel-samples 26 --one-cpu-per-sample --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
+oncotracer run --config /path/to/ONT/config/run.yml --backend docker --image carlosfarkas/oncotracer:4.1.0 --threads 22 --parallel-samples 22 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
+oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 11 --parallel-samples 11 --one-cpu-per-sample --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
 ```
 
-The interrupted 3.0.0 attempt is not a successful benchmark. See [release notes](docs/releases/4.1.0.md) for the correction and validation scope.
+The interrupted 3.0.0 benchmark did not complete. [Correction and validation scope](docs/releases/4.1.0.md).
 
 ## Set up your analysis
 

@@ -106,7 +106,7 @@ def render(data, matrix, windows, destination, title, technology):
                          'axes.linewidth':1.2,'pdf.fonttype':42,'svg.fonttype':'none',
                          'svg.hashsalt':'oncotracer-cohort-4.1','savefig.facecolor':'white'})
     has_methylation = any(r.get('methylation_model') for r in data)
-    widths = [1.6, 6.4, 1.25, .8, 1.5] + ([3.5, 1.15] if has_methylation else [])
+    widths = [1.6, 6.4, 1.25, .8, 1.5] + ([3.5, 1.55] if has_methylation else [])
     figure, axes = plt.subplots(1, len(widths), figsize=(sum(widths), max(3.7, len(data)*.40+1.8)),
                                gridspec_kw={'width_ratios':widths, 'wspace':.05})
     sample_ax, genome_ax, depth_ax, count_ax, method_ax = axes[:5]
@@ -120,7 +120,7 @@ def render(data, matrix, windows, destination, title, technology):
         ax.set_xticks([]); ax.spines['bottom'].set_visible(False)
     sample_ax.set_xlim(0,1)
     for i, row in enumerate(data):
-        sample_ax.text(.98, i, row['sample'], ha='right', va='center', fontsize=10, color='black')
+        sample_ax.text(.98, i, textwrap.fill(row['sample'],24,break_long_words=True,break_on_hyphens=False), ha='right', va='center', fontsize=10, color='black')
         count_ax.text(.5, i, str(row['accepted_events']) if row['accepted_events'] is not None else '—',
                       ha='center', va='center', fontweight='bold', color='black')
         method_ax.text(0, i, row['method_label'], va='center', fontsize=9.4, color='black')
@@ -128,7 +128,7 @@ def render(data, matrix, windows, destination, title, technology):
     for chrom in chroms:
         indexes=[i for i,w in enumerate(windows) if w[0]==chrom]; ticks.append((indexes[0]+indexes[-1])/2)
         if indexes[0]: genome_ax.axvline(indexes[0]-.5, color='black', lw=.35)
-    genome_ax.set_xticks(ticks,chroms,fontsize=9); genome_ax.set_xlabel('Chromosome (GRCh38)',fontsize=11)
+    genome_ax.set_xticks(ticks,chroms,fontsize=9,rotation=90); genome_ax.set_xlabel('Chromosome (GRCh38)',fontsize=11)
     genome_ax.tick_params(axis='x',length=4,width=1.2); genome_ax.set_yticks([])
     depths=np.array([r['mean_depth_x'] for r in data]); color={'FFPE':'#2878B5','ONT':'#2E8B57','Fresh Illumina':'#E68632'}.get(technology,'#2878B5')
     depth_ax.barh(positions, depths, color=color, height=.68)
@@ -139,20 +139,22 @@ def render(data, matrix, windows, destination, title, technology):
                           textcoords='offset points', va='center', fontsize=9.5,fontweight='bold',color='black')
     titles=['Sample','Genome-wide CNA','Coverage','Events','CNA method']
     if has_methylation:
-        class_ax, score_ax=axes[5:]; class_ax.set_xlim(0,1); score_ax.set_xlim(0,1.28)
+        class_ax, score_ax=axes[5:]; class_ax.set_xlim(0,1); score_ax.set_xlim(0,1.42)
         score_ax.set_xticks([0,.5,1]); score_ax.set_xlabel('Model score',fontsize=11)
         for i,row in enumerate(data):
-            label=row.get('methylation_class') or row.get('methylation_status','Not assayed')
+            status_labels={'not_applicable':'Unassigned','no_cpg':'No CpG calls','no_classifier_probes':'No model probes','failed':'Failed'}
+            status=row.get('methylation_status','Not assayed')
+            label=row.get('methylation_class') or status_labels.get(status,status)
             if row.get('methylation_model'): label=row['methylation_model'].upper()+': '+label
             class_ax.text(0,i,textwrap.fill(label,42),va='center',fontsize=8.7,color='black')
             score=row.get('methylation_score')
             if score is not None:
                 score_ax.barh(i,score,height=.68,color='#5A4C9C' if row['methylation_model']=='sturgeon' else '#007F82')
-                score_ax.text(score+.025,i,f'{score:.3f}',va='center',fontsize=9,fontweight='bold',color='black')
+                score_ax.text(score+.025,i,f'{score:.5f}',va='center',fontsize=9,fontweight='bold',color='black')
         titles+=['Methylation class','Score']
     for ax,label in zip(axes,titles):ax.set_title(label,fontsize=11,fontweight='bold',pad=12,color='black')
     figure.suptitle(title,fontsize=14,fontweight='bold',x=.03,ha='left',y=.985)
-    figure.subplots_adjust(left=.025,right=.99,bottom=.14,top=.88)
+    figure.subplots_adjust(left=.025,right=.99,bottom=.16,top=.93)
     cax=figure.add_axes([.24,.045,.24,.016]);cb=figure.colorbar(heatmap,cax=cax,orientation='horizontal',ticks=[-1,0,1]);cb.set_label('CNA log₂ ratio',fontsize=10);cb.ax.tick_params(labelsize=9)
     for extension in ('pdf','svg','png'):
         figure.savefig(destination/('04_cohort_figure.'+extension),dpi=300,bbox_inches='tight')
@@ -207,7 +209,8 @@ def build(spec_path):
                  **depth,methylation_model='',methylation_class='',methylation_score=None,methylation_status='Not assayed')
         m=methylation_rows.get(name)
         if m:
-            row.update(methylation_model=m.get('classifier') or methylation.get('classifier',''),methylation_status=m['status'])
+            model=m.get('classifier') or methylation.get('classifier','')
+            row.update(methylation_model='' if model in {'tissue','auto'} else model,methylation_status=m['status'])
             if m['status']=='complete' and m.get('classification'):
                 path=root/m['classification'];values=read_table(path,',' if path.suffix=='.csv' else '\t')[0]
                 scores={k:float(v) for k,v in values.items() if k not in {'sample','time','cov_cpgs','number_probes'}}
