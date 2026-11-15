@@ -1,11 +1,11 @@
 {
   "schema": 1,
-  "scope": "Existing saved-only tutorial selections remain unchanged; additional runtime choices are explicit opt-ins",
+  "scope": "Exact reversible source transitions from the recorded tutorial baseline; 4.1 removes Podman choices while retaining the demonstrated Docker and native paths.",
   "baseline_commit": "09e5207",
   "files": {
     "oncotracer_cli/cli.py": {
       "recorded_sha256": "578fc619dbc1e2f1100881f99d0c7dbe02f5017fdfbb9707422669e35ab91e8f",
-      "current_sha256": "c239cdf04e8487af2898737dba469936d34d157aede0e9f8d24f8a20d6ee7f12",
+      "current_sha256": "40dc38ad557710cc6725d67deed10a9e3980c77aab23b3d8d54d720ecf72d6e2",
       "changes": [
         {
           "start": 1655,
@@ -14,70 +14,268 @@
           "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:4.1.0\"\n"
         },
         {
-          "start": 18863,
-          "end": 18949,
+          "start": 5811,
+          "end": 5843,
+          "recorded": "        [docker, \"run\", \"--rm\", *(user_arguments(backend) if backend == \"podman\" else []),\n",
+          "current": "        [docker, \"run\", \"--rm\",\n"
+        },
+        {
+          "start": 6242,
+          "end": 6242,
+          "recorded": "\n\ndef _install_podman(args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:\n    return _install_container(args, backend=\"podman\", save=save)\n",
+          "current": ""
+        },
+        {
+          "start": 8484,
+          "end": 8549,
+          "recorded": "        for name in (\"docker\", \"podman\", \"singularity\", \"poetry\", \"conda\")\n",
+          "current": "        for name in (\"docker\", \"singularity\", \"poetry\", \"conda\")\n"
+        },
+        {
+          "start": 8651,
+          "end": 8754,
+          "recorded": "            \"install requires exactly one backend flag: --docker, --podman, --singularity, --poetry, or --conda\"\n",
+          "current": "            \"install requires exactly one backend flag: --docker, --singularity, --poetry, or --conda\"\n"
+        },
+        {
+          "start": 9322,
+          "end": 9322,
+          "recorded": "        \"podman\": {\"--image\", \"--no-pull\", \"--gpu\"},\n",
+          "current": ""
+        },
+        {
+          "start": 10726,
+          "end": 10726,
+          "recorded": "            elif backend == \"podman\":\n                result = _install_podman(args, save=False)\n",
+          "current": ""
+        },
+        {
+          "start": 18477,
+          "end": 18563,
           "recorded": "",
           "current": "                one_cpu_per_sample=getattr(args, \"variant_one_cpu_per_sample\", None),\n"
         },
         {
-          "start": 22788,
-          "end": 23268,
+          "start": 22402,
+          "end": 22882,
           "recorded": "",
           "current": "    methylation = _methylation_requested(config_path, args)\n    effective_config = dict(config)\n    if methylation:\n        effective_config['methylation'] = True\n        for argument, key in (('modbam', 'methylation_modbam'), ('pod5_dir', 'methylation_pod5_dir'),\n                              ('methylation_classifier', 'methylation_classifier')):\n            value = getattr(args, argument, None)\n            if value is not None:\n                effective_config[key] = value\n"
         },
         {
-          "start": 23692,
-          "end": 23808,
+          "start": 23306,
+          "end": 23422,
           "recorded": "    if enabled:\n        environment = docker_resource_environment(config, backend=backend)\n",
           "current": "    if enabled or methylation:\n        environment = docker_resource_environment(effective_config, backend=backend)\n"
         },
         {
-          "start": 23961,
-          "end": 24132,
+          "start": 23575,
+          "end": 23746,
           "recorded": "        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image, backend=backend):\n",
           "current": "        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run, image=image, backend=backend, config_override=effective_config):\n"
         },
         {
-          "start": 24202,
-          "end": 24754,
+          "start": 23816,
+          "end": 24368,
           "recorded": "        # Fail early if the selected image lacks callers/resources, before an\n        # expensive alignment. Execute image code, never the mounted host tree.\n        preflight = [*command, \"--entrypoint\", \"/opt/conda/bin/python\", image, \"-I\", \"-c\",\n                     \"import sys; sys.path.insert(0, '/opt/oncotracer'); \"\n                     \"from oncotracer_cli.docker_runtime import preflight; preflight(sys.argv[1])\",\n                     config_path]\n        _run(preflight, dry_run=args.dry_run)\n",
           "current": "        if enabled:\n            # Fail early if the selected image lacks callers/resources, before an\n            # expensive alignment. Execute image code, never the mounted host tree.\n            preflight = [*command, \"--entrypoint\", \"/opt/conda/bin/python\", image, \"-I\", \"-c\",\n                         \"import sys; sys.path.insert(0, '/opt/oncotracer'); \"\n                         \"from oncotracer_cli.docker_runtime import preflight; preflight(sys.argv[1])\",\n                         config_path]\n            _run(preflight, dry_run=args.dry_run)\n"
         },
         {
-          "start": 25193,
-          "end": 25298,
+          "start": 24807,
+          "end": 24912,
           "recorded": "",
           "current": "    if getattr(args, \"variant_one_cpu_per_sample\", None):\n        command.append(\"--one-cpu-per-sample\")\n"
         },
         {
-          "start": 25888,
-          "end": 26099,
+          "start": 25502,
+          "end": 25713,
           "recorded": "",
           "current": "    if getattr(args, \"methylation_only\", False):\n        command.append(\"--methylation-only\")\n    if getattr(args, \"modbam\", None):\n        command.extend([\"--modbam\", Path(args.modbam).expanduser().resolve()])\n"
         },
         {
-          "start": 29874,
-          "end": 29979,
+          "start": 27604,
+          "end": 27604,
+          "recorded": "def _run_podman(config_path: Path, args: argparse.Namespace) -> None:\n    return _run_container(config_path, args, backend=\"podman\")\n\n\n",
+          "current": ""
+        },
+        {
+          "start": 27771,
+          "end": 27909,
+          "recorded": "        raise OncoTracerError('Reserved GPU execution requires Docker, Podman or native Conda/Poetry tools; use --cpu for Apptainer/Singularity')\n",
+          "current": "        raise OncoTracerError('Reserved GPU execution requires Docker or native Conda/Poetry tools; use --cpu for Apptainer/Singularity')\n"
+        },
+        {
+          "start": 29345,
+          "end": 29450,
           "recorded": "",
           "current": "    if getattr(args, \"variant_one_cpu_per_sample\", None):\n        command.append(\"--one-cpu-per-sample\")\n"
         },
         {
-          "start": 36336,
-          "end": 36411,
+          "start": 32336,
+          "end": 32366,
+          "recorded": "    if backend in {\"docker\", \"podman\"}:\n",
+          "current": "    if backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 35595,
+          "end": 35689,
+          "recorded": "                \"the optional variants branch requires backend host, conda, poetry, docker, or podman; \"\n",
+          "current": "                \"the optional variants branch requires backend host, conda, poetry, docker; \"\n"
+        },
+        {
+          "start": 35786,
+          "end": 35861,
           "recorded": "    if backend in {\"docker\", \"podman\", \"singularity\", \"apptainer\"} and _methylation_requested(\n",
           "current": "    if backend in {\"singularity\", \"apptainer\"} and _methylation_requested(\n"
+        },
+        {
+          "start": 37052,
+          "end": 37082,
+          "recorded": "    if backend in {\"docker\", \"podman\"}:\n",
+          "current": "    if backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 37576,
+          "end": 37615,
+          "recorded": "        (_run_podman if backend == \"podman\" else _run_docker)(config_path, args)\n",
+          "current": "        _run_docker(config_path, args)\n"
+        },
+        {
+          "start": 37902,
+          "end": 37997,
+          "recorded": "        f\"unsupported backend {backend!r}; choose host, conda, docker, podman, singularity, or poetry\"\n",
+          "current": "        f\"unsupported backend {backend!r}; choose host, conda, docker, singularity, or poetry\"\n"
+        },
+        {
+          "start": 66298,
+          "end": 66330,
+          "recorded": "    elif backend in {\"docker\", \"podman\"}:\n",
+          "current": "    elif backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 66568,
+          "end": 66604,
+          "recorded": "            [docker, \"run\", \"--rm\", *(user_arguments(backend) if backend == \"podman\" else []),\n",
+          "current": "            [docker, \"run\", \"--rm\",\n"
+        },
+        {
+          "start": 68090,
+          "end": 68173,
+          "recorded": "        for name in (\"source\", \"managed_install\", \"managed_sif\", \"docker\", \"podman\", \"gpu\"):\n",
+          "current": "        for name in (\"source\", \"managed_install\", \"managed_sif\", \"docker\", \"gpu\"):\n"
+        },
+        {
+          "start": 70298,
+          "end": 70380,
+          "recorded": "        \"--backend\", choices=(\"host\", \"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\")\n",
+          "current": "        \"--backend\", choices=(\"host\", \"conda\", \"docker\", \"singularity\", \"poetry\")\n"
+        },
+        {
+          "start": 74461,
+          "end": 74461,
+          "recorded": "    group.add_argument(\"--podman\", action=\"store_true\")\n",
+          "current": ""
+        },
+        {
+          "start": 74706,
+          "end": 74837,
+          "recorded": "    install.add_argument(\"--no-pull\", action=\"store_true\", help=\"use an existing local Docker/Podman image; still verify it with doctor\")\n",
+          "current": "    install.add_argument(\"--no-pull\", action=\"store_true\", help=\"use an existing local Docker image; still verify it with doctor\")\n"
+        },
+        {
+          "start": 76797,
+          "end": 76879,
+          "recorded": "        \"--backend\", choices=(\"host\", \"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\")\n",
+          "current": "        \"--backend\", choices=(\"host\", \"conda\", \"docker\", \"singularity\", \"poetry\")\n"
         }
       ]
     },
     "oncotracer_cli/setup.py": {
       "recorded_sha256": "203fb7fc4ed75bf75286953e5d946a7cbfcd79eb75e5e51575e4542e32fadad8",
-      "current_sha256": "6607c263e2c8e1fd421fbf0fa966576402d73972b8031a45c5a8668a08df0b65",
+      "current_sha256": "cd955c5925f441820e4c9d87ab515cf7a7839df3e370ce205270dc724133bc23",
       "changes": [
         {
-          "start": 14416,
-          "end": 14590,
+          "start": 11999,
+          "end": 12142,
+          "recorded": "    if getattr(args, 'image', None) and backend not in {\"docker\", \"podman\"}:\n        raise OncoTracerError('--image in setup requires --backend docker or podman')\n",
+          "current": "    if getattr(args, 'image', None) and backend not in {\"docker\"}:\n        raise OncoTracerError('--image in setup requires --backend docker')\n"
+        },
+        {
+          "start": 12545,
+          "end": 12577,
+          "recorded": "    elif backend in {\"docker\", \"podman\"}:\n",
+          "current": "    elif backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 12971,
+          "end": 13015,
+          "recorded": "        if backend in {\"docker\", \"podman\"} and image:\n",
+          "current": "        if backend in {\"docker\"} and image:\n"
+        },
+        {
+          "start": 13219,
+          "end": 13259,
+          "recorded": "    if backend in {\"docker\", \"podman\"} and image:\n",
+          "current": "    if backend in {\"docker\"} and image:\n"
+        },
+        {
+          "start": 14366,
+          "end": 14540,
           "recorded": "VARIANT_BOOLEAN_FIELDS = (\"variant_merge_vcfs\", \"variant_download_resources\", \"variant_accept_ffperase_license\", \"variant_monte_carlo_linkage\")\n",
           "current": "VARIANT_BOOLEAN_FIELDS = (\"variant_one_cpu_per_sample\", \"variant_merge_vcfs\", \"variant_download_resources\", \"variant_accept_ffperase_license\", \"variant_monte_carlo_linkage\")\n"
+        },
+        {
+          "start": 22333,
+          "end": 22625,
+          "recorded": "    if args.backend and args.backend not in {\"host\", \"conda\", \"poetry\", \"docker\", \"podman\"}:\n        raise OncoTracerError(\"Small-variant calling needs --backend conda, host, poetry, docker, or podman; Singularity remains unsupported.\")\n    if args.backend in {\"docker\", \"podman\"} and (analysis or args.analysis) != 'cna':\n",
+          "current": "    if args.backend and args.backend not in {\"host\", \"conda\", \"poetry\", \"docker\"}:\n        raise OncoTracerError(\"Small-variant calling needs --backend conda, host, poetry, docker; Singularity remains unsupported.\")\n    if args.backend in {\"docker\"} and (analysis or args.analysis) != 'cna':\n"
+        },
+        {
+          "start": 27033,
+          "end": 27068,
+          "recorded": "    if args.backend in {\"docker\", \"podman\"}:\n",
+          "current": "    if args.backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 33769,
+          "end": 33917,
+          "recorded": "    if getattr(args, 'image', None) and args.backend not in {\"docker\", \"podman\"}:\n        raise OncoTracerError('--image in setup requires --backend docker or podman')\n",
+          "current": "    if getattr(args, 'image', None) and args.backend not in {\"docker\"}:\n        raise OncoTracerError('--image in setup requires --backend docker')\n"
+        },
+        {
+          "start": 42474,
+          "end": 42687,
+          "recorded": "        if args.backend not in {\"host\", \"conda\", \"poetry\", \"docker\", \"podman\"}:\n            raise OncoTracerError(\"Small-variant calling needs --backend conda, host, poetry, docker, or podman.\")\n        if args.backend in {\"docker\", \"podman\"}:\n",
+          "current": "        if args.backend not in {\"host\", \"conda\", \"poetry\", \"docker\"}:\n            raise OncoTracerError(\"Small-variant calling needs --backend conda, host, poetry, docker.\")\n        if args.backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 43650,
+          "end": 43746,
+          "recorded": "        with docker_host_preview() if args.backend in {\"docker\", \"podman\"} else contextlib.nullcontext():\n",
+          "current": "        with docker_host_preview() if args.backend in {\"docker\"} else contextlib.nullcontext():\n"
+        },
+        {
+          "start": 44451,
+          "end": 44519,
+          "recorded": "    if args.backend in {\"docker\", \"podman\"} and getattr(args, 'image', None):\n",
+          "current": "    if args.backend in {\"docker\"} and getattr(args, 'image', None):\n"
+        },
+        {
+          "start": 57053,
+          "end": 57115,
+          "recorded": "            if config.get(\"execution_backend\") in {\"docker\", \"podman\"}:\n",
+          "current": "            if config.get(\"execution_backend\") in {\"docker\"}:\n"
+        },
+        {
+          "start": 58044,
+          "end": 58110,
+          "recorded": "                if config.get(\"execution_backend\") in {\"docker\", \"podman\"}:\n",
+          "current": "                if config.get(\"execution_backend\") in {\"docker\"}:\n"
+        },
+        {
+          "start": 63766,
+          "end": 63836,
+          "recorded": "        choices=(\"host\", \"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\"),\n",
+          "current": "        choices=(\"host\", \"conda\", \"docker\", \"singularity\", \"poetry\"),\n"
         }
       ]
     },
@@ -114,6 +312,576 @@
           "end": 40300,
           "recorded": "                    \"docker\",\n",
           "current": "                    \"singularity\",\n"
+        }
+      ]
+    },
+    "oncotracer_cli/container_runtime.py": {
+      "recorded_sha256": "6c21ce35702cc8fde5876382067a9a1bf12b0d7e5d0b2cdbc8de7d64c5ccf450",
+      "current_sha256": "48ee835d898fcf85869cb1a87055c9a540d17c6311b91773c2852f1ea02fafc9",
+      "changes": [
+        {
+          "start": 0,
+          "end": 76,
+          "recorded": "\"\"\"Small engine-specific differences for the shared Docker/Podman image.\"\"\"\n",
+          "current": "\"\"\"User ownership and image references for the supported Docker backend.\"\"\"\n"
+        },
+        {
+          "start": 111,
+          "end": 191,
+          "recorded": "",
+          "current": "import os\nfrom .runtime import OncoTracerError\nBACKENDS = frozenset({\"docker\"})\n"
+        },
+        {
+          "start": 192,
+          "end": 378,
+          "recorded": "import os\n\nfrom .runtime import OncoTracerError\n\nBACKENDS = frozenset({\"docker\", \"podman\"})\n\n",
+          "current": "def _require_backend(backend: str) -> None:\n    if backend not in BACKENDS:\n        raise OncoTracerError(f\"Unsupported container backend: {backend}. Use Docker or native Conda tools.\")\n"
+        },
+        {
+          "start": 426,
+          "end": 510,
+          "recorded": "    if backend not in BACKENDS:\n        raise OncoTracerError(f\"Unsupported container backend: {backend}\")\n    # Rootless Podman otherwise maps the requested container UID to a subordinate\n    # host UID. keep-id preserves ownership and access to existing project files.\n    arguments = [\"--userns=keep-id\"] if backend == \"podman\" and os.geteuid() != 0 else []\n    arguments += [\"--user\", f\"{os.getuid()}:{os.getgid()}\"]\n    if backend == \"podman\":\n        arguments += [\"--env\", \"ONCOTRACER_CONTAINER_RUNTIME=podman\", \"--env\", \"HOME=/tmp\"]\n    return arguments\n\n",
+          "current": "    _require_backend(backend)\n    return [\"--user\", f\"{os.getuid()}:{os.getgid()}\"]\n"
+        },
+        {
+          "start": 595,
+          "end": 664,
+          "recorded": "    image = str(value or DEFAULT_IMAGE)\n    # Podman short-name resolution may prompt without a terminal. Qualify our\n    # published default; explicit local tags and other registries stay verbatim.\n    return \"docker.io/\" + image if backend == \"podman\" and image == DEFAULT_IMAGE else image\n",
+          "current": "    _require_backend(backend)\n    return str(value or DEFAULT_IMAGE)\n"
+        }
+      ]
+    },
+    "oncotracer_cli/docker_runtime.py": {
+      "recorded_sha256": "6627eafac248204475c1145b5ea7b2d226dfc28c14a248392aa32ae8cdde8305",
+      "current_sha256": "9d45573900524041014db95408436df8e1c5ffe1bfbfa6e80ebb90f31164effd",
+      "changes": [
+        {
+          "start": 5536,
+          "end": 5607,
+          "recorded": "    elif os.environ.get(\"ONCOTRACER_CONTAINER_RUNTIME\") in {\"docker\", \"podman\"}:\n",
+          "current": "    elif os.environ.get(\"ONCOTRACER_CONTAINER_RUNTIME\") in {\"docker\"}:\n"
+        },
+        {
+          "start": 8103,
+          "end": 8218,
+          "recorded": "                  image=None, backend=\"docker\") -> list[tuple[Path, str]]:\n",
+          "current": "                  image=None, backend=\"docker\", config_override: Mapping | None = None) -> list[tuple[Path, str]]:\n"
+        },
+        {
+          "start": 8617,
+          "end": 8716,
+          "recorded": "    config = load_flat_yaml(config_path)\n",
+          "current": "    config = dict(config_override) if config_override is not None else load_flat_yaml(config_path)\n"
+        },
+        {
+          "start": 13175,
+          "end": 14983,
+          "recorded": "",
+          "current": "    if config.get(\"methylation\") or config.get(\"methylation_only\"):\n        # These are explicitly configured, user-licensed external resources.\n        # The public image contains neither classifier models nor licensed Sturgeon.\n        metadata = config.get(\"methylation_sample_metadata\")\n        if metadata:\n            add(metadata, resource=True)\n            with absolute(metadata).open(newline=\"\") as handle:\n                for row in csv.DictReader(handle, delimiter=\"\\t\"):\n                    if row.get(\"modbam\"):\n                        bam = Path(row[\"modbam\"]).expanduser()\n                        if not bam.is_absolute(): bam = absolute(metadata).parent / bam\n                        add(bam, resource=True)\n                        for extension in ('.bai', '.csi'):\n                            if Path(str(bam)+extension).is_file(): add(str(bam)+extension, resource=True)\n        for key in (\"methylation_modbam\", \"methylation_pod5_dir\", \"methylation_dorado_model\",\n                    \"methylation_dorado_modbase_model\", \"marlin_model\", \"marlin_features\",\n                    \"marlin_class_annotations\", \"marlin_probe_bed\", \"sturgeon_model\", \"sturgeon_probes\"):\n            if config.get(key): add(config[key], resource=True)\n        for key in (\"methylation_dorado_executable\", \"methylation_modkit_executable\",\n                    \"methylation_samtools_executable\", \"marlin_rscript\", \"marlin_python\",\n                    \"sturgeon_executable\", \"sturgeon_python\"):\n            if config.get(key) and Path(str(config[key])).is_absolute():\n                executable = absolute(config[key])\n                if executable.is_file():\n                    prefix = executable.parent.parent if executable.parent.name == 'bin' else executable.parent\n                    add(prefix, resource=True)\n"
+        }
+      ]
+    },
+    "oncotracer_cli/gpu_runtime.py": {
+      "recorded_sha256": "d03e07a6d97170d7021bf985fc7461c01461614e6770fe24ff02038a1f3be264",
+      "current_sha256": "3817dbf150b2482dc5b96e98a4e99df78d0dece3a8b62c941259d6c810ff3402",
+      "changes": [
+        {
+          "start": 2450,
+          "end": 2519,
+          "recorded": "    if os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'}:\n",
+          "current": "    if os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker'}:\n"
+        },
+        {
+          "start": 3788,
+          "end": 3954,
+          "recorded": "            in_container = os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'}\n            if backend in {'docker', 'podman'} or (backend == 'host' and in_container):\n",
+          "current": "            in_container = os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker'}\n            if backend in {'docker'} or (backend == 'host' and in_container):\n"
+        },
+        {
+          "start": 4586,
+          "end": 4690,
+          "recorded": "                raise RuntimeError('Reserved GPU support requires Docker, Podman or native Conda/Poetry tools')\n",
+          "current": "                raise RuntimeError('Reserved GPU support requires Docker or native Conda/Poetry tools')\n"
+        },
+        {
+          "start": 5302,
+          "end": 5395,
+          "recorded": "                if backend in {'docker', 'podman'}:\n                    pre = [backend, 'run', '--rm', *(user_arguments(backend) if backend == 'podman' else []),\n",
+          "current": "                if backend in {'docker'}:\n                    pre = [backend, 'run', '--rm',\n"
+        },
+        {
+          "start": 6616,
+          "end": 6673,
+          "recorded": "    \"\"\"Grant exactly the selected devices; Podman uses NVIDIA CDI, not --gpus.\"\"\"\n",
+          "current": "    \"\"\"Grant exactly the selected Docker GPU devices.\"\"\"\n"
+        },
+        {
+          "start": 6765,
+          "end": 6765,
+          "recorded": "    if backend == 'podman':\n        # NVIDIA's default CDI names use the host NVML index. The UUID mask\n        # inside the image and shared lease still enforce the selected identity.\n        if any(type(device.get('index')) is not int or device['index'] < 0 for device in devices):\n            raise OncoTracerError('Podman CDI requires a verified host GPU index')\n        return [item for device in devices for item in ('--device', 'nvidia.com/gpu=' + str(device['index']))] + [\n            '--env', 'NVIDIA_VISIBLE_DEVICES=void',\n            '--env', 'ONCOTRACER_GPU_DEVICES=' + ','.join(uuids)]\n",
+          "current": ""
+        },
+        {
+          "start": 7068,
+          "end": 7150,
+          "recorded": "",
+          "current": "    from .container_runtime import _require_backend\n    _require_backend(backend)\n"
+        },
+        {
+          "start": 7674,
+          "end": 7689,
+          "recorded": "    access = device_arguments(backend, devices) if backend == 'podman' else [\n",
+          "current": "    access = [\n"
+        }
+      ]
+    },
+    "oncotracer_cli/haplotype_command.py": {
+      "recorded_sha256": "d477ff7d2746ddde3d8e3d2a1364c7373db2e029e7e3e9fa4509fef273c122c8",
+      "current_sha256": "e1ed7b083685e9d67da1eb9f1232a157c2b80d8f38626cc875e852ad71956e2a",
+      "changes": [
+        {
+          "start": 2328,
+          "end": 2358,
+          "recorded": "    if backend in {'docker', 'podman'}:\n",
+          "current": "    if backend in {'docker'}:\n"
+        },
+        {
+          "start": 4240,
+          "end": 4328,
+          "recorded": "        raise OncoTracerError('Haplotype evidence supports Conda/Poetry, host, Docker and Podman')\n",
+          "current": "        raise OncoTracerError('Haplotype evidence supports Conda/Poetry, host, Docker')\n"
+        },
+        {
+          "start": 5975,
+          "end": 6050,
+          "recorded": "    p.add_argument('--backend',choices=('conda','poetry','docker','podman','host'))\n",
+          "current": "    p.add_argument('--backend',choices=('conda','poetry','docker','host'))\n"
+        }
+      ]
+    },
+    "oncotracer_cli/lpwgs/bin/gpu_resources.py": {
+      "recorded_sha256": "4730bb524dbd834f3b3bf43432805d9afb213b2760aedaa7d1f7d363cc64f26b",
+      "current_sha256": "29e1c757d840ddd5f708cc407debbdf68b119d6e968caeae11ead8b1e38e7b79",
+      "changes": [
+        {
+          "start": 3419,
+          "end": 3510,
+          "recorded": "                        and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'}):\n",
+          "current": "                        and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker'}):\n"
+        }
+      ]
+    },
+    "oncotracer_cli/nextflow_gateway.py": {
+      "recorded_sha256": "b57f21fa5e7969a5a6568ff57450df7bf5e205f53a84c4d3a455d5d253e44906",
+      "current_sha256": "ca8cec0598f77245a2c6cbc3ec9cb43ead3871073505e59927c66c780f840adc",
+      "changes": [
+        {
+          "start": 3255,
+          "end": 3349,
+          "recorded": "    p.add_argument('--backend', choices=('host', 'conda', 'poetry', 'docker', 'podman', 'singularity'))\n",
+          "current": "    p.add_argument('--backend', choices=('host', 'conda', 'poetry', 'docker', 'singularity'))\n"
+        },
+        {
+          "start": 8533,
+          "end": 8635,
+          "recorded": "",
+          "current": "    if getattr(args, \"variant_one_cpu_per_sample\", None):\n        argv.append(\"--one-cpu-per-sample\")\n"
+        }
+      ]
+    },
+    "oncotracer_cli/project_resume.py": {
+      "recorded_sha256": "4916a48b7b31f0659e99d494b08c82858cb61abee977c7d20782345eaa82f0e0",
+      "current_sha256": "6429a87d766bed4e5388421f23303d7c2319fec6d601fdc3a4f7869c9ad9c999",
+      "changes": [
+        {
+          "start": 1557,
+          "end": 1587,
+          "recorded": "    if backend in {\"docker\", \"podman\"}:\n",
+          "current": "    if backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 3656,
+          "end": 3761,
+          "recorded": "        raise OncoTracerError(\"Existing-project resume currently supports Conda, host, Poetry, Docker and Podman.\")\n",
+          "current": "        raise OncoTracerError(\"Existing-project resume currently supports Conda, host, Poetry, Docker.\")\n"
+        },
+        {
+          "start": 11249,
+          "end": 11378,
+          "recorded": "            if backend not in {\"docker\", \"podman\"}:\n                raise OncoTracerError(\"An image override requires the Docker or Podman backend\")\n",
+          "current": "            if backend not in {\"docker\"}:\n                raise OncoTracerError(\"An image override requires the Docker backend\")\n"
+        },
+        {
+          "start": 12557,
+          "end": 12656,
+          "recorded": "                if previous_version not in compatible or target_version != \"4.0.0\":\n",
+          "current": "                if previous_version not in compatible or target_version not in {\"4.0.0\", \"4.1.0\"}:\n"
+        }
+      ]
+    },
+    "oncotracer_cli/resume_ui.py": {
+      "recorded_sha256": "bc2d9aa1d79dd288784436969fd4ab488087450338cd56c60d5a934b0271bc6d",
+      "current_sha256": "ca546c39ccfb99148847b8a76750ffcd3bc2df3cbaf1e1b7802f3dbda53a48fb",
+      "changes": [
+        {
+          "start": 1684,
+          "end": 1950,
+          "recorded": "<div class=\"grid\" style=\"margin-top:18px\"><div><label for=\"resume-backend\">Analysis tools</label><select id=\"resume-backend\"><option value=\"\">Use saved project backend</option><option value=\"conda\">Conda</option><option value=\"docker\">Docker</option><option value=\"podman\">Podman</option></select></div>\n",
+          "current": "<div class=\"grid\" style=\"margin-top:18px\"><div><label for=\"resume-backend\">Analysis tools</label><select id=\"resume-backend\"><option value=\"\">Use saved project backend</option><option value=\"conda\">Conda</option><option value=\"docker\">Docker</option></select></div>\n"
+        },
+        {
+          "start": 4443,
+          "end": 4722,
+          "recorded": "                        \"$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():''});if(!scan)\")\n",
+          "current": "                        \"$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:['docker'].includes($('backend').value)?$('docker_image').value.trim():''});if(!scan)\")\n"
+        },
+        {
+          "start": 6306,
+          "end": 6402,
+          "recorded": "  if($('resume-backend').value!=='podman')$('resume-backend').value='docker';$('resume-image').value=($('resume-backend').value==='podman'?'docker.io/':'')+$('resume-image').dataset.current;\n",
+          "current": "  $('resume-backend').value='docker';$('resume-image').value=$('resume-image').dataset.current;\n"
+        },
+        {
+          "start": 10236,
+          "end": 10832,
+          "recorded": "                        \"$('resume-image').dataset.current=system.default_docker_image||'';$('resume-image').placeholder=system.default_docker_image||'';if(['conda','docker','podman'].includes(defaults.backend))$('resume-backend').value=defaults.backend;if(defaults.image)$('resume-image').value=defaults.image;show('resume-image-field',$('resume-backend').value!=='conda');if(system.resume_project){$('resume-project').value=system.resume_project;$('resume-note').textContent='Existing project detected. Load its saved settings above to continue.';}if(system.cpg)initializeCpgContinuation(system.cpg);\")\n",
+          "current": "                        \"$('resume-image').dataset.current=system.default_docker_image||'';$('resume-image').placeholder=system.default_docker_image||'';if(['conda','docker'].includes(defaults.backend))$('resume-backend').value=defaults.backend;if(defaults.image)$('resume-image').value=defaults.image;show('resume-image-field',$('resume-backend').value!=='conda');if(system.resume_project){$('resume-project').value=system.resume_project;$('resume-note').textContent='Existing project detected. Load its saved settings above to continue.';}if(system.cpg)initializeCpgContinuation(system.cpg);\")\n"
+        }
+      ]
+    },
+    "oncotracer_cli/system_check.py": {
+      "recorded_sha256": "b880da284fff90c27ddfc17dffe5298527fe43969ef2a67b4bcf0a991cb11710",
+      "current_sha256": "a12e98322be148042d0ddc41d14bcb9d040e9808336fc32fe1f70051d49d4cf8",
+      "changes": [
+        {
+          "start": 15196,
+          "end": 15268,
+          "recorded": "            for name in (\"conda\", \"docker\", \"podman\", \"apptainer\", \"singularity\")\n",
+          "current": "            for name in (\"conda\", \"docker\", \"apptainer\", \"singularity\")\n"
+        },
+        {
+          "start": 20169,
+          "end": 20278,
+          "recorded": "            \"Next: oncotracer --interactive --backend conda (or --backend docker / podman). No analysis has started.\"\n",
+          "current": "            \"Next: oncotracer --interactive --backend conda (or --backend docker). No analysis has started.\"\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_command.py": {
+      "recorded_sha256": "313a9094a2c59a8f3d17e603391d179f5fd6c7d2402e87f9aefdce9ef29bba53",
+      "current_sha256": "e4a38d0698282c5b9df167aa860ac0673bbb8e55f96c0d7e61a639c458b0046b",
+      "changes": [
+        {
+          "start": 7560,
+          "end": 7685,
+          "recorded": "        if enabled(config, getattr(args, 'gpu', None)) and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') not in {'docker', 'podman'}:\n",
+          "current": "        if enabled(config, getattr(args, 'gpu', None)) and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') not in {'docker'}:\n"
+        },
+        {
+          "start": 8356,
+          "end": 8505,
+          "recorded": "",
+          "current": "    if getattr(args, \"variant_one_cpu_per_sample\", None) is not None:\n        config[\"variant_one_cpu_per_sample\"] = args.variant_one_cpu_per_sample\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_install_help.py": {
+      "recorded_sha256": "c3e748015509d286f54fbe9b365f7b764809c2bb5ac76965f54505847cc1eac2",
+      "current_sha256": "aca6e140c7402f963c225f570d06feec21a3eaa6224efca6693c4679b0545a99",
+      "changes": [
+        {
+          "start": 3302,
+          "end": 3302,
+          "recorded": "        \"podman_runtime\": [(\"Official Podman installation\", \"https://podman.io/docs/installation\")],\n",
+          "current": ""
+        },
+        {
+          "start": 7007,
+          "end": 7042,
+          "recorded": "    docker = backend in {\"docker\", \"podman\"}\n",
+          "current": "    docker = backend in {\"docker\"}\n"
+        },
+        {
+          "start": 9411,
+          "end": 9479,
+          "recorded": "            engine = backend if backend in {\"docker\", \"podman\"} else \"docker\"\n",
+          "current": "            engine = backend if backend in {\"docker\"} else \"docker\"\n"
+        },
+        {
+          "start": 10113,
+          "end": 10213,
+          "recorded": "                (f\"{engine.capitalize()} installation\", \"https://podman.io/docs/installation\" if engine == \"podman\" else \"https://docs.docker.com/engine/install/\"),\n",
+          "current": "                (f\"{engine.capitalize()} installation\", \"https://docs.docker.com/engine/install/\"),\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_install_ui.py": {
+      "recorded_sha256": "e34685755ab3a69c2135efe8914436a5fc36e8ba88f5b8bae9bacd6cda6558b6",
+      "current_sha256": "c93a998b8df2c8286b2675a3db8aca40dc30fd8b66ec96f2e8ab71ace5460e8a",
+      "changes": [
+        {
+          "start": 952,
+          "end": 1375,
+          "recorded": "<div id=\"variant-install-choices\" class=\"variant-install-choices\" hidden><p class=\"hint\">Missing tools detected. Choose how to install them.</p><div class=\"actions\"><button id=\"variant-install-conda\" data-variant-install=\"conda\" type=\"button\" class=\"primary\">Install with Conda</button><button id=\"variant-install-docker\" data-variant-install=\"docker\" type=\"button\" class=\"primary\">Install with Docker</button><button id=\"variant-install-podman\" data-variant-install=\"podman\" type=\"button\" class=\"primary\">Install with Podman</button></div></div>\n",
+          "current": "<div id=\"variant-install-choices\" class=\"variant-install-choices\" hidden><p class=\"hint\">Missing tools detected. Choose how to install them.</p><div class=\"actions\"><button id=\"variant-install-conda\" data-variant-install=\"conda\" type=\"button\" class=\"primary\">Install with Conda</button><button id=\"variant-install-docker\" data-variant-install=\"docker\" type=\"button\" class=\"primary\">Install with Docker</button></div></div>\n"
+        },
+        {
+          "start": 6482,
+          "end": 6590,
+          "recorded": "  $('variant-install-start').textContent=plan.method==='podman'?'Install with Podman':plan.method==='docker'?'Install with Docker':'Install with Conda';\n",
+          "current": "  $('variant-install-start').textContent=plan.method==='docker'?'Install with Docker':'Install with Conda';\n"
+        },
+        {
+          "start": 8695,
+          "end": 8795,
+          "recorded": "  const incompatible=['docker','podman'].includes(job.fields?.backend)&&!document.getElementById('backend');\n",
+          "current": "  const incompatible=['docker'].includes(job.fields?.backend)&&!document.getElementById('backend');\n"
+        },
+        {
+          "start": 9754,
+          "end": 9840,
+          "recorded": "  if(['docker','podman'].includes(fields.backend)&&!document.getElementById('backend'))return;\n",
+          "current": "  if(['docker'].includes(fields.backend)&&!document.getElementById('backend'))return;\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_installer.py": {
+      "recorded_sha256": "46ee55a8b41216daa774f2fc924c7dc1914486aac1be25122cc6c61192bde18e",
+      "current_sha256": "5a051cc66c11f3dc2905ddb711dee0b748e89419a9719ddbf7fa9957375698ef",
+      "changes": [
+        {
+          "start": 5001,
+          "end": 5069,
+          "recorded": "        engines = {name: _executable(name) for name in (\"docker\", \"podman\")}\n",
+          "current": "        engines = {name: _executable(name) for name in (\"docker\",)}\n"
+        },
+        {
+          "start": 5583,
+          "end": 5728,
+          "recorded": "            native_reason = \"ClairS-TO also needs Apptainer/Singularity for its tested SIF. Use Docker, Podman or the manual native installation guide.\"\n",
+          "current": "            native_reason = \"ClairS-TO also needs Apptainer/Singularity for its tested SIF. Use Docker or the manual native installation guide.\"\n"
+        },
+        {
+          "start": 6607,
+          "end": 6681,
+          "recorded": "            raise OncoTracerError(\"Choose Conda, Docker or Podman installation.\")\n",
+          "current": "            raise OncoTracerError(\"Choose Conda or Docker installation.\")\n"
+        },
+        {
+          "start": 8154,
+          "end": 8217,
+          "recorded": "            run = [engine, \"run\", \"--rm\", \"--network\", \"none\",\n                   *(user_arguments(method) if method == \"podman\" else [])]\n",
+          "current": "            run = [engine, \"run\", \"--rm\", \"--network\", \"none\"]\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_postcalling.py": {
+      "recorded_sha256": "7ee6e23a6f1b4b1db48c8ca94e857a7db95b8e8e0d4ad1716fa5ecc149b4ce02",
+      "current_sha256": "6862f145b3ab3381b350522fc7c69664301023e867fa9c84d3c795560361f585",
+      "changes": [
+        {
+          "start": 723,
+          "end": 811,
+          "recorded": "    if not prefix and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') not in {'docker', 'podman'}:\n",
+          "current": "    if not prefix and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') not in {'docker'}:\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_resource_ui.py": {
+      "recorded_sha256": "2dc42ae98e73e0cb11ba76773e066de1569f78994409ceceb95340382242efce",
+      "current_sha256": "e6f8bb17e7ba7b21dfaaee81a6005a510ffdb739be6d1f68f5be544b3253bd21",
+      "changes": [
+        {
+          "start": 9860,
+          "end": 10013,
+          "recorded": "  show('variant-strelka-fields',selected.some(caller=>caller.startsWith('strelka2_'))&&!['docker','podman'].includes(document.getElementById('backend')?.value));\n",
+          "current": "  show('variant-strelka-fields',selected.some(caller=>caller.startsWith('strelka2_'))&&!['docker'].includes(document.getElementById('backend')?.value));\n"
+        },
+        {
+          "start": 20283,
+          "end": 20422,
+          "recorded": "  const docker=['docker','podman'].includes(document.getElementById('backend')?.value),runtime=document.getElementById('variant-ffperase-runtime');\n",
+          "current": "  const docker=['docker'].includes(document.getElementById('backend')?.value),runtime=document.getElementById('variant-ffperase-runtime');\n"
+        },
+        {
+          "start": 24311,
+          "end": 24420,
+          "recorded": "  if(resource.field==='docker_image'||['docker_runtime','podman_runtime'].includes(resource.id))return 'variant_tool_prefix';\n",
+          "current": "  if(resource.field==='docker_image'||['docker_runtime'].includes(resource.id))return 'variant_tool_prefix';\n"
+        },
+        {
+          "start": 28366,
+          "end": 28466,
+          "recorded": "    for(const [method,label] of [['conda','Install with Conda'],['docker','Install with Docker'],['podman','Install with Podman']]){\n",
+          "current": "    for(const [method,label] of [['conda','Install with Conda'],['docker','Install with Docker']]){\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_resources.py": {
+      "recorded_sha256": "cf42e5a015918fbb01d4d5190575f605789d38b55466e29dd7a50a791685cb47",
+      "current_sha256": "6e4cee41ff168643c534e9d264a578cf9c25fe71f5fcd949a43a46f6a626b94d",
+      "changes": [
+        {
+          "start": 3487,
+          "end": 3655,
+          "recorded": "    if backend not in {\"conda\", \"host\", \"poetry\", \"docker\", \"podman\", \"singularity\"}:\n        raise OncoTracerError(\"backend must be conda, host, poetry, docker, podman or singularity\")\n",
+          "current": "    if backend not in {\"conda\", \"host\", \"poetry\", \"docker\", \"singularity\"}:\n        raise OncoTracerError(\"backend must be conda, host, poetry, docker or singularity\")\n"
+        },
+        {
+          "start": 18318,
+          "end": 18447,
+          "recorded": "    fields = {k: v for k, v in values.items() if k in PATH_FIELDS and v and not (backend in {\"docker\", \"podman\"} and k in DOCKER_IGNORED)}\n",
+          "current": "    fields = {k: v for k, v in values.items() if k in PATH_FIELDS and v and not (backend in {\"docker\"} and k in DOCKER_IGNORED)}\n"
+        },
+        {
+          "start": 23772,
+          "end": 23833,
+          "recorded": "    if \"clairs_to\" in callers and backend not in {\"docker\", \"podman\"}:\n",
+          "current": "    if \"clairs_to\" in callers and backend not in {\"docker\"}:\n"
+        },
+        {
+          "start": 25305,
+          "end": 25335,
+          "recorded": "    if backend in {\"docker\", \"podman\"}:\n",
+          "current": "    if backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 29048,
+          "end": 29082,
+          "recorded": "        if backend in {\"docker\", \"podman\"}:\n",
+          "current": "        if backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 35250,
+          "end": 35284,
+          "recorded": "        if backend in {\"docker\", \"podman\"}:\n",
+          "current": "        if backend in {\"docker\"}:\n"
+        },
+        {
+          "start": 48337,
+          "end": 48432,
+          "recorded": "    if backend in {\"docker\", \"podman\"} and detection.reason == \"Perl executable is unavailable on PATH\":\n",
+          "current": "    if backend in {\"docker\"} and detection.reason == \"Perl executable is unavailable on PATH\":\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_runtime.py": {
+      "recorded_sha256": "cb9be6bb619d2472b1b3eeefa72ef0da08f5a2f0ace11a2f0577ab7f0cabb2f8",
+      "current_sha256": "75a22efaf68fdaf78ae312e0581241fd9104429210252d9ed62a6159560730a5",
+      "changes": [
+        {
+          "start": 1612,
+          "end": 1694,
+          "recorded": "    if (mode != \"illumina\" or requested in {\"docker\", \"podman\", \"singularity\", \"apptainer\"}\n",
+          "current": "    if (mode != \"illumina\" or requested in {\"docker\", \"singularity\", \"apptainer\"}\n"
+        },
+        {
+          "start": 1747,
+          "end": 1818,
+          "recorded": "            or env.get(\"ONCOTRACER_CONTAINER_RUNTIME\") in {\"docker\", \"podman\"}):\n",
+          "current": "            or env.get(\"ONCOTRACER_CONTAINER_RUNTIME\") in {\"docker\"}):\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variants.py": {
+      "recorded_sha256": "b0aee20e77ab9c1dca28a6745c52eb0c011a394599e957f88557d0a0adb00a79",
+      "current_sha256": "a145ef4a6348653e10cac8737c20e2303427a3b22256dc2bcb56d9d8c56fa278",
+      "changes": [
+        {
+          "start": 7865,
+          "end": 8050,
+          "recorded": "    if gpu_enabled(config) and mode == 'ont' and 'clair3' in callers and not config.get('_docker_skip_host_tools') and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') not in {'docker', 'podman'}:\n",
+          "current": "    if gpu_enabled(config) and mode == 'ont' and 'clair3' in callers and not config.get('_docker_skip_host_tools') and os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') not in {'docker'}:\n"
+        },
+        {
+          "start": 17325,
+          "end": 17445,
+          "recorded": "        if os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'} and name in {'run_clair3.sh', 'run_clairs_to'}:\n",
+          "current": "        if os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker'} and name in {'run_clair3.sh', 'run_clairs_to'}:\n"
+        }
+      ]
+    },
+    "oncotracer_cli/web.py": {
+      "recorded_sha256": "1cbb10213edcff5c78403472496b5094778bcc431ddbad6d5e249755d6981779",
+      "current_sha256": "9b8adce7da25aa9b1137bcad3e2ac8441bab268f43944f320fa4f88f27529a32",
+      "changes": [
+        {
+          "start": 21225,
+          "end": 21335,
+          "recorded": "            backend = _choice(data, \"backend\", (\"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\", \"host\"), \"conda\")\n",
+          "current": "            backend = _choice(data, \"backend\", (\"conda\", \"docker\", \"singularity\", \"poetry\", \"host\"), \"conda\")\n"
+        },
+        {
+          "start": 23178,
+          "end": 23324,
+          "recorded": "                if backend not in {\"docker\", \"podman\"}:\n                    raise OncoTracerError('Container image selection requires the Docker or Podman backend.')\n",
+          "current": "                if backend not in {\"docker\"}:\n                    raise OncoTracerError('Container image selection requires the Docker backend.')\n"
+        },
+        {
+          "start": 37488,
+          "end": 37569,
+          "recorded": "            if backend and backend not in {\"conda\", \"docker\", \"podman\", \"host\", \"poetry\"}:\n",
+          "current": "            if backend and backend not in {\"conda\", \"docker\", \"host\", \"poetry\"}:\n"
+        },
+        {
+          "start": 37666,
+          "end": 37720,
+          "recorded": "            if backend and backend not in {\"docker\", \"podman\"}:\n",
+          "current": "            if backend and backend not in {\"docker\"}:\n"
+        }
+      ]
+    },
+    "oncotracer_cli/web_ui.py": {
+      "recorded_sha256": "486cf9983fd081452121a04035a00cacdba4d73667d07ae22815c6331f45478d",
+      "current_sha256": "1c2c804cf2b0b99d15489780d2a6322710d8cc50e06980e67fe8f88f4d67461e",
+      "changes": [
+        {
+          "start": 26156,
+          "end": 27212,
+          "recorded": "<div class=\"grid\"><div><label for=\"backend\">Analysis tools</label><select id=\"backend\"><option value=\"conda\">Conda \u00b7 managed installation</option><option value=\"docker\">Docker</option><option value=\"podman\">Podman</option><option value=\"singularity\">Apptainer / Singularity</option><option value=\"poetry\">Poetry</option><option value=\"host\">Existing tools on this computer</option></select></div><div><label for=\"reference\">hg38 reference</label><select id=\"reference\"><option value=\"download\">Download prepared indexes when needed</option><option value=\"reuse\">Reuse a prepared OncoTracer reference</option><option value=\"build\">Build indexes locally on CPU</option></select></div></div><p id=\"reference-note\" class=\"hint\">Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.</p><div id=\"reference-path-field\" hidden><label for=\"reference-path\">Prepared reference parent or references/samurai_hg38 folder</label><div class=\"row\"><input id=\"reference-path\"><button data-browse=\"reference-path\">Browse folders</button></div></div>\n",
+          "current": "<div class=\"grid\"><div><label for=\"backend\">Analysis tools</label><select id=\"backend\"><option value=\"conda\">Conda \u00b7 managed installation</option><option value=\"docker\">Docker</option><option value=\"singularity\">Apptainer / Singularity</option><option value=\"poetry\">Poetry</option><option value=\"host\">Existing tools on this computer</option></select></div><div><label for=\"reference\">hg38 reference</label><select id=\"reference\"><option value=\"download\">Download prepared indexes when needed</option><option value=\"reuse\">Reuse a prepared OncoTracer reference</option><option value=\"build\">Build indexes locally on CPU</option></select></div></div><p id=\"reference-note\" class=\"hint\">Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.</p><div id=\"reference-path-field\" hidden><label for=\"reference-path\">Prepared reference parent or references/samurai_hg38 folder</label><div class=\"row\"><input id=\"reference-path\"><button data-browse=\"reference-path\">Browse folders</button></div></div>\n"
+        },
+        {
+          "start": 51022,
+          "end": 51078,
+          "recorded": "  const docker=['docker','podman'].includes($('backend').value);\n",
+          "current": "  const docker=['docker'].includes($('backend').value);\n"
+        },
+        {
+          "start": 51299,
+          "end": 51736,
+          "recorded": "  $('variant-tool-note').textContent=docker?'The container image supplies the caller and FFPERASE environments. Automatic resources are prepared when the run starts; ANNOVAR uses your existing licensed installation.':'Use detect_tools to find installed caller tools. If tools are missing, choose Conda, Docker or Podman to install them. Models set to Automatic are prepared when the run starts. ANNOVAR uses your existing licensed installation.';\n",
+          "current": "  $('variant-tool-note').textContent=docker?'The container image supplies the caller and FFPERASE environments. Automatic resources are prepared when the run starts; ANNOVAR uses your existing licensed installation.':'Use detect_tools to find installed caller tools. If tools are missing, choose Conda, Docker to install them. Models set to Automatic are prepared when the run starts. ANNOVAR uses your existing licensed installation.';\n"
+        },
+        {
+          "start": 54227,
+          "end": 54283,
+          "recorded": "  const docker=['docker','podman'].includes($('backend').value);\n",
+          "current": "  const docker=['docker'].includes($('backend').value);\n"
+        },
+        {
+          "start": 61116,
+          "end": 61310,
+          "recorded": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','podman','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n",
+          "current": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n"
+        },
+        {
+          "start": 74270,
+          "end": 76795,
+          "recorded": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n",
+          "current": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:['docker'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n"
+        }
+      ]
+    },
+    "oncotracer_cli/wizard.py": {
+      "recorded_sha256": "8f6f2270e04a640387e02a494f13f25f844f21f6c0d6895a1a5bf0b298f4e1a2",
+      "current_sha256": "7304bf6959fd2315731fa809ae2e0364e5f72d28de3a1bfce98b24b0ce3b4753",
+      "changes": [
+        {
+          "start": 11895,
+          "end": 11981,
+          "recorded": "                        choices=(\"conda\", \"docker\", \"podman\", \"singularity\", \"poetry\", \"host\"))\n",
+          "current": "                        choices=(\"conda\", \"docker\", \"singularity\", \"poetry\", \"host\"))\n"
         }
       ]
     }

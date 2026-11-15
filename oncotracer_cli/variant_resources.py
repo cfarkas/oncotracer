@@ -66,8 +66,8 @@ def _payload(data):
     specimen = _string(data.get("specimen_type", ""), "specimen_type")
     if mode not in CALLERS:
         raise OncoTracerError("mode must be illumina or ont")
-    if backend not in {"conda", "host", "poetry", "docker", "podman", "singularity"}:
-        raise OncoTracerError("backend must be conda, host, poetry, docker, podman or singularity")
+    if backend not in {"conda", "host", "poetry", "docker", "singularity"}:
+        raise OncoTracerError("backend must be conda, host, poetry, docker or singularity")
     if specimen not in {"", "fresh", "ffpe"}:
         raise OncoTracerError("specimen_type must be fresh, ffpe or empty")
     raw = data.get("callers", [])
@@ -367,7 +367,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         search.note(message)
     if runtime_selection.managed:
         search.note("Caller tools use the authenticated OncoTracer installation; unrelated Conda environments and PATH are not candidates.")
-    fields = {k: v for k, v in values.items() if k in PATH_FIELDS and v and not (backend in {"docker", "podman"} and k in DOCKER_IGNORED)}
+    fields = {k: v for k, v in values.items() if k in PATH_FIELDS and v and not (backend in {"docker"} and k in DOCKER_IGNORED)}
     resources, missing, candidates = [], [], []
     # Other optional runtimes (FFPErase/Strelka2) still use bounded discovery.
     # The common Illumina caller prefix was already selected authoritatively.
@@ -461,7 +461,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
 
     # Prefer a complete native environment unless a SIF was selected explicitly.
     sif = None
-    if "clairs_to" in callers and backend not in {"docker", "podman"}:
+    if "clairs_to" in callers and backend not in {"docker"}:
         sif_override = search.override("variant_clairsto_sif", values)
         tool_override = search.override("variant_tool_prefix", values)
         native_candidates = [tool_override] if tool_override else [None, *prefixes]
@@ -485,7 +485,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
     if varlociraptor_needed:
         required["varlociraptor"] = ("varlociraptor",)
     selected_prefix = search.override("variant_tool_prefix", values)
-    if backend in {"docker", "podman"}:
+    if backend in {"docker"}:
         selected_image = image or (search.config.get("image") if isinstance(search.config.get("image"), str) else "")
         docker = search.which((backend,))
         row(backend + "_runtime", backend.capitalize() + " executable", "found" if docker else "missing", docker,
@@ -533,7 +533,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
             ("Missing: " + ", ".join(absent)) if absent else "Requested executable files are present. Save and check settings to record these tools for analysis.")
 
     if STRELKA_CALLERS.intersection(callers):
-        if backend in {"docker", "podman"}:
+        if backend in {"docker"}:
             row("strelka2_runtime", "Strelka2 Python 2 runtime", "unverified", detail="The selected container image must supply its isolated Strelka2 2.9.10 and Python 2.7 runtime. Run preflight verifies this; no host prefix is substituted.", field="docker_image")
         else:
             incompatible = []
@@ -619,7 +619,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         model = find_resource("variant_ffperase_models", "FFPERASE models", model_candidates,
                               lambda p: all(search.file(p / f"model.{kind}.joblib") for kind in ("snvs", "indels")))
         if not model: need("ffperase_models")
-        if backend in {"docker", "podman"}:
+        if backend in {"docker"}:
             row("ffperase_runtime", "FFPERASE runtime", "unverified", detail="The container image supplies this runtime; external source/models are still required.", field="docker_image")
         else:
             ffpe_sif_override = search.override("variant_ffperase_sif", values)
@@ -806,7 +806,7 @@ def _annovar(search, values, locations, fields, row, need, offer, *, backend):
         row("annovar", "ANNOVAR", "unverified", selected_install, f"Local resources could not be inspected: {error}")
         need("annovar")
         return
-    if backend in {"docker", "podman"} and detection.reason == "Perl executable is unavailable on PATH":
+    if backend in {"docker"} and detection.reason == "Perl executable is unavailable on PATH":
         row("annovar", "ANNOVAR", "candidate", selected_install,
             "Executable helpers and the matching RefSeq pair exist. Container Perl and full annotation compatibility require run preflight.")
     elif detection.available:

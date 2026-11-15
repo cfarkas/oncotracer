@@ -66,7 +66,6 @@ Use the full path to `main.nf` from another directory. For Docker, use `--backen
 Choose **1. New analysis** for setup, or **2. Continue an existing analysis**
 for saved work ([video](running.md#resume-behavior)).
 **Run analysis** starts the work. Earlier Conda/Docker videos use synthetic inventories and checks;
-[Podman setup](installation_details.md#podman-300-candidate) covers 3.0.
 
 <div class="quickstart-videos">
 <section class="quickstart-video-card" aria-label="Illumina video">

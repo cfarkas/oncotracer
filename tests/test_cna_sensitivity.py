@@ -212,11 +212,11 @@ class ProfileTests(unittest.TestCase):
             with self.assertRaises(OncoTracerError): validate_profile(v)
 
     def test_cli_and_both_container_engines_preserve_profile(self):
-        from oncotracer_cli.cli import parse_arguments,_run_docker,_run_podman
+        from oncotracer_cli.cli import parse_arguments,_run_docker
         for entry in (['run','--config','run.yml'],['internal-run','--config','run.yml'],['setup'],['--interactive']):
             self.assertIsNone(parse_arguments(entry).cna_profile)
             self.assertEqual(parse_arguments([*entry,'--cna-profile','sensitive']).cna_profile,'sensitive')
-        for engine,run in [('docker',_run_docker),('podman',_run_podman)]:
+        for engine,run in [('docker',_run_docker)]:
             args=parse_arguments(['run','--config','/data/config/run.yml','--backend',engine,'--dry-run','--cna-profile','sensitive'])
             with patch('oncotracer_cli.cli._load_install_config',return_value={}),patch('oncotracer_cli.cli._project_mounts',return_value=[Path('/data')]),patch('oncotracer_cli.cli.load_flat_yaml',return_value={}),patch('oncotracer_cli.cli._run') as execute:
                 run(Path('/data/config/run.yml'),args)

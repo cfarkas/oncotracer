@@ -335,33 +335,7 @@ Before a large analysis:
 
 <a id="podman-300-candidate"></a>
 
-## Podman (4.1.0)
+## Container support in 4.1
 
-The 4.1.0 launcher offers Podman in CLI, browser and terminal setup, including
-project continuation. Podman runs the same image and scientific environments as
-Docker.
-
-After building or loading the 4.1.0 image into **Podman's** local image
-store, select its tag explicitly:
-
-```bash
-oncotracer install --podman --image docker.io/carlosfarkas/oncotracer:4.1.0 --no-pull
-oncotracer doctor --backend podman
-oncotracer --interactive --backend podman
-oncotracer setup --terminal --backend podman
-oncotracer run --backend podman --image docker.io/carlosfarkas/oncotracer:4.1.0 --config /absolute/path/to/my-study/config/run.yml
-```
-
-Docker and Podman maintain separate image stores. Remote images should use their
-full registry name, such as `docker.io/carlosfarkas/oncotracer:TAG`. The saved
-`docker_image` configuration key is also used by Podman for compatibility.
-
-Rootless runs use `--userns=keep-id` so generated files retain your UID/GID;
-input mounts stay read-only. OncoTracer does not recursively change ownership or
-relabel shared data. The invoking user must have access to the selected paths.
-See [Podman's user namespace and volume documentation](https://docs.podman.io/en/v4.9.3/markdown/podman-run.1.html).
-
-For NVIDIA GPUs, configure [NVIDIA CDI](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html)
-and validate with `oncotracer doctor --backend podman --gpu`. Podman receives
-the selected host GPU indexes through CDI; UUID visibility masks and shared
-native admission locks retain the selected device identities. CPU runs need no CDI. ONT methylation still requires native licensed tools.
+Use Docker for container installations. Podman support was removed in 4.1;
+native installations remain available through Conda, Poetry or existing tools.

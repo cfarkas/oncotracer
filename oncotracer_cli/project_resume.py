@@ -42,7 +42,7 @@ def _rebase(value, old, new):
 def _runtime(backend, config):
     from .output_safety import current_runtime_identity, _IDENTITY_KEYS
     from .runtime import runtime_root
-    if backend in {"docker", "podman"}:
+    if backend in {"docker"}:
         from .cli import DEFAULT_IMAGE, _load_install_config
         from .container_runtime import image_reference, user_arguments
         image = image_reference(config.get("docker_image") or _load_install_config().get("image"), backend)
@@ -73,7 +73,7 @@ def _runtime(backend, config):
             raise OncoTracerError(f"{backend.capitalize()} returned an incomplete runtime identity")
         return identity
     if backend not in {"host", "conda", "poetry"}:
-        raise OncoTracerError("Existing-project resume currently supports Conda, host, Poetry, Docker and Podman.")
+        raise OncoTracerError("Existing-project resume currently supports Conda, host, Poetry, Docker.")
     return current_runtime_identity(runtime_root())
 
 
@@ -215,8 +215,8 @@ def resume_project(value, *, backend=None, image=None, resources=None, variant_o
             raise OncoTracerError("Project results is not a directory")
         backend = backend or str(config.get("execution_backend") or "conda")
         if image:
-            if backend not in {"docker", "podman"}:
-                raise OncoTracerError("An image override requires the Docker or Podman backend")
+            if backend not in {"docker"}:
+                raise OncoTracerError("An image override requires the Docker backend")
             config["docker_image"] = str(image)
         old_output = Path(str(config.get("outdir") or ""))
         if not old_output.is_absolute() or old_output.name != "results":

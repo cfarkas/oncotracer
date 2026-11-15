@@ -189,7 +189,7 @@ class DockerMethylationBindings(unittest.TestCase):
             bam=root/'source.bam';bam.write_bytes(b'fixture')
             values=fixture.config();values.update(outdir=str(root/'output'),lpwgs_root=str(root/'project'),methylation=False)
             values.pop('methylation_pod5_dir');config=root/'run.yml';config.write_text(render_flat_yaml(values));before=config.read_bytes()
-            for backend in ('docker','podman'):
+            for backend in ('docker',):
                 args=cli.build_parser().parse_args(['run','--config',str(config),'--backend',backend,'--methylation-only','--modbam',str(bam),'--cpu','--dry-run'])
                 with patch.object(Path,'cwd',return_value=root),patch.object(cli,'_load_install_config',return_value={}),patch.object(cli,'_run') as run,patch.object(cli,'_project_mounts',side_effect=AssertionError('coarse mounts selected')):
                     cli._run_container(config,args,backend=backend)

@@ -47,7 +47,7 @@ def command_haplotype(args):
     if any(out.resolve() == Path(getattr(args,n)) or out.resolve() in Path(getattr(args,n)).parents
            for n in ('bam','vcf','reference')):
         raise OncoTracerError('Output directory must not contain an input file')
-    if backend in {'docker', 'podman'}:
+    if backend in {'docker'}:
         out.mkdir(parents=True,exist_ok=True)
         files = {Path(getattr(args,n)) for n in ('bam','vcf','reference')}
         for p in tuple(files):
@@ -78,7 +78,7 @@ def command_haplotype(args):
                     'haplotype-evidence','--backend','host',*worker_arguments(args)]
         return subprocess.run(command,check=False).returncode
     if backend not in ('conda','poetry','host'):
-        raise OncoTracerError('Haplotype evidence supports Conda/Poetry, host, Docker and Podman')
+        raise OncoTracerError('Haplotype evidence supports Conda/Poetry, host, Docker')
     with contextlib.ExitStack() as stack:
         environment = {k:v for k,v in os.environ.items() if k not in ('PYTHONPATH','PYTHONHOME','LD_PRELOAD','LD_LIBRARY_PATH')}
         if backend in ('conda','poetry'):
@@ -104,7 +104,7 @@ def add_haplotype_command(subparsers):
     p = subparsers.add_parser('haplotype-evidence',help='Assess read-backed linkage after calling (experimental; not germline probability)')
     for flag in ('bam','vcf','reference','sample','outdir'):
         p.add_argument('--'+flag,required=True)
-    p.add_argument('--backend',choices=('conda','poetry','docker','podman','host'))
+    p.add_argument('--backend',choices=('conda','poetry','docker','host'))
     p.add_argument('--image')
     p.add_argument('--threads',type=int,default=2,help='BAM decompression/local model CPU budget')
     p.add_argument('--simulations',type=int,default=10000)

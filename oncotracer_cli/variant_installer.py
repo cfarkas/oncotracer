@@ -108,13 +108,13 @@ class VariantInstaller:
             raise OncoTracerError("Unknown analysis form.")
         roots = tools_roots(self.start_dir, data)
         manager = next((path for name in ("conda", "mamba", "micromamba") if (path := _executable(name))), None)
-        engines = {name: _executable(name) for name in ("docker", "podman")}
+        engines = {name: _executable(name) for name in ("docker",)}
         native_reason = "" if manager else "Install Conda, Mamba or Micromamba first, then try again."
         if platform.system() != "Linux" or platform.machine().lower() not in {"x86_64", "amd64"}:
             native_reason = "These pinned caller environments require Linux x86_64. Use a supported container host or the manual guides."
         sif_runtime = _executable("apptainer") or _executable("singularity")
         if "clairs_to" in callers and not values.get("variant_clairsto_sif") and not sif_runtime:
-            native_reason = "ClairS-TO also needs Apptainer/Singularity for its tested SIF. Use Docker, Podman or the manual native installation guide."
+            native_reason = "ClairS-TO also needs Apptainer/Singularity for its tested SIF. Use Docker or the manual native installation guide."
         reasons = {"conda": native_reason}
         for engine, executable in engines.items():
             reason = "" if executable else f"Install {engine.capitalize()} and enable access to its runtime first."
@@ -127,7 +127,7 @@ class VariantInstaller:
                     "available": not reason, "reason": reason} for name, reason in reasons.items()]
         requested = data.get("method", "auto")
         if requested not in {"auto", *reasons}:
-            raise OncoTracerError("Choose Conda, Docker or Podman installation.")
+            raise OncoTracerError("Choose Conda or Docker installation.")
         method = requested if requested != "auto" else (
             backend if backend in engines and not reasons[backend] else
             next((name for name, reason in reasons.items() if not reason), "conda"))
@@ -150,8 +150,7 @@ class VariantInstaller:
             plan["fields"] = {"backend": method, "docker_image": image}
             step(f"Check {method.capitalize()} access", [engine, "info"])
             step("Download the selected container image", [engine, "pull", image])
-            run = [engine, "run", "--rm", "--network", "none",
-                   *(user_arguments(method) if method == "podman" else [])]
+            run = [engine, "run", "--rm", "--network", "none"]
             step("Check the image's analysis tools", [*run, image, "doctor", "--backend", "host"])
             selection = {"callers": callers, "varlociraptor": values.get("variant_varlociraptor") == "required",
                          "ffperase": mode == "illumina" and specimen == "ffpe" and values.get("variant_ffperase", "required") != "off"}

@@ -24,7 +24,7 @@ from oncotracer_cli.runtime import StageLedger, render_flat_yaml
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--image', required=True)
-    parser.add_argument('--engine', choices=('docker', 'podman'), default='docker')
+    parser.add_argument('--engine', choices=('docker',), default='docker')
     parser.add_argument('--work-dir', type=Path, required=True)
     args = parser.parse_args()
     root = args.work_dir.absolute()

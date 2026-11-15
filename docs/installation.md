@@ -34,11 +34,6 @@ oncotracer --interactive --backend docker
 
 Installation saves the selected image; doctor and setup reuse it. Select small variants in the browser when needed. See [Docker variants](variants.md#run-cna-and-variants-with-docker) for models, FFPERASE licensing and ANNOVAR. Use [Conda for ONT methylation](configuration/methylation.md).
 
-### Podman
-
-Use `--podman` for installation or `--backend podman` for run, doctor and
-interactive setup. Select your image from Podman's store.
-See [Podman setup and rootless/GPU requirements](installation_details.md#podman-300-candidate).
 
 ## Optional NVIDIA GPU
 
