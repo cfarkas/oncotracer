@@ -320,7 +320,6 @@ _SubParsersAction.__init__ = _legacy_subparsers_init
             "conda": {"backend": "conda", "core_prefix": str(self.scratch / "tools/core")},
             "poetry": {"backend": "poetry", "core_prefix": str(self.scratch / "tools/core")},
             "docker": self.config,
-            "podman": {"backend": "podman", "image": "localhost/oncotracer:test"},
             "singularity": {"backend": "singularity", "sif": str(self.scratch / "image.sif")},
         }
         for backend, config in configurations.items():
@@ -338,6 +337,14 @@ _SubParsersAction.__init__ = _legacy_subparsers_init
                 self.assertEqual(json.loads((launch.default_path().parent / launch.MARKER).read_text())["installation"],
                                  launch.installation_target(config))
                 self.assertIn("Command:", output)
+
+    def test_removed_podman_install_cannot_publish_a_launcher_or_settings(self):
+        with mock.patch.object(cli, "_save_install_config") as save:
+            with self.assertRaises(SystemExit) as error:
+                self.invoke(["install", "--podman"])
+        self.assertEqual(error.exception.code, 2)
+        save.assert_not_called()
+        self.assertFalse(launch.default_path().exists())
 
     def test_no_launcher_leaves_foreign_command_untouched(self):
         path = launch.default_path()
