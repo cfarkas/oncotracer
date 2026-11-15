@@ -10,6 +10,10 @@ ARG SOURCE_SHA256
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 WORKDIR /opt/oncotracer
 
+# Ownership must be fixed in the original layers; updating their final contents
+# cannot make an older image importable with default rootless UID mappings.
+RUN python -B -c "from pathlib import Path; copies=[line for line in Path('/opt/oncotracer/Dockerfile').read_text().splitlines() if line.startswith('COPY --from=')]; assert copies and all('--chown=0:0' in line.split() for line in copies), 'Base image predates rootless ownership normalization; use the full Dockerfile'"
+
 COPY environments/ /tmp/oncotracer-update-environments/
 RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in p.rglob('*') if f.is_file()}; assert digest(Path('/opt/oncotracer/environments')) == digest(Path('/tmp/oncotracer-update-environments')), 'Scientific environment definitions changed; use the full Dockerfile'"
 

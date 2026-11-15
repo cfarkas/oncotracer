@@ -72,11 +72,13 @@ RUN conda env create --prefix "${ONCOTRACER_FFPERASE_PREFIX}" --file environment
 RUN conda env create --prefix "${ONCOTRACER_STRELKA_PREFIX}" --file environments/native-strelka2.yml \
     && conda clean -afy
 
-# Preserve upstream absolute prefixes and licenses. The isolated wrappers keep
-# ONT Python/TensorFlow/PyTorch libraries out of the core and short-read envs.
-COPY --from=ont_callers /opt/bin/ /opt/bin/
-COPY --from=ont_callers /opt/micromamba/ /opt/micromamba/
-COPY --from=clair3_gpu /opt/oncotracer-gpu/clair3/ /opt/oncotracer-gpu/clair3/
+# Preserve upstream absolute prefixes and licenses. Normalize ownership while
+# creating each layer: upstream ClairS-TO files include UID 1000088, outside
+# standard rootless Podman mappings. A later chown cannot repair older layers.
+# The isolated wrappers keep ONT libraries out of the core and short-read envs.
+COPY --from=ont_callers --chown=0:0 /opt/bin/ /opt/bin/
+COPY --from=ont_callers --chown=0:0 /opt/micromamba/ /opt/micromamba/
+COPY --from=clair3_gpu --chown=0:0 /opt/oncotracer-gpu/clair3/ /opt/oncotracer-gpu/clair3/
 COPY oncotracer_cli/gpu_callers.py /opt/build-support/gpu_callers.py
 RUN /opt/conda/bin/python /opt/build-support/gpu_callers.py \
     --clair3-bin /opt/micromamba/envs/clairs-to/bin --clairsto-bin /opt/bin
