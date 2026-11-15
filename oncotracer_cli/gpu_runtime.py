@@ -80,8 +80,9 @@ def doctor_gpu(backend, install, *, image=None):
         with contextlib.ExitStack() as stack:
             in_container = os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker'}
             if backend in {'docker'} or (backend == 'host' and in_container):
-                from .container_runtime import image_reference, user_arguments
-                image = image_reference(image or install.get('image'), backend)
+                if backend == 'docker':
+                    from .container_runtime import image_reference
+                    image = image_reference(image or install.get('image'), backend)
                 prefixes = {'gpu-reports': Path('/opt/oncotracer-envs/gpu-reports'),
                             'gpu-clair3': Path('/opt/oncotracer-gpu/clair3')}
             elif backend in {'conda', 'poetry', 'host'}:

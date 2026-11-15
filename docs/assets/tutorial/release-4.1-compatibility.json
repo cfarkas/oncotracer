@@ -383,7 +383,7 @@
     },
     "oncotracer_cli/gpu_runtime.py": {
       "recorded_sha256": "d03e07a6d97170d7021bf985fc7461c01461614e6770fe24ff02038a1f3be264",
-      "current_sha256": "3817dbf150b2482dc5b96e98a4e99df78d0dece3a8b62c941259d6c810ff3402",
+      "current_sha256": "731f1888cad942c372a4cb73d31282122455f9bef81dc010a6ffa842500c515c",
       "changes": [
         {
           "start": 2450,
@@ -393,43 +393,43 @@
         },
         {
           "start": 3788,
-          "end": 3954,
-          "recorded": "            in_container = os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'}\n            if backend in {'docker', 'podman'} or (backend == 'host' and in_container):\n",
-          "current": "            in_container = os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker'}\n            if backend in {'docker'} or (backend == 'host' and in_container):\n"
+          "end": 4145,
+          "recorded": "            in_container = os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker', 'podman'}\n            if backend in {'docker', 'podman'} or (backend == 'host' and in_container):\n                from .container_runtime import image_reference, user_arguments\n                image = image_reference(image or install.get('image'), backend)\n",
+          "current": "            in_container = os.environ.get('ONCOTRACER_CONTAINER_RUNTIME') in {'docker'}\n            if backend in {'docker'} or (backend == 'host' and in_container):\n                if backend == 'docker':\n                    from .container_runtime import image_reference\n                    image = image_reference(image or install.get('image'), backend)\n"
         },
         {
-          "start": 4586,
-          "end": 4690,
+          "start": 4618,
+          "end": 4722,
           "recorded": "                raise RuntimeError('Reserved GPU support requires Docker, Podman or native Conda/Poetry tools')\n",
           "current": "                raise RuntimeError('Reserved GPU support requires Docker or native Conda/Poetry tools')\n"
         },
         {
-          "start": 5302,
-          "end": 5395,
+          "start": 5334,
+          "end": 5427,
           "recorded": "                if backend in {'docker', 'podman'}:\n                    pre = [backend, 'run', '--rm', *(user_arguments(backend) if backend == 'podman' else []),\n",
           "current": "                if backend in {'docker'}:\n                    pre = [backend, 'run', '--rm',\n"
         },
         {
-          "start": 6616,
-          "end": 6673,
+          "start": 6648,
+          "end": 6705,
           "recorded": "    \"\"\"Grant exactly the selected devices; Podman uses NVIDIA CDI, not --gpus.\"\"\"\n",
           "current": "    \"\"\"Grant exactly the selected Docker GPU devices.\"\"\"\n"
         },
         {
-          "start": 6765,
-          "end": 6765,
+          "start": 6797,
+          "end": 6797,
           "recorded": "    if backend == 'podman':\n        # NVIDIA's default CDI names use the host NVML index. The UUID mask\n        # inside the image and shared lease still enforce the selected identity.\n        if any(type(device.get('index')) is not int or device['index'] < 0 for device in devices):\n            raise OncoTracerError('Podman CDI requires a verified host GPU index')\n        return [item for device in devices for item in ('--device', 'nvidia.com/gpu=' + str(device['index']))] + [\n            '--env', 'NVIDIA_VISIBLE_DEVICES=void',\n            '--env', 'ONCOTRACER_GPU_DEVICES=' + ','.join(uuids)]\n",
           "current": ""
         },
         {
-          "start": 7068,
-          "end": 7150,
+          "start": 7100,
+          "end": 7182,
           "recorded": "",
           "current": "    from .container_runtime import _require_backend\n    _require_backend(backend)\n"
         },
         {
-          "start": 7674,
-          "end": 7689,
+          "start": 7706,
+          "end": 7721,
           "recorded": "    access = device_arguments(backend, devices) if backend == 'podman' else [\n",
           "current": "    access = [\n"
         }

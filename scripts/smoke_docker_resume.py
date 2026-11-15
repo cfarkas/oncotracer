@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify real Docker/Podman resume dispatch; substitute dry-run only at analysis entry.
+"""Verify real Docker resume dispatch; substitute dry-run only at analysis entry.
 
 Uses synthetic ONT reads and a new, explicitly selected test directory. Docker
 identity queries, output checks, mounts and caller preflight execute normally.

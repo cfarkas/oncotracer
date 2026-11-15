@@ -74,7 +74,7 @@ RUN conda env create --prefix "${ONCOTRACER_STRELKA_PREFIX}" --file environments
 
 # Preserve upstream absolute prefixes and licenses. Normalize ownership while
 # creating each layer: upstream ClairS-TO files include UID 1000088, outside
-# standard rootless Podman mappings. A later chown cannot repair older layers.
+# standard container user namespace mappings. A later chown cannot repair older layers.
 # The isolated wrappers keep ONT libraries out of the core and short-read envs.
 COPY --from=ont_callers --chown=0:0 /opt/bin/ /opt/bin/
 COPY --from=ont_callers --chown=0:0 /opt/micromamba/ /opt/micromamba/
