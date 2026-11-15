@@ -884,6 +884,114 @@
           "current": "                        choices=(\"conda\", \"docker\", \"singularity\", \"poetry\", \"host\"))\n"
         }
       ]
+    },
+    "PAGE": {
+      "recorded_sha256": "92a892e50ff1f11322f8688efcad1801f3a5bd5b0eee9522e0d2f795b3857fee",
+      "current_sha256": "d3de201b8490885a0be9e1f0706d45bfce2fdf4cd4e3600577b3821076dac162",
+      "changes": [
+        {
+          "start": 18060,
+          "end": 18326,
+          "recorded": "<div class=\"grid\" style=\"margin-top:18px\"><div><label for=\"resume-backend\">Analysis tools</label><select id=\"resume-backend\"><option value=\"\">Use saved project backend</option><option value=\"conda\">Conda</option><option value=\"docker\">Docker</option><option value=\"podman\">Podman</option></select></div>\n",
+          "current": "<div class=\"grid\" style=\"margin-top:18px\"><div><label for=\"resume-backend\">Analysis tools</label><select id=\"resume-backend\"><option value=\"\">Use saved project backend</option><option value=\"conda\">Conda</option><option value=\"docker\">Docker</option></select></div>\n"
+        },
+        {
+          "start": 37961,
+          "end": 39017,
+          "recorded": "<div class=\"grid\"><div><label for=\"backend\">Analysis tools</label><select id=\"backend\"><option value=\"conda\">Conda \u00b7 managed installation</option><option value=\"docker\">Docker</option><option value=\"podman\">Podman</option><option value=\"singularity\">Apptainer / Singularity</option><option value=\"poetry\">Poetry</option><option value=\"host\">Existing tools on this computer</option></select></div><div><label for=\"reference\">hg38 reference</label><select id=\"reference\"><option value=\"download\">Download prepared indexes when needed</option><option value=\"reuse\">Reuse a prepared OncoTracer reference</option><option value=\"build\">Build indexes locally on CPU</option></select></div></div><p id=\"reference-note\" class=\"hint\">Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.</p><div id=\"reference-path-field\" hidden><label for=\"reference-path\">Prepared reference parent or references/samurai_hg38 folder</label><div class=\"row\"><input id=\"reference-path\"><button data-browse=\"reference-path\">Browse folders</button></div></div>\n",
+          "current": "<div class=\"grid\"><div><label for=\"backend\">Analysis tools</label><select id=\"backend\"><option value=\"conda\">Conda \u00b7 managed installation</option><option value=\"docker\">Docker</option><option value=\"singularity\">Apptainer / Singularity</option><option value=\"poetry\">Poetry</option><option value=\"host\">Existing tools on this computer</option></select></div><div><label for=\"reference\">hg38 reference</label><select id=\"reference\"><option value=\"download\">Download prepared indexes when needed</option><option value=\"reuse\">Reuse a prepared OncoTracer reference</option><option value=\"build\">Build indexes locally on CPU</option></select></div></div><p id=\"reference-note\" class=\"hint\">Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project\u2019s reference folder.</p><div id=\"reference-path-field\" hidden><label for=\"reference-path\">Prepared reference parent or references/samurai_hg38 folder</label><div class=\"row\"><input id=\"reference-path\"><button data-browse=\"reference-path\">Browse folders</button></div></div>\n"
+        },
+        {
+          "start": 47151,
+          "end": 47574,
+          "recorded": "<div id=\"variant-install-choices\" class=\"variant-install-choices\" hidden><p class=\"hint\">Missing tools detected. Choose how to install them.</p><div class=\"actions\"><button id=\"variant-install-conda\" data-variant-install=\"conda\" type=\"button\" class=\"primary\">Install with Conda</button><button id=\"variant-install-docker\" data-variant-install=\"docker\" type=\"button\" class=\"primary\">Install with Docker</button><button id=\"variant-install-podman\" data-variant-install=\"podman\" type=\"button\" class=\"primary\">Install with Podman</button></div></div>\n",
+          "current": "<div id=\"variant-install-choices\" class=\"variant-install-choices\" hidden><p class=\"hint\">Missing tools detected. Choose how to install them.</p><div class=\"actions\"><button id=\"variant-install-conda\" data-variant-install=\"conda\" type=\"button\" class=\"primary\">Install with Conda</button><button id=\"variant-install-docker\" data-variant-install=\"docker\" type=\"button\" class=\"primary\">Install with Docker</button></div></div>\n"
+        },
+        {
+          "start": 96570,
+          "end": 96626,
+          "recorded": "  const docker=['docker','podman'].includes($('backend').value);\n",
+          "current": "  const docker=['docker'].includes($('backend').value);\n"
+        },
+        {
+          "start": 96847,
+          "end": 97284,
+          "recorded": "  $('variant-tool-note').textContent=docker?'The container image supplies the caller and FFPERASE environments. Automatic resources are prepared when the run starts; ANNOVAR uses your existing licensed installation.':'Use detect_tools to find installed caller tools. If tools are missing, choose Conda, Docker or Podman to install them. Models set to Automatic are prepared when the run starts. ANNOVAR uses your existing licensed installation.';\n",
+          "current": "  $('variant-tool-note').textContent=docker?'The container image supplies the caller and FFPERASE environments. Automatic resources are prepared when the run starts; ANNOVAR uses your existing licensed installation.':'Use detect_tools to find installed caller tools. If tools are missing, choose Conda, Docker to install them. Models set to Automatic are prepared when the run starts. ANNOVAR uses your existing licensed installation.';\n"
+        },
+        {
+          "start": 99775,
+          "end": 99831,
+          "recorded": "  const docker=['docker','podman'].includes($('backend').value);\n",
+          "current": "  const docker=['docker'].includes($('backend').value);\n"
+        },
+        {
+          "start": 106664,
+          "end": 106858,
+          "recorded": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','podman','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n",
+          "current": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n"
+        },
+        {
+          "start": 119894,
+          "end": 122724,
+          "recorded": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():''});if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),resources_selection:resourceSelection('sample'),backend:$('backend').value,docker_image:['docker','podman'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);if(prepared.kind==='existing_project'){showResumedProject();return;}$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n",
+          "current": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:['docker'].includes($('backend').value)?$('docker_image').value.trim():''});if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),resources_selection:resourceSelection('sample'),backend:$('backend').value,docker_image:['docker'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);if(prepared.kind==='existing_project'){showResumedProject();return;}$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n"
+        },
+        {
+          "start": 132620,
+          "end": 132716,
+          "recorded": "  if($('resume-backend').value!=='podman')$('resume-backend').value='docker';$('resume-image').value=($('resume-backend').value==='podman'?'docker.io/':'')+$('resume-image').dataset.current;\n",
+          "current": "  $('resume-backend').value='docker';$('resume-image').value=$('resume-image').dataset.current;\n"
+        },
+        {
+          "start": 146581,
+          "end": 147150,
+          "recorded": "$('resume-image').dataset.current=system.default_docker_image||'';$('resume-image').placeholder=system.default_docker_image||'';if(['conda','docker','podman'].includes(defaults.backend))$('resume-backend').value=defaults.backend;if(defaults.image)$('resume-image').value=defaults.image;show('resume-image-field',$('resume-backend').value!=='conda');if(system.resume_project){$('resume-project').value=system.resume_project;$('resume-note').textContent='Existing project detected. Load its saved settings above to continue.';}if(system.cpg)initializeCpgContinuation(system.cpg);\n",
+          "current": "$('resume-image').dataset.current=system.default_docker_image||'';$('resume-image').placeholder=system.default_docker_image||'';if(['conda','docker'].includes(defaults.backend))$('resume-backend').value=defaults.backend;if(defaults.image)$('resume-image').value=defaults.image;show('resume-image-field',$('resume-backend').value!=='conda');if(system.resume_project){$('resume-project').value=system.resume_project;$('resume-note').textContent='Existing project detected. Load its saved settings above to continue.';}if(system.cpg)initializeCpgContinuation(system.cpg);\n"
+        },
+        {
+          "start": 150565,
+          "end": 150718,
+          "recorded": "  show('variant-strelka-fields',selected.some(caller=>caller.startsWith('strelka2_'))&&!['docker','podman'].includes(document.getElementById('backend')?.value));\n",
+          "current": "  show('variant-strelka-fields',selected.some(caller=>caller.startsWith('strelka2_'))&&!['docker'].includes(document.getElementById('backend')?.value));\n"
+        },
+        {
+          "start": 160988,
+          "end": 161127,
+          "recorded": "  const docker=['docker','podman'].includes(document.getElementById('backend')?.value),runtime=document.getElementById('variant-ffperase-runtime');\n",
+          "current": "  const docker=['docker'].includes(document.getElementById('backend')?.value),runtime=document.getElementById('variant-ffperase-runtime');\n"
+        },
+        {
+          "start": 165016,
+          "end": 165125,
+          "recorded": "  if(resource.field==='docker_image'||['docker_runtime','podman_runtime'].includes(resource.id))return 'variant_tool_prefix';\n",
+          "current": "  if(resource.field==='docker_image'||['docker_runtime'].includes(resource.id))return 'variant_tool_prefix';\n"
+        },
+        {
+          "start": 169071,
+          "end": 169171,
+          "recorded": "    for(const [method,label] of [['conda','Install with Conda'],['docker','Install with Docker'],['podman','Install with Podman']]){\n",
+          "current": "    for(const [method,label] of [['conda','Install with Conda'],['docker','Install with Docker']]){\n"
+        },
+        {
+          "start": 181618,
+          "end": 181726,
+          "recorded": "  $('variant-install-start').textContent=plan.method==='podman'?'Install with Podman':plan.method==='docker'?'Install with Docker':'Install with Conda';\n",
+          "current": "  $('variant-install-start').textContent=plan.method==='docker'?'Install with Docker':'Install with Conda';\n"
+        },
+        {
+          "start": 183831,
+          "end": 183931,
+          "recorded": "  const incompatible=['docker','podman'].includes(job.fields?.backend)&&!document.getElementById('backend');\n",
+          "current": "  const incompatible=['docker'].includes(job.fields?.backend)&&!document.getElementById('backend');\n"
+        },
+        {
+          "start": 184890,
+          "end": 184976,
+          "recorded": "  if(['docker','podman'].includes(fields.backend)&&!document.getElementById('backend'))return;\n",
+          "current": "  if(['docker'].includes(fields.backend)&&!document.getElementById('backend'))return;\n"
+        }
+      ]
     }
   }
 }
