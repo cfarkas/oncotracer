@@ -18,6 +18,8 @@ COPY environments/ /tmp/oncotracer-update-environments/
 RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in p.rglob('*') if f.is_file()}; assert digest(Path('/opt/oncotracer/environments')) == digest(Path('/tmp/oncotracer-update-environments')), 'Scientific environment definitions changed; use the full Dockerfile'"
 
 COPY . /opt/oncotracer/
+# Keep build-time Nextflow caches out of the writable runtime home, including
+# caches inherited from earlier incremental images used as the base.
 RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
     && PATH="${ONCOTRACER_VARIANTS_PREFIX}/bin:/opt/micromamba/envs/clairs-to/bin:${PATH}" /opt/conda/bin/python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_glimpse_preflight_parallel tests.test_variant_postcalling tests.test_glimpse_joint tests.test_glimpse_resume tests.test_optional_cohort tests.test_glimpse_storage tests.test_dynamic_resources tests.test_quilt_parallel tests.test_gistic_eligibility tests.test_project_resume tests.test_podman_backend tests.test_glimpse_ffpe_report tests.test_cna_sensitivity tests.test_broad_cna tests.test_native_methylation -q \
     && "${ONCOTRACER_QDNASEQ_PREFIX}/bin/Rscript" --vanilla tests/test_cna_coverage.R \
@@ -29,7 +31,8 @@ RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
     && rm "${build_dir}/oncotracer" && rmdir "${build_dir}" \
     && oncotracer --version \
     && oncotracer provenance --json \
-    && nextflow -version
+    && NXF_HOME=/tmp/nextflow-build nextflow -version \
+    && rm -rf /tmp/nextflow-build /tmp/nextflow
 
 LABEL org.opencontainers.image.version="4.1.0" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
