@@ -133,7 +133,7 @@ beginner() {
 beginner "$ACCEPTANCE_RELEASE/oncotracer" --version \
   | grep -Fx 'OncoTracer 4.1.0'
 beginner "$ACCEPTANCE_RELEASE/oncotracer" --help \
-  | grep -F 'Native LP-WGS CNA analysis.'
+  | grep -F 'usage: oncotracer'
 beginner "$ACCEPTANCE_RELEASE/oncotracer" provenance --json \
   > "$ACCEPTANCE_ROOT/executable-provenance.json"
 jq -e \

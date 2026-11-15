@@ -5,10 +5,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import tempfile
 import textwrap
 import unittest
+
+from oncotracer_cli.cli import build_parser
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -632,7 +635,7 @@ case "${1:-}" in
     printf 'OncoTracer 4.1.0\\n'
     ;;
   --help)
-    printf 'Native LP-WGS CNA analysis.\\n'
+    printf '%s\\n' HELP_OUTPUT
     ;;
   provenance)
     test "${2:-}" = --json
@@ -655,7 +658,7 @@ esac
 """
         executable = executable_template.replace("MAIN", main_sha).replace(
             "SOURCE", source_sha
-        )
+        ).replace("HELP_OUTPUT", shlex.quote(build_parser().format_help()))
 
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
