@@ -64,7 +64,7 @@ class RoutingTests(unittest.TestCase):
                 root=Path(directory);metadata=root/'metadata';metadata.write_text('fixture')
                 records=[dict(sample='A',tissue='marrow',classifier='marlin',status=state,covered_classifier_probes=0),
                          dict(sample='B',tissue='unknown',classifier=None,status='not_applicable')]
-                request=routing.TissueMethylationRequest(tuple(records),(),metadata,sha256_file(metadata))
+                request=routing.TissueMethylationRequest(tuple(records),(),metadata,sha256_file(metadata),caller='modkit')
                 routing.publish(root,request,records)
                 atomic_write_json(root/'06_workflow_summary/workflow_summary.json',dict(workflow_status='complete' if state=='complete' else 'partial_failure',cna_status='not_requested',methylation_status=state,methylation_completed_samples=['A'] if state=='complete' else []))
                 for _ in range(2):
@@ -207,7 +207,7 @@ class DockerMethylationBindings(unittest.TestCase):
             root=Path(directory);metadata=root/'metadata';metadata.write_text('fixed metadata')
             samples=[SimpleNamespace(sample=s) for s in ('A','B','C')]
             assignments=tuple(dict(sample=s,tissue=t,classifier=c,status='pending' if c else 'not_applicable') for s,t,c in [('A','marrow','marlin'),('B','CNS','sturgeon'),('C','unknown',None)])
-            request=routing.TissueMethylationRequest(assignments,(('A',SimpleNamespace(classifier='marlin')),('B',SimpleNamespace(classifier='sturgeon'))),metadata,sha256_file(metadata))
+            request=routing.TissueMethylationRequest(assignments,(('A',SimpleNamespace(classifier='marlin')),('B',SimpleNamespace(classifier='sturgeon'))),metadata,sha256_file(metadata),caller='modkit')
             def run(source,child,selected,reference,output,runner,ledger,**options):
                 self.assertEqual(len(selected),1);self.assertEqual(options['threads'],1)
                 for key in ('OMP_NUM_THREADS','TF_NUM_INTRAOP_THREADS','TF_NUM_INTEROP_THREADS','OMP_THREAD_LIMIT'):

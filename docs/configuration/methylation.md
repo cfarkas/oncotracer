@@ -1,5 +1,7 @@
 # ONT methylation: leukemia or CNS classification
 
+Version 5 defaults to **Rockfish**. Prepare its raw-signal runtime using the [version 5 guide](../releases/5.0.0.md). The Dorado/Modkit workflows below remain available by explicitly selecting **Modkit**.
+
 Choose **MARLIN** for leukemia or **Sturgeon** for CNS-tumor research. Select the classifier explicitly; review predictions alongside other laboratory findings.
 
 [Install first](../installation.md). Browser and terminal routes are below; see
@@ -57,7 +59,7 @@ FASTQ read IDs determine which signal reads belong to each sample. Save, check, 
 Replace the paths, barcode, and sample name below with yours:
 
 ```bash
-oncotracer setup --terminal \
+oncotracer setup --methylation-caller modkit --terminal \
   --project /work/leukemia-study --backend conda \
   --mode ont --analysis methylation \
   --reads-folder /data/run/fastq_pass \
@@ -74,7 +76,7 @@ For unattended reuse, use a complete resource YAML from a previous project.
 Missing tools or assets stop setup. This alternative checks and runs automatically:
 
 ```bash
-oncotracer setup --non-interactive --run \
+oncotracer setup --methylation-caller modkit --non-interactive --run \
   --project /work/new-leukemia-study --backend conda \
   --resources /work/previous-study/config/run.yml \
   --mode ont --analysis methylation --classifier marlin \
@@ -99,7 +101,7 @@ Sturgeon license when prompted; setup does not grant a license.
 ### Terminal / headless: CNS using existing BAMs
 
 ```bash
-oncotracer setup --terminal --run --project /work/cns-study \
+oncotracer setup --methylation-caller modkit --terminal --run --project /work/cns-study \
   --backend conda --mode ont --analysis methylation \
   --reads-folder /data/run/fastq_pass --barcodes barcode01 --sample-names sampleA \
   --classifier sturgeon --modbam /data/run/bam_pass --cpu --threads 8
@@ -114,7 +116,7 @@ define sample membership. Use a new project for each alternative.
 ### Terminal / headless: leukemia using POD5
 
 ```bash
-oncotracer setup --terminal --run --project /work/leukemia-pod5-study \
+oncotracer setup --methylation-caller modkit --terminal --run --project /work/leukemia-pod5-study \
   --backend conda --mode ont --analysis methylation \
   --reads-folder /data/run/fastq_pass --barcodes barcode01 --sample-names sampleA \
   --classifier marlin --pod5-dir /data/run/pod5_pass --cpu --threads 8
@@ -123,7 +125,7 @@ oncotracer setup --terminal --run --project /work/leukemia-pod5-study \
 ### Terminal / headless: CNS using POD5
 
 ```bash
-oncotracer setup --terminal --run --project /work/cns-pod5-study \
+oncotracer setup --methylation-caller modkit --terminal --run --project /work/cns-pod5-study \
   --backend conda --mode ont --analysis methylation \
   --reads-folder /data/run/fastq_pass --barcodes barcode01 --sample-names sampleA \
   --classifier sturgeon --pod5-dir /data/run/pod5_pass --cpu --threads 8

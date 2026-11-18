@@ -220,8 +220,9 @@ oncotracer run \
 | `--methylation` | Add ONT methylation analysis to the copy-number workflow |
 | `--sturgeon` | Select the supported CNS-tumor research classifier; mutually exclusive with `--marlin` |
 | `--marlin` | Select the supported leukemia research classifier; mutually exclusive with `--sturgeon` |
+| `--methylation-caller CALLER` | CpG caller; Rockfish is the default and needs raw signal |
 | `--pod5-dir PATH` | Raw POD5 input for methylation basecalling; choose this or `--modbam` |
-| `--modbam PATH` | reuse calls from an existing modified-base BAM or directory of BAMs; CPU alignment |
+| `--modbam PATH` | With explicit Modkit, reuse calls from an existing modified-base BAM or directory of BAMs; CPU alignment |
 | `--methylation-only` | request methylation and skip copy-number analysis |
 | `--cpu` | keep methylation on CPU, overriding GPU YAML settings |
 | `--gpu` | Use a reserved NVIDIA GPU for supported stages; see [GPU usage](../gpu.md) |
@@ -291,10 +292,13 @@ CLI values override methylation, classifier, input, and GPU YAML values. Choose 
 | `methylation` | `false` | Enable optional ONT methylation when not using `--methylation` |
 | `methylation_classifier` | required when enabled | Exactly `sturgeon` or `marlin` |
 | `methylation_pod5_dir` | one input required | Explicit directory containing non-empty `.pod5` files |
-| `methylation_modbam` | one input required | existing modified-base BAM file or directory; replaces POD5 input |
+| `methylation_caller` | `rockfish` | Use `modkit` explicitly for existing MM/ML calls |
+| `methylation_rockfish_python` / `methylation_rockfish_source` / `methylation_rockfish_model` | required for Rockfish | Paths emitted by `prepare-rockfish` |
+| `methylation_moves_bam` | optional | Matching move-tagged BAM; raw POD5 still required |
+| `methylation_modbam` | Modkit input | existing modified-base BAM file or directory; replaces POD5 input |
 | `methylation_only` | `false` | skip CNA; enabled by `setup --analysis methylation` |
 | `threads` | up to 16 if not set | CPU worker threads; `--threads` overrides this value |
-| `methylation_gpu` | `false` | Legacy methylation-only setting; `gpu_usage` takes precedence. Dorado/MARLIN reserve one GPU; Modkit/Sturgeon use CPU |
+| `methylation_gpu` | `false` | Legacy methylation-only setting; `gpu_usage` takes precedence. Dorado/Rockfish/MARLIN reserve one GPU; Modkit/Sturgeon use CPU |
 | `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.3.0 |
 | `methylation_dorado_executable` | required local executable | Dorado binary; no download or installation |
 | `methylation_modkit_executable` | required local executable | Modkit binary; no download or installation |

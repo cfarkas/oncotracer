@@ -38,13 +38,13 @@ def resolve(config, *, mode, gpu_override=None):
     from .engine import parse_ont_samples
     from .methylation import resolve_methylation_request
     if mode != "ont":
-        raise OncoTracerError("Tissue-routed methylation requires ONT modified-base BAMs")
+        raise OncoTracerError("Tissue-routed methylation requires ONT inputs")
     from .rockfish import resolve_caller
     caller = resolve_caller(config.get("methylation_caller"))
     input_column = "pod5" if caller == "rockfish" else "modbam"
     value = config.get("methylation_sample_metadata")
     if not value:
-        raise OncoTracerError("Tissue routing requires methylation_sample_metadata: a TSV with sample,tissue,modbam columns")
+        raise OncoTracerError(f"Tissue routing requires methylation_sample_metadata: a TSV with sample,tissue,{input_column} columns")
     path = Path(str(value)).expanduser().resolve()
     with path.open(newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")

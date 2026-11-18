@@ -17,7 +17,7 @@ Run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing path
 | Terminal shows `>` and waits | Paste the closing `CSV` line on its own, or cancel with Ctrl+C; see [command basics](command_basics.md) |
 | More than one R1/R2 match | Give each library one unambiguous pair; keep different samples separate |
 | Both POD5 and BAM inputs are configured | Keep only the input type you want to use |
-| CPU methylation basecalling is very slow | Reuse completed modified-base BAMs with `--modbam` if available; raw signal can take days on CPU |
+| CPU methylation basecalling is very slow | Select `--methylation-caller modkit --modbam PATH` to reuse completed modification calls, or supply matching moves and raw POD5 to Rockfish; raw signal can take days on CPU |
 | No FASTQ-selected reads with MM/ML tags | Match the FASTQs to BAMs made with modified-base calling, or use raw POD5 |
 | `no_classifier_probes` | Check usable human alignment and hg38 probe coordinates. CpG calls elsewhere cannot support a MARLIN prediction |
 

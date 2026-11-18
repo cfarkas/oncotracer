@@ -1,5 +1,7 @@
 # Methylation resource and processing reference
 
+Version 5 defaults to **Rockfish**. Prepare its raw-signal runtime using the [version 5 guide](../releases/5.0.0.md). The Dorado/Modkit workflows below remain available by explicitly selecting **Modkit**.
+
 Version 5 defaults to Rockfish. See [Rockfish setup and caller selection](../releases/5.0.0.md). The Dorado/Modkit examples below require `--methylation-caller modkit`; their modified-base model and MM/ML requirements apply to that explicit route.
 
 For the short workflow and an explanation of flags and paths, start with the [methylation guide](methylation.md). This reference covers local resources and manual BAM or POD5 configuration.
@@ -130,7 +132,7 @@ Then run:
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer run \
+oncotracer run --methylation-caller modkit \
   --backend conda \
   --config "$PWD/project/config/ont.manual.yml" \
   --methylation \
@@ -164,7 +166,7 @@ Then run:
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer run \
+oncotracer run --methylation-caller modkit \
   --backend conda \
   --config "$PWD/project/config/ont.manual.yml" \
   --methylation \
@@ -216,7 +218,7 @@ Run a side-effect-free validation first:
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer run \
+oncotracer run --methylation-caller modkit \
   --backend conda \
   --config "$PWD/project/config/ont.manual.yml" \
   --methylation \

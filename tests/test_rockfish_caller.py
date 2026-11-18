@@ -39,7 +39,9 @@ class CallerTests(unittest.TestCase):
             self.assertEqual(legacy.caller,'modkit');self.assertIsNotNone(legacy.modkit)
 
     def test_cli_caller_is_forwarded_and_checked(self):
-        from oncotracer_cli.cli import build_parser
+        from oncotracer_cli.cli import build_parser, parse_arguments
+        prepared = parse_arguments(['prepare-rockfish', '--directory', '/tmp/example-rockfish', '--verify-only'])
+        self.assertTrue(prepared.verify_only)
         parser=build_parser()
         args=parser.parse_args(['run','--config','input.yml','--methylation-caller','rockfish'])
         self.assertEqual(args.methylation_caller,'rockfish')

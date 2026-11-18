@@ -1918,6 +1918,7 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "system",
             "uninstall",
             "reference",
+            "prepare-rockfish",
         }
         or values[0] in {"-h", "--help", "--version"}
     ):

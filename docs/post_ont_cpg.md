@@ -1,5 +1,7 @@
 # After ONT: drag samples into a CpG classifier
 
+Version 5 defaults to Rockfish and requires raw POD5 plus its pinned runtime. Select **Modkit** to follow the archived video’s modification-calling workflow. Classifier grouping is unchanged; see [version 5 caller setup](releases/5.0.0.md).
+
 Start methylation directly from named ONT inputs, or reuse a saved ONT project.
 A completed CNA analysis is not required. Keep original inputs grouped by intended
 library, using the same names as the ONT setup:

@@ -301,6 +301,7 @@ def main():
         for root in args.pod5:
             scoped = argparse.Namespace(**{**vars(args), 'pod5': root})
             data['preflight'].append(preflight(scoped))
+        data['upstream_feature_error_messages'] = 0
         predictions = args.export_only or args.output / 'predictions.tsv'
         if args.export_only is None:
             env = dict(os.environ, PYTHONPATH=str(args.source), TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD='1')
@@ -317,6 +318,8 @@ def main():
                     data['commands'].append(command)
                     with (args.output / f'inference.{index}.log').open('w') as log:
                         subprocess.run(command, env=env, check=True, stdout=log, stderr=subprocess.STDOUT)
+                    with (args.output / f'inference.{index}.log').open(errors='replace') as log:
+                        data['upstream_feature_error_messages'] += sum(line.count('Cannot process read ') + line.count('Cannot extract read ') for line in log)
                     with part.open() as rows:
                         if rows.readline().rstrip() != 'read_id\tpos\tprob':
                             raise ValueError('Unexpected Rockfish output format')
@@ -325,6 +328,8 @@ def main():
         data['export'] = export_predictions(args, predictions, args.output)
         if data['export']['counts'].get('predictions_without_primary_alignment', 0):
             raise ValueError('Rockfish emitted predictions outside the selected primary alignments')
+        if data['upstream_feature_error_messages'] and not data['export']['counts'].get('raw_predictions', 0):
+            raise ValueError('Rockfish returned no predictions after feature extraction errors; inspect inference logs')
         export_native(args, args.output)
         data.update(status='complete', finished_utc=utc_now(),
                     predictions=file_info(predictions), bedmethyl=file_info(args.bedmethyl), extract=file_info(args.extract))

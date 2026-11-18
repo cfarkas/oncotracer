@@ -12,7 +12,7 @@ Use Linux and Python 3.10–3.13. No Git checkout is required. Install in your P
 python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v5.0.0/oncotracer-5.0.0-py3-none-any.whl"
 ```
 
-OncoTracer 5.0.0 makes Rockfish the default ONT methylation caller and retains explicit Modkit selection. It preserves 4.1 ichorCNA fallback, Broad profiles, coarse rescues, tissue routing and variant recovery. [Caller setup and runnable commands](docs/releases/5.0.0.md) explain the raw-signal requirements. Benchmark completion and diagnostic accuracy are separate from software checks. The command `pip install oncotracer` follows the separately published PyPI version. Choose **one** backend:
+Version 5 defaults to Rockfish for ONT methylation, with explicit Modkit selection. It preserves the 4.1 recovery workflows, including ichorCNA fallback, Broad profiles and coarse rescues. See [caller setup](docs/releases/5.0.0.md). `pip install oncotracer` follows the separately published PyPI version. Choose **one** backend:
 
 ### Conda
 
@@ -38,7 +38,7 @@ The image is saved for later commands. See [installation](docs/installation.md) 
 
 Use `oncotracer --detect-resources` (also `--detect_resources`) for [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) based on CPU/RAM. Choose the allocation during setup or **Review and run**.
 
-The [5.0.0 release notes](docs/releases/5.0.0.md) describe caller selection and preservation of the 4.1 recovery behavior. New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md) with read-support checks; existing settings persist. Options: `--resource-mode fixed` and `--no-merge-vcfs`.
+New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md) with read-support checks; existing settings persist. Options: `--resource-mode fixed` and `--no-merge-vcfs`.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 
@@ -62,7 +62,7 @@ oncotracer run --config /path/to/ONT/config/run.yml --backend conda --methylatio
 oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 18 --parallel-samples 2 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
 ```
 
-These concurrent examples require approximately 1 TiB RAM, with respective FFPE/ONT/fresh memory budgets of 240/584/112 GiB. They are launch examples; benchmark results require completed, validated fresh runs. The former 4.1 study outputs were cleared before preparing version 5.
+These concurrent examples require approximately 1 TiB RAM: FFPE/ONT/fresh budgets of 240/584/112 GiB.
 
 ## Set up your analysis
 
@@ -106,23 +106,14 @@ ONT/
 
 Methylation automatically links each named library's `pod5_pass`. The browser
 lists its library name; assign MARLIN or Sturgeon using clinical records.
-Matching modified-base BAMs are alternatives.
+Choose Modkit explicitly to reuse modified-base BAMs.
 
 Only `fastq_pass` supplies CNA/variant reads. Other folders are optional. Retain original signal for methylation: use
-matching modified-base BAMs with `MM`/`ML` tags, or POD5 with compatible Dorado
-models. Legacy single MinKNOW runs, barcode folders and single ligation libraries
+POD5 with the pinned Rockfish runtime and compatible Dorado base model. Explicit
+Modkit selection accepts matching `MM`/`ML` BAMs or Dorado modification models. Legacy single MinKNOW runs, barcode folders and single ligation libraries
 remain supported. See [ONT settings](docs/configuration/ont.md) and the
 [CpG guide](docs/post_ont_cpg.md).
-### Run saved settings
-
-```bash
-oncotracer check --config "$PWD/my-study/config/run.yml"
-oncotracer run --backend conda --config "$PWD/my-study/config/run.yml"
-```
-
-For Docker, use `--backend docker`. Terminal setup and SSH are covered in the [headless guide](docs/headless.md).
-
-Remove installed components with the [uninstall guide](docs/uninstall.md).
+Run `oncotracer check --config /path/to/project/config/run.yml` before execution. See the [headless guide](docs/headless.md) for SSH setup and the [uninstall guide](docs/uninstall.md) for removal.
 
 ## Guides and examples
 

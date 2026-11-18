@@ -65,7 +65,7 @@ adding controls does not force QDNAseq or build a panel of normals.
 
 The default above is the liquid-biopsy ichorCNA route. For a separate solid-biopsy qDNAseq analysis, use a new `outdir` and set `ont_analysis_type: solid_biopsy`, `ont_caller: qdnaseq`, and an explicit qDNAseq bin width. The engine rejects qDNAseq for other ONT analysis types.
 
-ONT methylation is available with `--methylation` plus `--sturgeon` or `--marlin`. Supply raw signal with `--pod5-dir` or existing modified-base BAMs with `--modbam`. Use `--methylation-only` to skip CNA. [The methylation guide](configuration/methylation.md) explains the inputs, resources, and CPU options.
+ONT methylation is available with `--methylation` plus `--sturgeon` or `--marlin`. Rockfish is the default and requires raw signal with `--pod5-dir` plus its prepared runtime. To reuse modified-base BAMs, select `--methylation-caller modkit --modbam PATH`. Use `--methylation-only` to skip CNA. [The methylation guide](configuration/methylation.md) explains the inputs, resources, and CPU options.
 
 ## Run a YAML
 
