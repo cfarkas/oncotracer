@@ -34,7 +34,7 @@ oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
 
-The image is saved for later commands. See [installation](docs/installation.md) and [FFPE/ONT resources](docs/variants.md). Use Conda for ONT methylation.
+The image is saved for later commands. See [installation](docs/installation.md) and [FFPE/ONT resources](docs/variants.md). Configure external Dorado and classifier resources for ONT methylation.
 
 Use `oncotracer --detect-resources` (also `--detect_resources`) for [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) based on CPU/RAM. Choose the allocation during setup or **Review and run**.
 
@@ -54,11 +54,11 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 
 ## Run saved projects
 
-Set up projects with their raw inputs, reference and model resources first. The resource budgets below are examples; run only allocations that fit the host. The ONT YAML must include POD5 paths and the caller resources. [Complete commands and migration](docs/releases/5.0.0.md).
+Prepare project YAMLs with raw inputs, references and models. For ONT, include POD5 paths and set `gpu_usage: false`, `methylation_gpu_usage: true` for GPU methylation and CPU variants. Adjust the example budgets to your host. [Commands and migration](docs/releases/5.0.0.md).
 
 ```bash
 oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 42 --parallel-samples 5 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
-oncotracer run --config /path/to/ONT/config/run.yml --backend conda --methylation --methylation-caller rockfish --threads 66 --parallel-samples 4 --no-merge-vcfs --cpu --resource-mode dynamic --storage-mode compact
+oncotracer run --config /path/to/ONT/config/run.yml --backend docker --image carlosfarkas/oncotracer:5.0.0 --methylation --methylation-caller rockfish --threads 66 --parallel-samples 4 --no-merge-vcfs --resource-mode dynamic --storage-mode compact
 oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 18 --parallel-samples 2 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
 ```
 
