@@ -22,7 +22,8 @@ COPY . /opt/oncotracer/
 RUN CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc \
     CXX=/opt/conda/bin/x86_64-conda-linux-gnu-g++ \
     /opt/conda/bin/python -B -m oncotracer_cli.cli prepare-rockfish \
-    --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python --cuda
+    --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python --cuda \
+    && chmod 0755 /opt/oncotracer-rockfish/source
 ENV ONCOTRACER_ROCKFISH_PREFIX=/opt/oncotracer-rockfish
 # Keep build-time Nextflow caches out of the writable runtime home, including
 # caches inherited from earlier incremental images used as the base.

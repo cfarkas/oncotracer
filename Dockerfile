@@ -121,7 +121,8 @@ COPY . ${ONCOTRACER_HOME}/
 RUN CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc \
     CXX=/opt/conda/bin/x86_64-conda-linux-gnu-g++ \
     /opt/conda/bin/python -B -m oncotracer_cli.cli prepare-rockfish \
-    --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python --cuda
+    --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python --cuda \
+    && chmod 0755 /opt/oncotracer-rockfish/source
 ENV ONCOTRACER_ROCKFISH_PREFIX=/opt/oncotracer-rockfish
 
 # Run the same isolated tool and synthetic-call probes used by Conda installation.

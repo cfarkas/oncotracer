@@ -79,6 +79,7 @@ class MethylationRequest:
     rockfish_python: Path | None = None
     rockfish_source: Path | None = None
     rockfish_model: Path | None = None
+    rockfish_resources_deferred: bool = False
 
     @property
     def dorado_device(self) -> str:
@@ -400,7 +401,11 @@ def resolve_methylation_request(
     from .rockfish import resolve_caller
     caller = resolve_caller(caller_override or config.get("methylation_caller"))
     config = {**config, "methylation_caller": caller}
-    if caller == "rockfish" and os.environ.get("ONCOTRACER_ROCKFISH_PREFIX"):
+    from .docker_runtime import is_host_preview
+    rockfish_resources_deferred = caller == "rockfish" and is_host_preview() and not any(
+        config.get(key) for key in ("methylation_rockfish_python", "methylation_rockfish_source", "methylation_rockfish_model")
+    )
+    if caller == "rockfish" and not rockfish_resources_deferred and os.environ.get("ONCOTRACER_ROCKFISH_PREFIX"):
         prefix = Path(os.environ["ONCOTRACER_ROCKFISH_PREFIX"])
         for key, relative in {"methylation_rockfish_python": "env/bin/python", "methylation_rockfish_source": "source", "methylation_rockfish_model": "rf_5kHz.ckpt"}.items():
             config.setdefault(key, str(prefix / relative))
@@ -475,7 +480,12 @@ def resolve_methylation_request(
         config, "methylation_modkit_executable", "modkit", "Modkit"
     ) if caller == "modkit" else None)
     rockfish_python = rockfish_source = rockfish_model = None
-    if caller == "rockfish":
+    if rockfish_resources_deferred:
+        # These paths belong to the image. Its actual installation is verified
+        # inside the container before claiming outputs or doing analysis.
+        prefix = Path("/opt/oncotracer-rockfish")
+        rockfish_python, rockfish_source, rockfish_model = prefix / "env/bin/python", prefix / "source", prefix / "rf_5kHz.ckpt"
+    elif caller == "rockfish":
         rockfish_python = _configured_executable(config, "methylation_rockfish_python", "rockfish-python", "Rockfish Python")
         rockfish_source = _configured_directory(config, "methylation_rockfish_source", "Pinned Rockfish source")
         rockfish_model = _configured_path(config, "methylation_rockfish_model", "Rockfish 5kHz model")
@@ -502,7 +512,8 @@ def resolve_methylation_request(
     asset_sha256: dict[str, str] = {}
     if caller == "rockfish":
         from .rockfish import validate_assets
-        asset_sha256.update(validate_assets(rockfish_source, rockfish_model))
+        if not rockfish_resources_deferred:
+            asset_sha256.update(validate_assets(rockfish_source, rockfish_model))
         if dorado_model is not None:
             asset_sha256["dorado_model_tree"] = _validate_optional_tree_hash(config, "methylation_dorado_model_sha256", dorado_model, "Dorado basecalling model")
     if dorado_model is not None and dorado_modbase_model is not None:
@@ -605,7 +616,7 @@ def resolve_methylation_request(
     executable_sha256 = {
         "dorado": sha256_file(dorado) if dorado else "",
         "modkit": sha256_file(modkit) if modkit else "",
-        "rockfish_python": sha256_file(rockfish_python) if rockfish_python else "",
+        "rockfish_python": sha256_file(rockfish_python) if rockfish_python and not rockfish_resources_deferred else "",
         "samtools": sha256_file(samtools),
         classifier: (
             sha256_file(classifier_executable)
@@ -616,6 +627,7 @@ def resolve_methylation_request(
     return MethylationRequest(
         classifier=classifier,
         caller=caller, rockfish_python=rockfish_python, rockfish_source=rockfish_source, rockfish_model=rockfish_model,
+        rockfish_resources_deferred=rockfish_resources_deferred,
         pod5_dir=pod5_dir,
         pod5_files=pod5_files,
         gpu=gpu,
@@ -675,6 +687,7 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
         "zero_cpg_action": "abort_methylation_continue_cna",
         "rockfish_python": str(request.rockfish_python) if request.rockfish_python else None,
         "rockfish_model": str(request.rockfish_model) if request.rockfish_model else None,
+        "rockfish_resources_pending_container_validation": request.rockfish_resources_deferred,
         "asset_sha256": dict(request.asset_sha256),
         "classifier_interface_contract_commit": (
             request.classifier_interface_contract_commit
@@ -1430,6 +1443,8 @@ def run_methylation(
     from .methylation_routing import TissueMethylationRequest, run
     if isinstance(request, TissueMethylationRequest):
         return run(root, request, samples, reference, outdir, runner, ledger, threads=threads, force=force)
+    if request.rockfish_resources_deferred:
+        raise OncoTracerError("Rockfish image resources must be resolved inside the container before execution")
     if request.sample_signals and {group.sample for group in request.sample_signals} != {
         str(getattr(sample, "sample")) for sample in samples
     }:

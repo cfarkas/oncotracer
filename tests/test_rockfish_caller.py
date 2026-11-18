@@ -38,6 +38,33 @@ class CallerTests(unittest.TestCase):
             legacy=resolve_methylation_request(fixture.config(),mode='ont')
             self.assertEqual(legacy.caller,'modkit');self.assertIsNotNone(legacy.modkit)
 
+    def test_docker_preview_defers_only_bundled_rockfish_assets(self):
+        import os
+        from oncotracer_cli.docker_runtime import docker_host_preview
+        from oncotracer_cli.methylation import run_methylation
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {'ONCOTRACER_ROCKFISH_PREFIX': ''}):
+            fixture = Fixture(Path(directory)); config = fixture.config()
+            config['methylation_caller'] = 'rockfish'
+            before = dict(config)
+            with docker_host_preview(), patch('oncotracer_cli.rockfish.validate_assets') as validate:
+                request = resolve_methylation_request(config, mode='ont')
+            validate.assert_not_called()
+            self.assertEqual(config, before)
+            self.assertTrue(methylation_plan(request)['rockfish_resources_pending_container_validation'])
+            self.assertNotIn('rockfish_model', request.asset_sha256)
+            self.assertEqual(request.executable_sha256['rockfish_python'], '')
+            self.assertEqual(request.rockfish_python, Path('/opt/oncotracer-rockfish/env/bin/python'))
+            with self.assertRaisesRegex(OncoTracerError, 'resolved inside the container'):
+                run_methylation(ROOT, request, [], {}, Path(directory)/'out', None, None, threads=1, force=False)
+            self.assertFalse((Path(directory)/'out').exists())
+            with self.assertRaisesRegex(OncoTracerError, 'Rockfish Python executable'):
+                resolve_methylation_request(config, mode='ont')
+            with docker_host_preview():
+                with self.assertRaisesRegex(OncoTracerError, 'Rockfish Python executable'):
+                    resolve_methylation_request({**config, 'methylation_rockfish_python':str(Path(directory)/'typo')}, mode='ont')
+                with self.assertRaisesRegex(OncoTracerError, 'POD5 directory'):
+                    resolve_methylation_request({**config, 'methylation_pod5_dir':str(Path(directory)/'missing')}, mode='ont')
+
     def test_cli_caller_is_forwarded_and_checked(self):
         from oncotracer_cli.cli import build_parser, parse_arguments
         prepared = parse_arguments(['prepare-rockfish', '--directory', '/tmp/example-rockfish', '--verify-only'])

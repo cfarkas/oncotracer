@@ -44,6 +44,11 @@ def host_preview_runtime_identity():
     return _HOST_PREVIEW_IDENTITY.get() if _HOST_PREVIEW.get() else None
 
 
+def is_host_preview() -> bool:
+    """True only while planning container inputs on the host."""
+    return bool(_HOST_PREVIEW.get())
+
+
 def output_runtime_identity(config: Mapping[str, object], *, image=None, backend=None):
     """Authenticate an existing output against the selected image, never the host.
 

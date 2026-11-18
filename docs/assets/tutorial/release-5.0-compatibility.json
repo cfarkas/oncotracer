@@ -107,29 +107,35 @@
     },
     "oncotracer_cli/docker_runtime.py": {
       "recorded_sha256": "9d45573900524041014db95408436df8e1c5ffe1bfbfa6e80ebb90f31164effd",
-      "current_sha256": "cea5bc2570473f096896398f377de41bf23a72e405d81c834afba8ff1446ff7d",
+      "current_sha256": "c9198111110645cc3c5c9d62d7db3de42b4cff1ff6a8359be913e3581a035b62",
       "changes": [
         {
-          "start": 13659,
-          "end": 14023,
+          "start": 1898,
+          "end": 2033,
+          "recorded": "",
+          "current": "\n\ndef is_host_preview() -> bool:\n    \"\"\"True only while planning container inputs on the host.\"\"\"\n    return bool(_HOST_PREVIEW.get())\n"
+        },
+        {
+          "start": 13794,
+          "end": 14158,
           "recorded": "                    if row.get(\"modbam\"):\n                        bam = Path(row[\"modbam\"]).expanduser()\n                        if not bam.is_absolute(): bam = absolute(metadata).parent / bam\n                        add(bam, resource=True)\n",
           "current": "                    for input_column in (\"modbam\", \"pod5\", \"moves_bam\"):\n                        if not row.get(input_column): continue\n                        resource = Path(row[input_column]).expanduser()\n                        if not resource.is_absolute(): resource = absolute(metadata).parent / resource\n                        add(resource, resource=True)\n"
         },
         {
-          "start": 14082,
-          "end": 14198,
+          "start": 14217,
+          "end": 14333,
           "recorded": "                            if Path(str(bam)+extension).is_file(): add(str(bam)+extension, resource=True)\n",
           "current": "                            if Path(str(resource)+extension).is_file(): add(str(resource)+extension, resource=True)\n"
         },
         {
-          "start": 14292,
-          "end": 14469,
+          "start": 14427,
+          "end": 14604,
           "recorded": "                    \"methylation_dorado_modbase_model\", \"marlin_model\", \"marlin_features\",\n",
           "current": "                    \"methylation_dorado_modbase_model\", \"methylation_moves_bam\", \"methylation_rockfish_source\", \"methylation_rockfish_model\", \"marlin_model\", \"marlin_features\",\n"
         },
         {
-          "start": 14725,
-          "end": 14846,
+          "start": 14860,
+          "end": 14981,
           "recorded": "                    \"methylation_samtools_executable\", \"marlin_rscript\", \"marlin_python\",\n",
           "current": "                    \"methylation_samtools_executable\", \"methylation_rockfish_python\", \"marlin_rscript\", \"marlin_python\",\n"
         }
