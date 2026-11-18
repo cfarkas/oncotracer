@@ -580,7 +580,11 @@ def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str)
     ]
     command.extend(["--env", "HOME=/tmp", "--env", "MPLCONFIGDIR=/tmp/matplotlib"])
     from .gpu_runtime import docker_arguments
-    command.extend(docker_arguments(config, args.gpu, create=not args.dry_run, backend=backend))
+    from .gpu_runtime import methylation_enabled
+    device_config = dict(effective_config)
+    if methylation and args.gpu is None and methylation_enabled(effective_config):
+        device_config['gpu_usage'] = True
+    command.extend(docker_arguments(device_config, args.gpu, create=not args.dry_run, backend=backend))
     if enabled or methylation:
         environment = docker_resource_environment(effective_config, backend=backend)
         for key, value in environment.items():

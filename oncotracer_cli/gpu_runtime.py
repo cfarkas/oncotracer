@@ -13,6 +13,16 @@ except ModuleNotFoundError as error:
                              lease, limit_torch, lock_directory, options,
                              wait_hours, add_wait_argument, queue_wait)
 
+
+def methylation_enabled(config, override=None):
+    """Explicit methylation-only acceleration; command-line CPU/GPU still wins."""
+    if override is not None or 'methylation_gpu_usage' not in config:
+        return enabled(config, override)
+    value = config['methylation_gpu_usage']
+    if type(value) is not bool:
+        raise ValueError('methylation_gpu_usage must be true or false')
+    return value
+
 TORCH_PROBE = """import json,torch,transformers
 assert torch.cuda.is_available(), 'CUDA PyTorch cannot access the GPU'
 torch.cuda.set_per_process_memory_fraction(.04,0)

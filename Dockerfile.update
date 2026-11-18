@@ -20,7 +20,7 @@ RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str
 COPY . /opt/oncotracer/
 
 RUN /opt/conda/bin/python -B -m oncotracer_cli.cli prepare-rockfish \
-    --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python
+    --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python --cuda
 ENV ONCOTRACER_ROCKFISH_PREFIX=/opt/oncotracer-rockfish
 # Keep build-time Nextflow caches out of the writable runtime home, including
 # caches inherited from earlier incremental images used as the base.

@@ -298,6 +298,7 @@ CLI values override methylation, classifier, input, and GPU YAML values. Choose 
 | `methylation_modbam` | Modkit input | existing modified-base BAM file or directory; replaces POD5 input |
 | `methylation_only` | `false` | skip CNA; enabled by `setup --analysis methylation` |
 | `threads` | up to 16 if not set | CPU worker threads; `--threads` overrides this value |
+| `methylation_gpu_usage` | optional boolean | Override shared GPU selection for methylation only; explicit CLI CPU/GPU takes precedence |
 | `methylation_gpu` | `false` | Legacy methylation-only setting; `gpu_usage` takes precedence. Dorado/Rockfish/MARLIN reserve one GPU; Modkit/Sturgeon use CPU |
 | `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.3.0 |
 | `methylation_dorado_executable` | required local executable | Dorado binary; no download or installation |

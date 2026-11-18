@@ -461,7 +461,8 @@ def resolve_methylation_request(
             "native v2 methylation currently requires methylation_reference_build: hg38"
         )
     from .gpu_runtime import enabled
-    gpu = enabled(config, gpu_override)
+    from .gpu_runtime import methylation_enabled
+    gpu = methylation_enabled(config, gpu_override)
     alignment = str(config.get("methylation_modbam_alignment") or "realign").lower()
     if alignment not in {"realign", "preserve"}:
         raise OncoTracerError("methylation_modbam_alignment must be realign or preserve")
@@ -1525,7 +1526,8 @@ def run_methylation(
     if request.caller == "rockfish":
         start = dorado_command.index("--modified-bases-models")
         del dorado_command[start:start + 2]
-        dorado_command.append("--emit-moves")
+        # Keep newly generated read identifiers matched to the selected FASTQs.
+        dorado_command.extend(["--emit-moves", "--disable-read-splitting"])
     if request.gpu and request.pod5_dir:
         # Avoid auto-batching against all free VRAM, including the desktop reserve.
         dorado_command += ['--batchsize', '32']

@@ -5,7 +5,7 @@
   "files": {
     "oncotracer_cli/cli.py": {
       "recorded_sha256": "40dc38ad557710cc6725d67deed10a9e3980c77aab23b3d8d54d720ecf72d6e2",
-      "current_sha256": "132d8606196421548f486bc88be2e3dde2ac6bad2fdfd2b676a4ef4fee5835be",
+      "current_sha256": "e9fcac28a8bab598bd87a4e9dd0522471113925d952851b2c9b986401cb0c941",
       "changes": [
         {
           "start": 1655,
@@ -32,32 +32,38 @@
           "current": "                              ('methylation_classifier', 'methylation_classifier'), ('methylation_caller', 'methylation_caller')):\n"
         },
         {
-          "start": 26051,
-          "end": 26175,
+          "start": 23482,
+          "end": 23803,
+          "recorded": "    command.extend(docker_arguments(config, args.gpu, create=not args.dry_run, backend=backend))\n",
+          "current": "    from .gpu_runtime import methylation_enabled\n    device_config = dict(effective_config)\n    if methylation and args.gpu is None and methylation_enabled(effective_config):\n        device_config['gpu_usage'] = True\n    command.extend(docker_arguments(device_config, args.gpu, create=not args.dry_run, backend=backend))\n"
+        },
+        {
+          "start": 26275,
+          "end": 26399,
           "recorded": "",
           "current": "    if getattr(args, \"methylation_caller\", None):\n        command.extend([\"--methylation-caller\", args.methylation_caller])\n"
         },
         {
-          "start": 30502,
-          "end": 30626,
+          "start": 30726,
+          "end": 30850,
           "recorded": "",
           "current": "    if getattr(args, \"methylation_caller\", None):\n        command.extend([\"--methylation-caller\", args.methylation_caller])\n"
         },
         {
-          "start": 71467,
-          "end": 71621,
+          "start": 71691,
+          "end": 71845,
           "recorded": "",
           "current": "    parser.add_argument(\"--methylation-caller\", choices=(\"rockfish\", \"modkit\"), help=\"CpG method: rockfish (default; raw POD5) or modkit (Dorado MM/ML)\")\n"
         },
         {
-          "start": 74458,
-          "end": 74563,
+          "start": 74682,
+          "end": 74787,
           "recorded": "",
           "current": "    from .rockfish_setup import add_command as add_rockfish_command\n    add_rockfish_command(subparsers)\n"
         },
         {
-          "start": 79375,
-          "end": 79407,
+          "start": 79599,
+          "end": 79631,
           "recorded": "",
           "current": "            \"prepare-rockfish\",\n"
         }
@@ -228,6 +234,18 @@
           "end": 14846,
           "recorded": "                    \"methylation_samtools_executable\", \"marlin_rscript\", \"marlin_python\",\n",
           "current": "                    \"methylation_samtools_executable\", \"methylation_rockfish_python\", \"marlin_rscript\", \"marlin_python\",\n"
+        }
+      ]
+    },
+    "oncotracer_cli/gpu_runtime.py": {
+      "recorded_sha256": "731f1888cad942c372a4cb73d31282122455f9bef81dc010a6ffa842500c515c",
+      "current_sha256": "d1ca4577ce849e1509a880149ac0e964b99515399ee9528e7e52e9fa4c5fbd83",
+      "changes": [
+        {
+          "start": 851,
+          "end": 1260,
+          "recorded": "",
+          "current": "\n\ndef methylation_enabled(config, override=None):\n    \"\"\"Explicit methylation-only acceleration; command-line CPU/GPU still wins.\"\"\"\n    if override is not None or 'methylation_gpu_usage' not in config:\n        return enabled(config, override)\n    value = config['methylation_gpu_usage']\n    if type(value) is not bool:\n        raise ValueError('methylation_gpu_usage must be true or false')\n    return value\n"
         }
       ]
     },

@@ -48,6 +48,15 @@ class CallerTests(unittest.TestCase):
         args=parser.parse_args(['setup','--methylation-caller','modkit'])
         self.assertEqual(args.methylation_caller,'modkit')
 
+    def test_methylation_acceleration_does_not_enable_variant_gpu(self):
+        from oncotracer_cli.gpu_runtime import enabled, methylation_enabled
+        config = {'gpu_usage': False, 'methylation_gpu_usage': True}
+        self.assertFalse(enabled(config))
+        self.assertTrue(methylation_enabled(config))
+        self.assertFalse(methylation_enabled(config, False))
+        self.assertTrue(methylation_enabled(config, True))
+        with self.assertRaises(ValueError):methylation_enabled({'methylation_gpu_usage':'yes'})
+
     def test_read_coordinates_qc_and_observed_counts(self):
         import pysam
         with tempfile.TemporaryDirectory() as tmp:
