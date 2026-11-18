@@ -1,12 +1,13 @@
 """Pinned Rockfish resources and execution; no implicit fallback to MM/ML calls."""
 from __future__ import annotations
 import json
+from importlib.resources import files
 from pathlib import Path
 from .runtime import OncoTracerError, sha256_file
 
 
 def assets():
-    return json.loads(Path(__file__).with_name('rockfish_assets.json').read_text())
+    return json.loads(files('oncotracer_cli').joinpath('rockfish_assets.json').read_text(encoding='utf-8'))
 
 
 def resolve_caller(value=None):

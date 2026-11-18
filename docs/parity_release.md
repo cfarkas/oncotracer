@@ -1,12 +1,12 @@
 # Native scientific regression and release
 
-Version 4.1 gates both public QuickStarts against native 3.0.0 commit `4b8a1d320360c16df210843bce906d2116a1551b`, source archive SHA256 `08a981f0148e79768def515426e113d3d98940dd34032ee48466196f3e40d921`. This is the pinned scientific pipeline validated for Figure 1. Baseline and candidate independently start from authenticated public FASTQs and use the same committed scientific environment definitions. No study samples enter public CI.
+Version 5.0 gates both public QuickStarts against native 3.0.0 commit `4b8a1d320360c16df210843bce906d2116a1551b`, source archive SHA256 `08a981f0148e79768def515426e113d3d98940dd34032ee48466196f3e40d921`. This is the pinned scientific pipeline validated for Figure 1. Baseline and candidate independently start from authenticated public FASTQs and use the same committed scientific environment definitions. No study samples enter public CI.
 
 The current audit requires exact accepted CNA event coordinates, states and mean log2 values; matching QC decisions; complete dense-sample workflows; and the expected QC-limited outcome for sparse ONT. Corrected profile correlation, shared bins, event coverage recall and precision must each reach 0.9999, with median corrected-profile difference at most 0.0001. The multi-sample candidate must also produce its complete cohort figure. The publisher recomputes comparisons from sealed evidence and checks both executable/source identities.
 
 The native regression preflight requires 64 GiB free and 15 GiB available physical/addressable RAM. Environment and output directories belong to the individual run. Generated Fontconfig guards are unsealed only after execution stops. Current scripts are `scripts/ci_native_science.sh` and `tests/native_science_audit.py`.
 
-The workflow/artifact names retain their established `native-v2` identifiers for continuity. Their 4.1 scientific baseline is native 3.0.0. Full numerical parity with v1.1 is not claimed: v1.1 used logarithmic segmentation and lacked the current sparse-CNA safeguards. The historical driver and comparator remain available below for investigating those method differences.
+The workflow/artifact names retain their established `native-v2` identifiers for continuity. Their current scientific baseline is native 3.0.0. Full numerical parity with v1.1 is not claimed: v1.1 used logarithmic segmentation and lacked the current sparse-CNA safeguards. The historical driver and comparator remain available below for investigating those method differences.
 
 
 ## Historical v1.1 gate

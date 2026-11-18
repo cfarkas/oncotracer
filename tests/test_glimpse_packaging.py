@@ -37,11 +37,12 @@ from unittest.mock import patch
 from oncotracer_cli import glimpse_pipeline as pipeline
 from oncotracer_cli.glimpse_joint import _implementation_digest
 from oncotracer_cli.variants import resolve_variant_request
+from oncotracer_cli.rockfish import assets
 request = resolve_variant_request({'run_variants':True,'variant_specimen_type':'fresh'}, mode='illumina')
 with patch('oncotracer_cli.variants.preflight_variant_tools', return_value={'bcftools':'/fixture/bcftools'}), patch.object(pipeline.shutil, 'which', side_effect=lambda name:'/fixture/'+name), patch('oncotracer_cli.glimpse_readiness.check', side_effect=lambda request,tools,toolchain,bundle:tools):
     tools = pipeline.preflight(request)
 bundle = pipeline.workflow_bundle()
-print(json.dumps({'bundle':str(bundle), 'main_exists':(bundle/'main.nf').is_file(), 'launch_exists':(bundle/'bin/launch.py').is_file(), 'digest':_implementation_digest(), 'nextflow':tools['nextflow']}))
+print(json.dumps({'bundle':str(bundle), 'main_exists':(bundle/'main.nf').is_file(), 'launch_exists':(bundle/'bin/launch.py').is_file(), 'digest':_implementation_digest(), 'nextflow':tools['nextflow'], 'rockfish_model_sha256':assets()['model_sha256']}))
 ''')
             executable = root/'oncotracer.pyz'
             builder.write_deterministic_zipapp(staging, executable)
@@ -51,7 +52,7 @@ print(json.dumps({'bundle':str(bundle), 'main_exists':(bundle/'main.nf').is_file
                 self.assertIn('oncotracer_cli/glimpse_pipeline.py', archive.namelist())
                 self.assertNotIn('oncotracer_cli/lpwgs/main.nf', archive.namelist())
                 self.assertFalse(any('__pycache__' in name for name in archive.namelist()))
-            env = {**os.environ, 'ONCOTRACER_PAYLOAD_CACHE':str(root/'cache'), 'ONCOTRACER_ROOT':'', 'PYTHONPATH':''}
+            env = {**os.environ, 'ONCOTRACER_PAYLOAD_CACHE':str(root/'cache'), 'ONCOTRACER_ROOT':'', 'PYTHONPATH':'', 'XDG_CONFIG_HOME':str(root/'config')}
             def invoke():
                 result = subprocess.run([sys.executable, str(executable)], cwd=root, env=env,
                                         text=True, capture_output=True)
@@ -60,6 +61,7 @@ print(json.dumps({'bundle':str(bundle), 'main_exists':(bundle/'main.nf').is_file
             first = invoke()
             self.assertTrue(first['main_exists']); self.assertTrue(first['launch_exists'])
             self.assertEqual(first['nextflow'], '/fixture/nextflow')
+            self.assertEqual(first['rockfish_model_sha256'], json.loads((ROOT/'oncotracer_cli/rockfish_assets.json').read_text())['model_sha256'])
             digest = hashlib.sha256()
             for name in ('glimpse_joint.py', 'clinvar_identity.py'):
                 digest.update(name.encode())

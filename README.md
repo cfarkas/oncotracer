@@ -57,12 +57,12 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 Set up projects with their raw inputs, reference and model resources first. The resource budgets below are examples; run only allocations that fit the host. The ONT YAML must include POD5 paths and the caller resources. [Complete commands and migration](docs/releases/5.0.0.md).
 
 ```bash
-oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 88 --parallel-samples 8 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
-oncotracer run --config /path/to/ONT/config/run.yml --backend conda --methylation --methylation-caller rockfish --threads 124 --parallel-samples 4 --no-merge-vcfs --cpu --resource-mode dynamic --storage-mode compact
-oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 36 --parallel-samples 4 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
+oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 42 --parallel-samples 5 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
+oncotracer run --config /path/to/ONT/config/run.yml --backend conda --methylation --methylation-caller rockfish --threads 66 --parallel-samples 4 --no-merge-vcfs --cpu --resource-mode dynamic --storage-mode compact
+oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 18 --parallel-samples 2 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
 ```
 
-The large ONT allocation runs separately from the two Illumina allocations. These are launch examples, not completed benchmark measurements. The interrupted 4.1 Illumina analyses resumed with their saved outputs; a resumed run must be reported separately from a fresh benchmark.
+These concurrent examples require approximately 1 TiB RAM, with respective FFPE/ONT/fresh memory budgets of 240/584/112 GiB. They are launch examples; benchmark results require completed, validated fresh runs. The former 4.1 study outputs were cleared before preparing version 5.
 
 ## Set up your analysis
 

@@ -1133,14 +1133,14 @@ def _select_modbam_input(
             str(threads),
             "-N",
             union_ids,
-            # MM is a string; ML is an array, unsupported by samtools expressions.
-            # The separate tag-presence filter works for ML without interpreting it.
+            # MM/ts support expressions; ML/mv are arrays and need tag-presence
+            # filtering without interpreting their values.
             "-F",
             "2304",
             "-e",
-            "exists([mv])" if request.caller == "rockfish" else "exists([MM])",
+            "exists([ts])" if request.caller == "rockfish" else "exists([MM])",
             "-d",
-            "ts" if request.caller == "rockfish" else "ML",
+            "mv" if request.caller == "rockfish" else "ML",
             "-b",
             "-o",
             selected,
@@ -1155,6 +1155,11 @@ def _select_modbam_input(
             stdout=handle,
         )
     if int(count_file.read_text().strip()) == 0:
+        if request.caller == "rockfish":
+            raise OncoTracerError(
+                "No FASTQ-selected primary reads with mv/ts tags in methylation_moves_bam. "
+                "Supply the matching move-tagged BAM or omit it to generate moves from POD5."
+            )
         raise OncoTracerError(
             "No FASTQ-selected reads with MM/ML modification tags in --modbam. "
             "Use matching completed MinKNOW BAMs made with modified-base calling, "
