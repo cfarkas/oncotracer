@@ -45,6 +45,12 @@ ont_normal_sample_names: null
 # docs/configuration/methylation.md. Browser setup can find matching POD5/BAM
 # folders; review the selected paths. Classifier tools/models need explicit setup.
 methylation: false
+methylation_caller: rockfish
+# Rockfish requires POD5; prepare resources with oncotracer prepare-rockfish.
+# For the existing MM/ML workflow set methylation_caller: modkit.
+# methylation_rockfish_python: /path/to/rockfish/env/bin/python
+# methylation_rockfish_source: /path/to/rockfish/source
+# methylation_rockfish_model: /path/to/rockfish/rf_5kHz.ckpt
 
 run_cna_classifier: false
 

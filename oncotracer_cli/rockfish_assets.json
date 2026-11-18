@@ -1,0 +1,33 @@
+{
+  "source_commit": "a9fb2ce122edd9654cd5789b84b38bde1de8f185",
+  "source_sha256": "551a9bce6712b3b5d044f1c9604e3a9d2c82eb5e588e0f3dfd239b7dcc79f3e6",
+  "model_sha256": "b1e1e864cbd3d58b49731b81d8a972db0d90b05578f25a9e9ce7f00728d66795",
+  "model_gdrive_id": "1yD7zAq58uj2_lRb53Wu6TT4tt1hAw4sj",
+  "source_files": {
+    "rockfish/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rockfish/__main__.py": "cbc36ccd6e8f6b447387ee935e465334acfbbc45647a1f6ff606916848f0af73",
+    "rockfish/data/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rockfish/data/download.py": "9347083a72ef8159a0a10e32123e870a70554f971fce7fff51654bd67c8a1f0c",
+    "rockfish/extract/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rockfish/extract/alignment.py": "d1e0aed0752b968a27c8d368cb8e5b15f32787b343bc14d5abfdd5b1f0f7319a",
+    "rockfish/extract/extract.py": "678b80404831266d85a0f16c770d433027935bfc599a441536e86bcb6bae8fbc",
+    "rockfish/extract/fast5.py": "d7ef05c92606baccbe0d7b764e6223191c015f949473a3389f14c98abe2a4638",
+    "rockfish/extract/main.py": "1bb26be6035a0c7b08382eaa497ce54f12c5a7c3e5239a80b3efd2ca36095102",
+    "rockfish/extract/pod5.py": "505c322a4ce2d69891be71bfd23e698abbbb8db833dad0584102ba6485c057db",
+    "rockfish/extract/writer.py": "f1623722b3fec6729389d3fd69cc65efab8beaeba1da99953edae0fc02b85b2e",
+    "rockfish/model/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rockfish/model/datasets.py": "9a8b73eec19b44e60f4998df664b8ced410031fe99c3902449c4ec7dce7951bf",
+    "rockfish/model/inference.py": "d8e987393a2e1bf252aac61a8aea92eb73c02b75d4318d595d6b9b85b78201dc",
+    "rockfish/model/layers.py": "39208285f95ccfcc1a81d58ce9aae50d14125c7db2f4c4f38e105a1af0c61c18",
+    "rockfish/model/mha.py": "34ba6b2dda4c0b23bbbe5a60694d7d7219303e10fd85b99cd82d9ac7a9785876",
+    "rockfish/model/model.py": "32c4d7c3537d5c5492e05466fa57bc141327640b47b419b352e8b0803e875f8a",
+    "rockfish/model/rf_inference.py": "10322f17bf3f1231bf09ef55a9d9300c5564c2806e06d0b4ab9b57cac920cbc8",
+    "rockfish/rf_format.py": "e89e61117679096281ef67b05e6352ba60b5ddabbc0b067be1e17a96d308d303",
+    "rockfish/rftools/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "rockfish/rftools/convert_labels.py": "9cff06e0c3364ab93affcd9c1a7ccd906a48a76e5e7169cdabf43b7908f5902a",
+    "rockfish/rftools/convert_model.py": "162a708c37e00f64bdd3f167cc130b4bf50341cde1ba52516dfffdc57ba2695c",
+    "rockfish/rftools/index.py": "121d3223c5bc977a06aacd4053fb4e8cd6f14b421d4b52b5b033b23631797d0a",
+    "rockfish/rftools/merge.py": "2f4c2391add55c9096afd4ec8a431074562716e746b0a8b608ac3efdfc01d0bf",
+    "rockfish/rftools/sample.py": "8bc2e75e2f56f678dff3d0034493f68e9d26cc8daf447b645999b841c040e1ab"
+  }
+}

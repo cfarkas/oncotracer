@@ -1,5 +1,7 @@
 # Methylation resource and processing reference
 
+Version 5 defaults to Rockfish. See [Rockfish setup and caller selection](../releases/5.0.0.md). The Dorado/Modkit examples below require `--methylation-caller modkit`; their modified-base model and MM/ML requirements apply to that explicit route.
+
 For the short workflow and an explanation of flags and paths, start with the [methylation guide](methylation.md). This reference covers local resources and manual BAM or POD5 configuration.
 
 ## Obtain the optional resources
@@ -182,7 +184,7 @@ With a new `outdir`, run:
 cd /path/to/my/analyses_dir/
 oncotracer run --backend conda \
   --config "$PWD/project/config/ont.manual.yml" \
-  --methylation --marlin --modbam /absolute/path/to/bam_pass --cpu
+  --methylation --methylation-caller modkit --marlin --modbam /absolute/path/to/bam_pass --cpu
 ```
 
 The explicit Python must already provide `h5py`, NumPy, and TensorFlow. OncoTracer disables reticulate's managed environments and offline-locks its cache, so a missing dependency fails before POD5 basecalling instead of triggering a download. The native adapter preserves the preprocessing defined by the supported MARLIN interface commit: per-probe beta is modified coverage divided by valid coverage; model features are ordered exactly, binarized at beta `0.5`, and uncovered features remain zero. OncoTracer does not alter classifier thresholds.

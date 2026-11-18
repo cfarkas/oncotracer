@@ -463,7 +463,7 @@ const api=async endpoint=>{requests.push(endpoint);if(requestError)throw request
     def test_methylation_requires_resources_and_does_not_silently_run_cna(self):
         self.fastq("reads/barcode01/batch.fastq.gz")
         with self.assertRaisesRegex(OncoTracerError, "setup needs"):
-            self.prepare(mode="ont", analysis="both", classifier="marlin", methylation_source="modbam",
+            self.prepare(mode="ont", analysis="both", classifier="marlin", methylation_caller="modkit", methylation_source="modbam",
                          methylation_path=str(self.root / "calls.bam"))
         self.assertFalse((self.root / "project").exists())
 
@@ -595,7 +595,7 @@ const window={},document={addEventListener(){}},location={href:'https://example.
                 prepared = self.prepare(mode="ont", folder="grouped", samples=selections,
                                         project=str(self.root / (classifier + "-project")), analysis="methylation",
                                         classifier=classifier, methylation_assignments=assignments,
-                                        methylation_source="pod5", methylation_path=str(fixture.pod5),
+                                        methylation_caller="modkit", methylation_source="pod5", methylation_path=str(fixture.pod5),
                                         resource_paths=paths, accept_sturgeon_license=True)
                 self.assertTrue(prepared["valid"], prepared["check"])
                 config = load_flat_yaml(Path(prepared["config_path"]))
@@ -682,7 +682,7 @@ mode='illumina';analysis='methylation';assert.deepEqual(methylationAssignmentPay
                     resource_paths = {key: value for key, value in fixture.config().items() if key in allowed}
                     prepared = self.prepare(mode="ont", folder=str(fixture.fastq.parent),
                                             project=str(root / "study"), analysis="methylation",
-                                            classifier=classifier, methylation_source=source,
+                                            classifier=classifier, methylation_caller="modkit", methylation_source=source,
                                             methylation_path=str(fixture.pod5 if source == "pod5" else bam),
                                             resource_paths=resource_paths, accept_sturgeon_license=True)
                     self.assertTrue(prepared["valid"], prepared["check"])

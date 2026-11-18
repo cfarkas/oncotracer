@@ -566,7 +566,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                         "scan_id": restored["scan"]["scan_id"], "project": str(project),
                         "samples": restored["selections"], "threads": defaults["threads"],
                         "backend": defaults["backend"], "analysis": "methylation", "classifier": classifier,
-                        "methylation_assignments": assignments, "methylation_source": defaults["methylation_source"],
+                        "methylation_assignments": assignments, "methylation_caller": "modkit", "methylation_source": defaults["methylation_source"],
                         "methylation_path": defaults["methylation_path"], "reference": defaults["reference"],
                         "reference_path": defaults["reference_path"], "variants": False,
                         "resource_paths": {key: value for key, value in restored["resource_paths"].items() if key in allowed},

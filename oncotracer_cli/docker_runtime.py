@@ -260,18 +260,19 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
             add(metadata, resource=True)
             with absolute(metadata).open(newline="") as handle:
                 for row in csv.DictReader(handle, delimiter="\t"):
-                    if row.get("modbam"):
-                        bam = Path(row["modbam"]).expanduser()
-                        if not bam.is_absolute(): bam = absolute(metadata).parent / bam
-                        add(bam, resource=True)
+                    for input_column in ("modbam", "pod5", "moves_bam"):
+                        if not row.get(input_column): continue
+                        resource = Path(row[input_column]).expanduser()
+                        if not resource.is_absolute(): resource = absolute(metadata).parent / resource
+                        add(resource, resource=True)
                         for extension in ('.bai', '.csi'):
-                            if Path(str(bam)+extension).is_file(): add(str(bam)+extension, resource=True)
+                            if Path(str(resource)+extension).is_file(): add(str(resource)+extension, resource=True)
         for key in ("methylation_modbam", "methylation_pod5_dir", "methylation_dorado_model",
-                    "methylation_dorado_modbase_model", "marlin_model", "marlin_features",
+                    "methylation_dorado_modbase_model", "methylation_moves_bam", "methylation_rockfish_source", "methylation_rockfish_model", "marlin_model", "marlin_features",
                     "marlin_class_annotations", "marlin_probe_bed", "sturgeon_model", "sturgeon_probes"):
             if config.get(key): add(config[key], resource=True)
         for key in ("methylation_dorado_executable", "methylation_modkit_executable",
-                    "methylation_samtools_executable", "marlin_rscript", "marlin_python",
+                    "methylation_samtools_executable", "methylation_rockfish_python", "marlin_rscript", "marlin_python",
                     "sturgeon_executable", "sturgeon_python"):
             if config.get(key) and Path(str(config[key])).is_absolute():
                 executable = absolute(config[key])

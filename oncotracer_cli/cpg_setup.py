@@ -229,11 +229,17 @@ def prepare_cpg_setup(args):
             named_signal_groups(config, signal_path, "modbam" if modbam else "pod5")
         except OncoTracerError:
             missing_input = True
+    from .rockfish import resolve_caller
+    caller = resolve_caller(getattr(args, "methylation_caller", None) or config.get("methylation_caller"))
+    args.methylation_caller = caller
     missing_resources = {}
     for classifier in ("marlin", "sturgeon"):
-        required = [*_resource_keys(classifier), *RESOURCE_FILES[classifier]]
+        required = [*_resource_keys(classifier, caller), *RESOURCE_FILES[classifier]]
         if pod5:
             required += ["methylation_dorado_model", "methylation_dorado_modbase_model"]
+        if caller == "rockfish":
+            required = [k for k in required if k != "methylation_dorado_modbase_model"]
+            required += ["methylation_rockfish_source", "methylation_rockfish_model"]
         missing_resources[classifier] = [key for key in required if key not in resource_paths or
                                         (key in EXECUTABLES and (not Path(resource_paths[key]).is_file() or
                                                                not os.access(resource_paths[key], os.X_OK)))]

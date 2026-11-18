@@ -107,6 +107,7 @@ class Fixture:
             "outdir": str(self.root / "result"),
             "lpwgs_root": str(self.root / "project"),
             "methylation": True,
+            "methylation_caller": "modkit",
             "methylation_classifier": self.classifier,
             "methylation_pod5_dir": str(self.pod5),
             "methylation_dorado_executable": str(self.executables["dorado"]),
@@ -736,7 +737,7 @@ class NativeMethylationTests(unittest.TestCase):
         )
         self.assertEqual(
             provenance["schema"],
-            "oncotracer-native-ont-methylation-provenance-v2",
+            "oncotracer-native-ont-methylation-provenance-v3",
         )
         self.assertNotIn("classifier_source_commit", provenance)
         self.assertNotIn("installed_classifier_source_commit", provenance)

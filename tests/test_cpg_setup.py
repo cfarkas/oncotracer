@@ -104,7 +104,7 @@ class CpgSetupTests(unittest.TestCase):
                                             {"id": 1, "classifier": "sturgeon"},
                                             {"id": 2, "classifier": ""}],
                 "reference": "reuse", "reference_path": str(self.reference),
-                "methylation_source": "modbam", "methylation_path": self.config.get("methylation_modbam", ""),
+                "methylation_caller": "modkit", "methylation_source": "modbam", "methylation_path": self.config.get("methylation_modbam", ""),
                 "resources": str(self.project / "config/run.yml"),
                 "accept_sturgeon_license": classifier == "sturgeon"}
 

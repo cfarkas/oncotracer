@@ -9,10 +9,10 @@ Analyze Illumina and Oxford Nanopore (ONT) copy-number changes and small variant
 Use Linux and Python 3.10–3.13. No Git checkout is required. Install in your Python environment:
 
 ```bash
-python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v4.1.0/oncotracer-4.1.0-py3-none-any.whl"
+python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v5.0.0/oncotracer-5.0.0-py3-none-any.whl"
 ```
 
-OncoTracer 4.1.0 includes tissue-routed MARLIN/Sturgeon, corrected CpG processing, ichorCNA fallback, automatic cohort figures, and one CPU per sample with shared report memory. The full FFPE/ONT/fresh benchmark is being rerun from raw reads; its completion is reported separately. The command `pip install oncotracer` follows the separately published PyPI version. Choose **one** backend:
+OncoTracer 5.0.0 makes Rockfish the default ONT methylation caller and retains explicit Modkit selection. It preserves 4.1 ichorCNA fallback, Broad profiles, coarse rescues, tissue routing and variant recovery. [Caller setup and runnable commands](docs/releases/5.0.0.md) explain the raw-signal requirements. Benchmark completion and diagnostic accuracy are separate from software checks. The command `pip install oncotracer` follows the separately published PyPI version. Choose **one** backend:
 
 ### Conda
 
@@ -29,7 +29,7 @@ oncotracer --interactive --backend conda
 With Docker running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:4.1.0
+oncotracer install --docker --image carlosfarkas/oncotracer:5.0.0
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
@@ -38,7 +38,7 @@ The image is saved for later commands. See [installation](docs/installation.md) 
 
 Use `oncotracer --detect-resources` (also `--detect_resources`) for [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) based on CPU/RAM. Choose the allocation during setup or **Review and run**.
 
-The [4.1.0 release notes](docs/releases/4.1.0.md) describe the scheduler correction, corrected reference-CpG aggregation and evidence-gated ichorCNA rescue. New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md) with read-support checks; existing settings persist. Options: `--resource-mode fixed` and `--no-merge-vcfs`.
+The [5.0.0 release notes](docs/releases/5.0.0.md) describe caller selection and preservation of the 4.1 recovery behavior. New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md) with read-support checks; existing settings persist. Options: `--resource-mode fixed` and `--no-merge-vcfs`.
 
 For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
 
@@ -52,17 +52,17 @@ nextflow run main.nf --interactive --backend conda
 
 Use the full path to `main.nf` from another directory, or `--backend docker` for Docker. Analysis starts only after **Run analysis**. [Nextflow and concurrent projects](docs/nextflow_entry.md).
 
-## Recorded study commands
+## Run saved projects
 
-All runs start from original FASTQs, reusing references and models. Results follow validation.
+Set up projects with their raw inputs, reference and model resources first. The resource budgets below are examples; run only allocations that fit the host. The ONT YAML must include POD5 paths and the caller resources. [Complete commands and migration](docs/releases/5.0.0.md).
 
 ```bash
-oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 26 --parallel-samples 26 --one-cpu-per-sample --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
-oncotracer run --config /path/to/ONT/config/run.yml --backend docker --image carlosfarkas/oncotracer:4.1.0 --threads 22 --parallel-samples 22 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
-oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 11 --parallel-samples 11 --one-cpu-per-sample --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
+oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 88 --parallel-samples 8 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
+oncotracer run --config /path/to/ONT/config/run.yml --backend conda --methylation --methylation-caller rockfish --threads 124 --parallel-samples 4 --no-merge-vcfs --cpu --resource-mode dynamic --storage-mode compact
+oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 36 --parallel-samples 4 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
 ```
 
-The interrupted 3.0.0 benchmark did not complete. [Correction and validation scope](docs/releases/4.1.0.md).
+The large ONT allocation runs separately from the two Illumina allocations. These are launch examples, not completed benchmark measurements. The interrupted 4.1 Illumina analyses resumed with their saved outputs; a resumed run must be reported separately from a fresh benchmark.
 
 ## Set up your analysis
 

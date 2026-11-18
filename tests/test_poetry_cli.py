@@ -14,7 +14,7 @@ from oncotracer_cli.cli import _legacy_to_modern, build_parser
 
 class PoetryNativeLauncherTests(unittest.TestCase):
     def test_version(self) -> None:
-        self.assertEqual(__version__, "4.1.0")
+        self.assertEqual(__version__, "5.0.0")
 
     def test_script_entrypoint_accepts_run(self) -> None:
         args = build_parser().parse_args(["run", "--config", "x.yml", "--backend", "poetry"])

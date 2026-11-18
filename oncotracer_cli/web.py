@@ -155,7 +155,7 @@ class WebState:
             args = self.setup_args
             from .setup import VARIANT_FIELDS
             defaults = {key: getattr(args, key, None) for key in
-                        ("mode", "analysis", "cna_profile", "threads", "backend", "classifier", "gpu", "accept_sturgeon_license", "variants", "variant_config", "image", *VARIANT_FIELDS)}
+                        ("mode", "analysis", "cna_profile", "threads", "backend", "classifier", "methylation_caller", "gpu", "accept_sturgeon_license", "variants", "variant_config", "image", *VARIANT_FIELDS)}
             for key, value in {"input_folder": getattr(args, 'input_folder', None) or getattr(args, 'reads_folder', None),
                                "project": getattr(args, "project", None), "resources": getattr(args, "resources", None),
                                "methylation_path": getattr(args, "modbam", None) or getattr(args, "pod5_dir", None)}.items():
@@ -473,6 +473,7 @@ class WebState:
             args.build_reference = reference == "build"
             if analysis != "cna":
                 args.classifier = _choice(data, "classifier", ("marlin", "sturgeon"))
+                args.methylation_caller = _choice(data, "methylation_caller", ("rockfish", "modkit"), "rockfish")
                 source = _choice(data, "methylation_source", ("modbam", "pod5"))
                 setattr(args, "modbam" if source == "modbam" else "pod5_dir", _text(data, "methylation_path"))
                 args.resources = _text(data, "resources") if data.get("resources") else None

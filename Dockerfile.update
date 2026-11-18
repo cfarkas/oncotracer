@@ -1,5 +1,5 @@
-# Application-only update of an already verified scientific runtime.
-# Pass an immutable local image ID/digest. Environment changes require Dockerfile.
+# Update a verified 4.1 scientific runtime and add the isolated v5 Rockfish runtime.
+# Pass an immutable local image ID/digest. Changes to existing environments require Dockerfile.
 # For a local image ID, use DOCKER_BUILDKIT=0 so no registry lookup is attempted.
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
@@ -15,9 +15,13 @@ WORKDIR /opt/oncotracer
 RUN python -B -c "from pathlib import Path; copies=[line for line in Path('/opt/oncotracer/Dockerfile').read_text().splitlines() if line.startswith('COPY --from=')]; assert copies and all('--chown=0:0' in line.split() for line in copies), 'Base image predates rootless ownership normalization; use the full Dockerfile'"
 
 COPY environments/ /tmp/oncotracer-update-environments/
-RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in p.rglob('*') if f.is_file()}; assert digest(Path('/opt/oncotracer/environments')) == digest(Path('/tmp/oncotracer-update-environments')), 'Scientific environment definitions changed; use the full Dockerfile'"
+RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in p.rglob('*') if f.is_file()}; old=digest(Path('/opt/oncotracer/environments')); new=digest(Path('/tmp/oncotracer-update-environments')); assert all(new.get(k)==v for k,v in old.items()) and set(new)-set(old) <= {'native-rockfish.yml'}, 'Scientific environment definitions changed; use the full Dockerfile'"
 
 COPY . /opt/oncotracer/
+
+RUN /opt/conda/bin/python -B -m oncotracer_cli.cli prepare-rockfish \
+    --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python
+ENV ONCOTRACER_ROCKFISH_PREFIX=/opt/oncotracer-rockfish
 # Keep build-time Nextflow caches out of the writable runtime home, including
 # caches inherited from earlier incremental images used as the base.
 RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
@@ -34,7 +38,7 @@ RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
     && NXF_HOME=/tmp/nextflow-build nextflow -version \
     && rm -rf /tmp/nextflow-build /tmp/nextflow
 
-LABEL org.opencontainers.image.version="4.1.0" \
+LABEL org.opencontainers.image.version="5.0.0" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
       org.opencontainers.image.source.sha256="${SOURCE_SHA256}"
 

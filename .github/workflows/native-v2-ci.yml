@@ -94,7 +94,7 @@ jobs:
             tests/test_boundary_refinement_gaps.py \
             tests/test_fontconfig_safety.py \
             tests/test_command_runner_containment.py \
-            tests/test_native_methylation.py tests/test_release41_features.py tests/test_native_science_audit.py \
+            tests/test_native_methylation.py tests/test_rockfish_caller.py tests/test_release41_features.py tests/test_native_science_audit.py \
             tests/test_cpg_native_policy.py tests/test_ichor_rescue.py tests/test_marlin_strand_aggregation.py tests/test_sturgeon_reference_cpg.py \
             tests/test_named_methylation.py \
             tests/test_beginner_runtime.py \
@@ -175,7 +175,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/outside-checkout"
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
-          ./oncotracer --version | grep -F 'OncoTracer 4.1.0'
+          ./oncotracer --version | grep -F 'OncoTracer 5.0.0'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA and variant analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
@@ -248,7 +248,7 @@ jobs:
           python3 -m pip install 'poetry>=2,<3'
           poetry check --lock
           poetry install --no-interaction
-          poetry run oncotracer --version | grep -F 'OncoTracer 4.1.0'
+          poetry run oncotracer --version | grep -F 'OncoTracer 5.0.0'
       - name: Verify GPU controls in Firefox without starting analysis
         run: |
           python3 -m pip install playwright
@@ -296,7 +296,7 @@ jobs:
           fetch-depth: 0
       - name: Verify the exact candidate
         run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
-      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v4.1.0
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v5.0.0
         with:
           miniforge-version: latest
           activate-environment: base
@@ -568,7 +568,7 @@ jobs:
             "$RUNNER_TEMP/docker-installed-doctor.json"
       - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
-          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 4.1.0'
+          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 5.0.0'
           docker run --rm oncotracer:v2-ci provenance --json \
             | tee "$RUNNER_TEMP/docker-provenance.json"
           jq -e \

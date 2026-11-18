@@ -60,7 +60,7 @@ class MethylationRequest:
     pod5_files: tuple[Path, ...]
     gpu: bool
     dorado: Path | None
-    modkit: Path
+    modkit: Path | None
     samtools: Path
     dorado_model: Path | None
     dorado_modbase_model: Path | None
@@ -75,6 +75,10 @@ class MethylationRequest:
     modbam_inventory_sha256: str = ""
     sample_signals: tuple[MethylationSignalGroup, ...] = ()
     modbam_alignment: str = "realign"
+    caller: str = "rockfish"
+    rockfish_python: Path | None = None
+    rockfish_source: Path | None = None
+    rockfish_model: Path | None = None
 
     @property
     def dorado_device(self) -> str:
@@ -373,12 +377,15 @@ def resolve_methylation_request(
     pod5_override: Path | None = None,
     gpu_override: bool | None = None,
     modbam_override: Path | None = None,
+    caller_override: str | None = None,
 ) -> MethylationRequest | None:
     """Resolve CLI/YAML methylation settings without creating any files."""
     configured_enabled = _strict_bool(
         config.get("methylation"), key="methylation", default=False
     )
     enabled = configured_enabled if enabled_override is None else enabled_override
+    if caller_override and not enabled:
+        raise OncoTracerError("--methylation-caller requires --methylation or --methylation-only")
     if classifier_override and not enabled:
         raise OncoTracerError("--sturgeon/--marlin requires --methylation")
     if pod5_override is not None and not enabled:
@@ -390,6 +397,13 @@ def resolve_methylation_request(
     if mode != "ont":
         raise OncoTracerError("--methylation is restricted to mode: ont")
 
+    from .rockfish import resolve_caller
+    caller = resolve_caller(caller_override or config.get("methylation_caller"))
+    config = {**config, "methylation_caller": caller}
+    if caller == "rockfish" and os.environ.get("ONCOTRACER_ROCKFISH_PREFIX"):
+        prefix = Path(os.environ["ONCOTRACER_ROCKFISH_PREFIX"])
+        for key, relative in {"methylation_rockfish_python": "env/bin/python", "methylation_rockfish_source": "source", "methylation_rockfish_model": "rf_5kHz.ckpt"}.items():
+            config.setdefault(key, str(prefix / relative))
     classifier = (
         classifier_override
         or str(config.get("methylation_classifier") or "").strip().lower()
@@ -411,7 +425,16 @@ def resolve_methylation_request(
         if config.get("methylation_modbam")
         else None
     )
-    if pod5_value is not None and modbam_value is not None:
+    if caller == "rockfish":
+        if modbam_value is not None:
+            raise OncoTracerError("Rockfish requires raw POD5 signal. To reuse MM/ML BAM calls select --methylation-caller modkit; for Rockfish supply --pod5-dir and optional methylation_moves_bam.")
+        if pod5_value is None:
+            raise OncoTracerError("Rockfish (default) requires --pod5-dir; FASTQ or MM/ML calls alone are insufficient.")
+        moves = config.get("methylation_moves_bam")
+        if moves and config.get("ont_named_samples"):
+            raise OncoTracerError("Use tissue metadata with per-sample pod5/moves_bam columns, or omit methylation_moves_bam to generate moves for named libraries.")
+        modbam_value = Path(str(moves)) if moves else None
+    if caller == "modkit" and pod5_value is not None and modbam_value is not None:
         raise OncoTracerError(
             "choose one methylation input: --pod5-dir OR --modbam; remove the other input from the YAML"
         )
@@ -447,9 +470,15 @@ def resolve_methylation_request(
     dorado = (_configured_executable(
         config, "methylation_dorado_executable", "dorado", "Dorado"
     ) if alignment == "realign" else None)
-    modkit = _configured_executable(
+    modkit = (_configured_executable(
         config, "methylation_modkit_executable", "modkit", "Modkit"
-    )
+    ) if caller == "modkit" else None)
+    rockfish_python = rockfish_source = rockfish_model = None
+    if caller == "rockfish":
+        rockfish_python = _configured_executable(config, "methylation_rockfish_python", "rockfish-python", "Rockfish Python")
+        rockfish_source = _configured_directory(config, "methylation_rockfish_source", "Pinned Rockfish source")
+        rockfish_model = _configured_path(config, "methylation_rockfish_model", "Rockfish 5kHz model")
+
     samtools = _configured_executable(
         config, "methylation_samtools_executable", "samtools", "samtools"
     )
@@ -457,7 +486,7 @@ def resolve_methylation_request(
         _configured_directory(
             config, "methylation_dorado_model", "Dorado basecalling model"
         )
-        if pod5_dir
+        if pod5_dir and not modbam_value
         else None
     )
     dorado_modbase_model = (
@@ -466,10 +495,15 @@ def resolve_methylation_request(
             "methylation_dorado_modbase_model",
             "Dorado 5mCG/5hmCG modified-base model",
         )
-        if pod5_dir
+        if pod5_dir and caller == "modkit"
         else None
     )
     asset_sha256: dict[str, str] = {}
+    if caller == "rockfish":
+        from .rockfish import validate_assets
+        asset_sha256.update(validate_assets(rockfish_source, rockfish_model))
+        if dorado_model is not None:
+            asset_sha256["dorado_model_tree"] = _validate_optional_tree_hash(config, "methylation_dorado_model_sha256", dorado_model, "Dorado basecalling model")
     if dorado_model is not None and dorado_modbase_model is not None:
         asset_sha256.update(
             {
@@ -569,7 +603,8 @@ def resolve_methylation_request(
 
     executable_sha256 = {
         "dorado": sha256_file(dorado) if dorado else "",
-        "modkit": sha256_file(modkit),
+        "modkit": sha256_file(modkit) if modkit else "",
+        "rockfish_python": sha256_file(rockfish_python) if rockfish_python else "",
         "samtools": sha256_file(samtools),
         classifier: (
             sha256_file(classifier_executable)
@@ -579,6 +614,7 @@ def resolve_methylation_request(
     }
     return MethylationRequest(
         classifier=classifier,
+        caller=caller, rockfish_python=rockfish_python, rockfish_source=rockfish_source, rockfish_model=rockfish_model,
         pod5_dir=pod5_dir,
         pod5_files=pod5_files,
         gpu=gpu,
@@ -618,8 +654,10 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
         "enabled": True,
         "classifier": request.classifier,
         "cpg_processing_policy": CPG_POLICY,
+        "methylation_caller": getattr(request, "caller", "tissue"),
+        "modification_measurement": ("binary_5mC_no_separate_5hmC" if getattr(request, "caller", "") == "rockfish" else "Dorado_5mC_plus_5hmC"),
         "modbam_alignment": request.modbam_alignment,
-        "input_kind": "modbam" if request.modbam_input else "pod5",
+        "input_kind": ("pod5_and_moves" if request.caller == "rockfish" and request.modbam_input else "modbam" if request.modbam_input else "pod5"),
         "pod5_dir": str(request.pod5_dir) if request.pod5_dir else None,
         "modbam_input": str(request.modbam_input) if request.modbam_input else None,
         "modbam_file_count": len(request.modbam_files),
@@ -629,11 +667,13 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
         "sample_signals": _signal_plan(request),
         "gpu_requested": request.gpu,
         "dorado_device": request.dorado_device,
-        "modkit_acceleration": "cpu_threads",
+        "modkit_acceleration": "cpu_threads" if getattr(request, "caller", "") == "modkit" else None,
         "classifier_gpu_visibility": (
             request.gpu if request.classifier == "marlin" else False
         ),
         "zero_cpg_action": "abort_methylation_continue_cna",
+        "rockfish_python": str(request.rockfish_python) if request.rockfish_python else None,
+        "rockfish_model": str(request.rockfish_model) if request.rockfish_model else None,
         "asset_sha256": dict(request.asset_sha256),
         "classifier_interface_contract_commit": (
             request.classifier_interface_contract_commit
@@ -645,9 +685,9 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
             (
                 ("modbam-preserve-validated-alignment" if request.modbam_alignment == "preserve" else "modbam-cpu-alignment")
                 if request.modbam_input
-                else "dorado-modified-base-basecalling"
+                else ("dorado-basecalling-with-moves" if request.caller == "rockfish" else "dorado-modified-base-basecalling")
             ),
-            "modkit-cpg-pileup",
+            "rockfish-signal-cpg-inference" if request.caller == "rockfish" else "modkit-cpg-pileup",
             f"{request.classifier}-classification-if-cpg-detected",
         ],
     }
@@ -720,10 +760,12 @@ def _status_payload(
         "overall_status": overall,
         "classifier": request.classifier,
         "cpg_processing_policy": CPG_POLICY,
+        "methylation_caller": getattr(request, "caller", "tissue"),
+        "modification_measurement": ("binary_5mC_no_separate_5hmC" if getattr(request, "caller", "") == "rockfish" else "Dorado_5mC_plus_5hmC"),
         "modbam_alignment": request.modbam_alignment,
         "gpu_requested": request.gpu,
         "dorado_device": request.dorado_device,
-        "modkit_acceleration": "cpu_threads",
+        "modkit_acceleration": "cpu_threads" if getattr(request, "caller", "") == "modkit" else None,
         "completed_samples": completed,
         "failed_samples": failed,
         "no_cpg_samples": no_cpg,
@@ -751,7 +793,9 @@ def _provenance_payload(
     failure: BaseException | None = None,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
-        "schema": "oncotracer-native-ont-methylation-provenance-v2",
+        "schema": "oncotracer-native-ont-methylation-provenance-v3",
+        "methylation_caller": request.caller,
+        "rockfish_source_commit": (__import__("oncotracer_cli.rockfish", fromlist=["assets"]).assets()["source_commit"] if request.caller == "rockfish" else None),
         "classifier": request.classifier,
         "cpg_processing_policy": CPG_POLICY,
         "modbam_alignment": request.modbam_alignment,
@@ -760,7 +804,7 @@ def _provenance_payload(
         ),
         "classifier_runtime_external": True,
         "classifier_runtime_source_authenticated": False,
-        "input_kind": "modbam" if request.modbam_input else "pod5",
+        "input_kind": ("pod5_and_moves" if request.caller == "rockfish" and request.modbam_input else "modbam" if request.modbam_input else "pod5"),
         "pod5_dir": str(request.pod5_dir) if request.pod5_dir else None,
         "modbam_input": str(request.modbam_input) if request.modbam_input else None,
         "modbam_file_count": len(request.modbam_files),
@@ -770,14 +814,14 @@ def _provenance_payload(
         "sample_signals": _signal_plan(request),
         "gpu_requested": request.gpu,
         "dorado_device": request.dorado_device,
-        "modkit_acceleration": "cpu_threads",
+        "modkit_acceleration": "cpu_threads" if request.caller == "modkit" else None,
         "executables": {
             "dorado": {
                 "path": str(request.dorado) if request.dorado else None,
                 "sha256": request.executable_sha256["dorado"],
             },
             "modkit": {
-                "path": str(request.modkit),
+                "path": str(request.modkit) if request.modkit else None,
                 "sha256": request.executable_sha256["modkit"],
             },
             "samtools": {
@@ -789,6 +833,8 @@ def _provenance_payload(
                 "sha256": request.executable_sha256[request.classifier],
             },
         },
+        "rockfish_python": str(request.rockfish_python) if request.rockfish_python else None,
+        "rockfish_model": str(request.rockfish_model) if request.rockfish_model else None,
         "asset_sha256": dict(request.asset_sha256),
         "status": status,
         "created_at": utc_now(),
@@ -973,7 +1019,7 @@ def _load_reusable_sample_record(path: Path, outdir: Path, sample: str):
 
 
 def _seal_sample_record(record, outdir):
-    paths = [record.get(key) for key in ("bedmethyl", "classification", "probe_bed")]
+    paths = [record.get(key) for key in ("bedmethyl", "classification", "probe_bed", "caller_provenance", "cpg_extract")]
     record["output_sha256"] = {value: sha256_file(outdir / value) for value in paths if value}
     record["cpg_processing_policy"] = CPG_POLICY
 
@@ -1092,9 +1138,9 @@ def _select_modbam_input(
             "-F",
             "2304",
             "-e",
-            "exists([MM])",
+            "exists([mv])" if request.caller == "rockfish" else "exists([MM])",
             "-d",
-            "ML",
+            "ts" if request.caller == "rockfish" else "ML",
             "-b",
             "-o",
             selected,
@@ -1307,7 +1353,7 @@ def _marlin_environment(
 def _run_accelerated(request, runner, stage, command, **kwargs):
     """Share GPU admission with variant/report jobs and bound basecall batches."""
     child_env = dict(kwargs.pop('env', {}) or {})
-    supports_gpu = stage == 'methylation-dorado-basecall' or stage.startswith('methylation-marlin-predict-')
+    supports_gpu = stage == 'methylation-dorado-basecall' or stage.startswith(('methylation-marlin-predict-', 'methylation-rockfish-'))
     if not request.gpu or not supports_gpu or getattr(runner, 'dry_run', False):
         return runner.run(stage, command, env=child_env, **kwargs)
     from .gpu_runtime import lease, environment
@@ -1471,6 +1517,10 @@ def run_methylation(
         "--device",
         request.dorado_device,
     ]
+    if request.caller == "rockfish":
+        start = dorado_command.index("--modified-bases-models")
+        del dorado_command[start:start + 2]
+        dorado_command.append("--emit-moves")
     if request.gpu and request.pod5_dir:
         # Avoid auto-batching against all free VRAM, including the desktop reserve.
         dorado_command += ['--batchsize', '32']
@@ -1513,7 +1563,7 @@ def run_methylation(
     basecall_inputs = [value for value in basecall_inputs if value is not None]
     if request.sample_signals:
         basecall_inputs.extend(read_id_paths[group.sample] for group in request.sample_signals)
-    signature_command = ["primary-mm-ml-input-v2", request.modbam_alignment, *[str(value) for value in dorado_command]]
+    signature_command = ["primary-mm-ml-input-v2", request.caller, request.modbam_alignment, *[str(value) for value in dorado_command]]
     if request.sample_signals:
         signature_command.extend(["named-pass-signal-selection-v1", json.dumps(_signal_plan(request), sort_keys=True)])
     signature = ledger.signature(basecall_stage, signature_command, basecall_inputs)
@@ -1530,7 +1580,7 @@ def run_methylation(
             with header.open("w") as output:
                 runner.run("methylation-preserved-header", [request.samtools, "view", "-H", modbam_out / ".selected_input.bam"], stdout=output)
             _validate_preserved_reference(header, reference["fai"])
-        if request.pod5_dir and request.sample_signals:
+        if request.pod5_dir and request.sample_signals and not request.modbam_input:
             _basecall_named_pod5(request, dorado_command, read_id_paths, unsorted, logs_out, runner, max(1, threads))
         else:
             dorado_log = logs_out / "dorado.stderr.log"
@@ -1598,7 +1648,7 @@ def run_methylation(
         raw_bam = modbam_out / f"{name}.mod.sorted.bam"
         combined_bam = modbam_out / f"{name}.5mC_5hmC_combined.sorted.bam"
         combined_bai = Path(str(combined_bam) + ".bai")
-        bedmethyl = bed_out / f"{name}.CpG.combined_5mC_5hmC.bed"
+        bedmethyl = bed_out / (f"{name}.CpG.rockfish_5mC.bed" if request.caller == "rockfish" else f"{name}.CpG.combined_5mC_5hmC.bed")
         extract = bed_out / f"{name}.reference_cpg_extract.tsv"
         record_count = logs_out / f"{name}.modbam_record_count.txt"
         record_path = sample_status_out / f"{name}.json"
@@ -1612,6 +1662,11 @@ def run_methylation(
             request.samtools,
             *request.classifier_paths.values(),
         ]
+        sample_inputs = [value for value in sample_inputs if value is not None]
+        if request.caller == "rockfish":
+            sample_inputs.extend([request.rockfish_python, request.rockfish_model,
+                                  root / "bin/scripts/native_rockfish.py",
+                                  *request.pod5_files, *_directory_files(request.rockfish_source / "rockfish")])
         if request.classifier_executable is not None:
             sample_inputs.append(request.classifier_executable)
         if request.classifier == "marlin":
@@ -1627,6 +1682,7 @@ def run_methylation(
             sample_stage,
             [
                 CPG_POLICY,
+                request.caller,
                 request.classifier,
                 request.classifier_interface_contract_commit,
                 f"threads={max(1, threads)}",
@@ -1705,7 +1761,11 @@ def run_methylation(
                 raise OncoTracerError(
                     f"sample {name} has no FASTQ-selected reads in the methylation input; check the FASTQ and POD5/BAM sample mapping"
                 )
-            if request.classifier == "marlin":
+            if request.caller == "rockfish":
+                from .rockfish import run_sample
+                run_sample(root, request, name, raw_bam, fasta, bedmethyl, extract, runner, threads, _run_accelerated)
+                record.update(methylation_caller="rockfish", caller_provenance=str((bedmethyl.parent / (name + ".rockfish") / "run.json").relative_to(outdir)), cpg_extract=str(extract.relative_to(outdir)))
+            elif request.classifier == "marlin":
                 runner.run(f"methylation-index-{name}", [request.samtools, "index", "-@", str(max(1, threads)), raw_bam])
                 probe_count = logs_out / f"{name}.probe_overlapping_reads.txt"
                 with probe_count.open("w") as output:
@@ -1781,7 +1841,7 @@ def run_methylation(
             # An empty pileup is a meaningful negative result: no callable CpG
             # modifications. Preserve and classify it instead of converting it
             # into an opaque command failure.
-            _existing_file(bedmethyl, f"Modkit CpG bedMethyl for {name}")
+            _existing_file(bedmethyl, f"{request.caller} CpG bedMethyl for {name}")
             rows, covered_rows, modified_calls = _bedmethyl_counts(bedmethyl)
             record.update(
                 {
@@ -1822,11 +1882,12 @@ def run_methylation(
                     _write_status(status_path, request, records)
                     continue
             if request.classifier == "sturgeon":
-                runner.run(f"methylation-extract-{name}", [
-                    request.modkit, "extract", "full", combined_bam, extract,
-                    "--cpg", "--reference", fasta, "--threads", str(max(1, threads)),
-                    "--log-filepath", logs_out / f"{name}.modkit_extract.log",
-                ], env=_accelerator_environment(False))
+                if request.caller == "modkit":
+                    runner.run(f"methylation-extract-{name}", [
+                        request.modkit, "extract", "full", combined_bam, extract,
+                        "--cpg", "--reference", fasta, "--threads", str(max(1, threads)),
+                        "--log-filepath", logs_out / f"{name}.modkit_extract.log",
+                    ], env=_accelerator_environment(False))
                 prediction = _run_sturgeon(
                     root,
                     request,

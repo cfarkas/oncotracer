@@ -68,7 +68,7 @@ oncotracer install --conda \
 ### FASTQ to CNA and variants
 
 The current Linux x86-64 image is
-`carlosfarkas/oncotracer:4.1.0`. It includes the complete
+`carlosfarkas/oncotracer:5.0.0`. It includes the complete
 Illumina GLIMPSE2 workflow, FFPE repairs, integrated ONT callers and concurrent
 project support. `oncotracer install --docker` selects this image by default.
 
@@ -127,7 +127,7 @@ preparation before parallel samples start.
 Version 4 image (the study benchmark is reported separately):
 
 ```text
-carlosfarkas/oncotracer:4.1.0
+carlosfarkas/oncotracer:5.0.0
 ```
 
 Install and run:
@@ -151,7 +151,7 @@ Select a local image tag or immutable registry digest:
 ```bash
 oncotracer run \
   --backend docker \
-  --image carlosfarkas/oncotracer:4.1.0 \
+  --image carlosfarkas/oncotracer:5.0.0 \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
@@ -309,6 +309,6 @@ The scientific settings remain the same across supported backends. Setup also re
 
 ## Mixed ONT methylation cohorts
 
-Version 4.1 accepts tissue-routed methylation in Docker. Supply `methylation_classifier: tissue` and a TSV `methylation_sample_metadata` with exactly one `sample`, `tissue`, `modbam` row per selected sample. MARLIN is assigned to peripheral blood/PBMC/marrow; Sturgeon to CNS. Unknown and other tissues remain unassigned. Explicitly configured external model files and executable environments are mounted read-only. Their hashes and any existing license acknowledgement are still checked inside the container; the public image does not redistribute these classifier resources. See [4.1 settings](releases/4.1.0.md).
+Version 4.1 accepts tissue-routed methylation in Docker. Supply `methylation_classifier: tissue` and a TSV `methylation_sample_metadata` with exactly one `sample`, `tissue`, `modbam` row per selected sample. MARLIN is assigned to peripheral blood/PBMC/marrow; Sturgeon to CNS. Unknown and other tissues remain unassigned. Explicitly configured external model files and executable environments are mounted read-only. Their hashes and any existing license acknowledgement are still checked inside the container; the public image does not redistribute these classifier resources. See [4.1 settings](releases/5.0.0.md).
 
 The automatic multi-sample cohort figure is written to `09_cohort_figure/` with source tables, legend and checksums. Single-sample runs skip this figure.

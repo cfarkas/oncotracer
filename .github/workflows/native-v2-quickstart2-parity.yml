@@ -55,7 +55,7 @@ jobs:
           python-version: "3.11"
 
       - name: Set up Miniforge
-        uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v4.1.0
+        uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v5.0.0
         with:
           miniforge-version: latest
           activate-environment: base

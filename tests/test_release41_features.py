@@ -38,14 +38,14 @@ class RoutingTests(unittest.TestCase):
             def resolve(config,**kwargs):
                 configs.append(config);return SimpleNamespace(classifier=config['methylation_classifier'],gpu=False)
             with patch('oncotracer_cli.engine.parse_ont_samples',return_value=samples), patch('oncotracer_cli.methylation.resolve_methylation_request',side_effect=resolve):
-                result=routing.resolve({'methylation_sample_metadata':str(metadata)},mode='ont')
+                result=routing.resolve({'methylation_sample_metadata':str(metadata), 'methylation_caller':'modkit'},mode='ont')
                 self.assertEqual([r.classifier for _,r in result.requests],['marlin','sturgeon'])
                 self.assertEqual(result.assignments[2]['status'],'not_applicable')
                 self.assertTrue(all(c['methylation_modbam_alignment']=='preserve' and not c['ont_named_samples'] for c in configs))
                 metadata.write_text(metadata.read_text().replace('B.bam','A.bam'))
-                with self.assertRaisesRegex(OncoTracerError,'multiple'):routing.resolve({'methylation_sample_metadata':str(metadata)},mode='ont')
+                with self.assertRaisesRegex(OncoTracerError,'multiple'):routing.resolve({'methylation_sample_metadata':str(metadata), 'methylation_caller':'modkit'},mode='ont')
                 metadata.write_text('sample\ttissue\tmodbam\nA\tmarrow\tA.bam\n')
-                with self.assertRaisesRegex(OncoTracerError,'exactly one'):routing.resolve({'methylation_sample_metadata':str(metadata)},mode='ont')
+                with self.assertRaisesRegex(OncoTracerError,'exactly one'):routing.resolve({'methylation_sample_metadata':str(metadata), 'methylation_caller':'modkit'},mode='ont')
 
     def test_unknown_tissue_is_not_a_failed_classifier(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -41,7 +41,7 @@ def verify(audit,suite,candidate_sha,source_sha256,binary_sha256,check_checksums
     require(record['schema']==SCHEMA and record['suite']==suite,'Wrong native scientific audit')
     require(set(record['datasets'])==set(SAMPLES[suite]),'Incomplete public datasets')
     expected={'baseline':(BASELINE,BASELINE_SOURCE,'3.0.0'),
-              'candidate':(candidate_sha,source_sha256,'4.1.0')}
+              'candidate':(candidate_sha,source_sha256,'5.0.0')}
     for name,(commit,source,version) in expected.items():
         identity=read(audit/name/'provenance.json')
         require(identity['source_commit']==commit and identity['source_sha256']==source and

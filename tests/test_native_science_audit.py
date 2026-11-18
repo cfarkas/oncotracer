@@ -18,7 +18,7 @@ class ScientificAuditTests(unittest.TestCase):
         for side in ('baseline','candidate'):
             folder=self.root/side;folder.mkdir()
             audit.write(folder/'provenance.json',dict(source_commit=audit.BASELINE if side=='baseline' else self.commit,
-                       source_sha256=audit.BASELINE_SOURCE if side=='baseline' else self.source,oncotracer_version='3.0.0' if side=='baseline' else '4.1.0',
+                       source_sha256=audit.BASELINE_SOURCE if side=='baseline' else self.source,oncotracer_version='3.0.0' if side=='baseline' else '5.0.0',
                        source_tree_dirty=False,binary_sha256='d'*64 if side=='baseline' else self.binary))
             for dataset,names in audit.SAMPLES['quickstart1'].items():
                 root=folder/dataset;write_run(root,native=True)

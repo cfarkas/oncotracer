@@ -107,7 +107,7 @@ ARG SOURCE_COMMIT
 ARG SOURCE_SHA256
 
 LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="4.1.0" \
+      org.opencontainers.image.version="5.0.0" \
       org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
       org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
@@ -115,6 +115,12 @@ LABEL org.opencontainers.image.title="OncoTracer" \
       org.opencontainers.image.licenses="MIT"
 
 COPY . ${ONCOTRACER_HOME}/
+
+# Isolate Rockfish dependencies from CNA, variant and classifier runtimes.
+# Public caller/model only; user-licensed Sturgeon remains an external resource.
+RUN /opt/conda/bin/python -B -m oncotracer_cli.cli prepare-rockfish \
+    --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python
+ENV ONCOTRACER_ROCKFISH_PREFIX=/opt/oncotracer-rockfish
 
 # Run the same isolated tool and synthetic-call probes used by Conda installation.
 RUN python -B -c "from pathlib import Path; from oncotracer_cli.variant_install_checks import verify_variant_environment; verify_variant_environment(Path('/opt/oncotracer-envs/variants'))"

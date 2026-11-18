@@ -64,9 +64,14 @@ EXECUTABLES = {
     "marlin_python": ("python", "Python in your MARLIN environment"),
     "sturgeon_executable": ("sturgeon", "Sturgeon executable"),
 }
+EXECUTABLES["methylation_rockfish_python"] = ("rockfish-python", "Python from the Rockfish environment")
+
 RESOURCE_FLAGS = {
     "methylation_dorado_executable": "--dorado",
     "methylation_modkit_executable": "--modkit",
+    "methylation_rockfish_python": "--rockfish-python",
+    "methylation_rockfish_model": "--rockfish-model",
+    "methylation_rockfish_source": "--rockfish-source",
     "methylation_samtools_executable": "--samtools",
     "methylation_dorado_model": "--dorado-model",
     "methylation_dorado_modbase_model": "--modified-base-model",
@@ -144,9 +149,11 @@ def _executable(value: str, label: str) -> str:
     return str(Path(candidate).absolute())
 
 
-def _resource_keys(classifier: str) -> list[str]:
+def _resource_keys(classifier: str, caller: str = "rockfish") -> list[str]:
     return [
-        *list(EXECUTABLES)[:3],
+        "methylation_dorado_executable",
+        "methylation_samtools_executable",
+        "methylation_rockfish_python" if caller == "rockfish" else "methylation_modkit_executable",
         *(
             ["marlin_rscript", "marlin_python"]
             if classifier == "marlin"
@@ -896,7 +903,10 @@ def _command_setup(args: argparse.Namespace) -> int:
             resources.update(prepare_sturgeon(acknowledged=acknowledged))
             args.sturgeon_model = resources["sturgeon_model"]
             args.accept_sturgeon_license = acknowledged
+        from .rockfish import resolve_caller
+        caller = resolve_caller(getattr(args, "methylation_caller", None) or resources.get("methylation_caller"))
         values.update(
+            methylation_caller=caller,
             methylation=True,
             methylation_only=analysis == "methylation",
             methylation_classifier=classifier,
@@ -911,12 +921,14 @@ def _command_setup(args: argparse.Namespace) -> int:
                 else _ask(
                     None,
                     "Methylation input (modbam=existing calls; pod5=raw signal)",
-                    default="modbam",
+                    default="pod5" if caller == "rockfish" else "modbam",
                     choices=("modbam", "pod5"),
                     interactive=interactive,
                 )
             )
         )
+        if caller == "rockfish" and source_kind == "modbam":
+            raise OncoTracerError("Rockfish requires --pod5-dir; use --methylation-caller modkit to reuse --modbam calls.")
         source = args.modbam if source_kind == "modbam" else args.pod5_dir
         source = (
             Path(
@@ -932,7 +944,7 @@ def _command_setup(args: argparse.Namespace) -> int:
         values[
             "methylation_modbam" if source_kind == "modbam" else "methylation_pod5_dir"
         ] = str(source)
-        for key in _resource_keys(classifier):
+        for key in _resource_keys(classifier, caller):
             program, label = EXECUTABLES[key]
             supplied = getattr(args, key) or resources.get(key)
             # A MARLIN environment must be selected explicitly; system R/Python often lack its packages.
@@ -948,6 +960,8 @@ def _command_setup(args: argparse.Namespace) -> int:
                 label,
             )
         files = dict(RESOURCE_FILES[classifier])
+        if caller == "rockfish":
+            files.update(methylation_rockfish_model="Pinned Rockfish 5kHz checkpoint", methylation_rockfish_source="Pinned Rockfish source directory")
         if source_kind == "pod5":
             files.update(
                 methylation_dorado_model="Dorado basecalling model directory",
@@ -957,6 +971,8 @@ def _command_setup(args: argparse.Namespace) -> int:
                 print(
                     "CPU POD5 basecalling can take days. Existing modified-base BAMs avoid this step."
                 )
+        if caller == "rockfish":
+            files.pop("methylation_dorado_modbase_model", None)
         for key, label in files.items():
             supplied = getattr(args, key) or resources.get(key)
             flag = RESOURCE_FLAGS.get(key, "--" + key.replace("_", "-"))
@@ -964,6 +980,7 @@ def _command_setup(args: argparse.Namespace) -> int:
             is_model_tree = key in {
                 "methylation_dorado_model",
                 "methylation_dorado_modbase_model",
+                "methylation_rockfish_source",
             }
             value = (
                 require_directory(value, label)
@@ -1093,6 +1110,8 @@ def command_check(args: argparse.Namespace) -> int:
             config.get("methylation") is True or config.get("methylation_only") is True
         )
         if enabled:
+            from .rockfish import resolve_caller
+            caller = resolve_caller(config.get("methylation_caller"))
             classifier = config.get("methylation_classifier")
             if classifier not in RESOURCE_FILES:
                 errors.append(
@@ -1110,6 +1129,11 @@ def command_check(args: argparse.Namespace) -> int:
                     fields["methylation_modbam"] = (
                         "existing modified-base BAM file or directory"
                     )
+                if caller == "rockfish":
+                    fields.pop("methylation_dorado_modbase_model", None)
+                    fields.update(methylation_pod5_dir="raw POD5 signal", methylation_rockfish_model="Rockfish 5kHz checkpoint", methylation_rockfish_source="Pinned Rockfish source")
+                    if config.get("methylation_modbam"):
+                        errors.append("Rockfish requires POD5; set methylation_caller: modkit to reuse MM/ML BAMs")
                 for key, label in fields.items():
                     value = config.get(key)
                     if not value:
@@ -1122,7 +1146,7 @@ def command_check(args: argparse.Namespace) -> int:
                         errors.append(
                             f"{key}_sha256: missing; setup computes this from your local file"
                         )
-                for key in _resource_keys(classifier):
+                for key in _resource_keys(classifier, caller):
                     program, label = EXECUTABLES[key]
                     try:
                         _executable(str(config.get(key) or program), label)
@@ -1388,6 +1412,7 @@ def add_setup_commands(subparsers) -> None:
     variant.add_argument('--variant-varlociraptor-events', help='comma-separated uppercase scenario events; default PRESENT')
     variant.add_argument('--variant-varlociraptor-sample', help='observed sample name in custom scenario; default sample')
     meth = parser.add_argument_group("ONT methylation")
+    meth.add_argument("--methylation-caller", choices=("rockfish", "modkit"), help="CpG caller; default rockfish (requires raw POD5)")
     meth.add_argument(
         "--classifier",
         choices=("marlin", "sturgeon"),
@@ -1432,6 +1457,8 @@ def add_setup_commands(subparsers) -> None:
     for key, label in {
         **RESOURCE_FILES["marlin"],
         **RESOURCE_FILES["sturgeon"],
+        "methylation_rockfish_model": "Pinned Rockfish 5kHz checkpoint",
+        "methylation_rockfish_source": "Pinned Rockfish source directory",
         "methylation_dorado_model": "Dorado base model directory (POD5 only)",
         "methylation_dorado_modbase_model": "Matching Dorado 5mCG/5hmCG directory (POD5 only)",
     }.items():

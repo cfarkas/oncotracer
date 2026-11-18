@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:4.1.0"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:5.0.0"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -370,6 +370,10 @@ def _project_mounts(config_path: Path) -> list[Path]:
         "ont_normal_folder",
         "pathology_csv",
         "methylation_pod5_dir",
+        "methylation_moves_bam",
+        "methylation_rockfish_model",
+        "methylation_rockfish_source",
+        "methylation_rockfish_python",
         "methylation_dorado_model",
         "methylation_dorado_modbase_model",
         "sturgeon_executable",
@@ -489,6 +493,7 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
                 dry_run=args.dry_run,
                 methylation=args.methylation,
                 methylation_classifier=args.methylation_classifier,
+                methylation_caller=getattr(args, "methylation_caller", None),
                 methylation_pod5_dir=Path(args.pod5_dir) if args.pod5_dir else None,
                 methylation_gpu=args.gpu,
                 methylation_modbam=(
@@ -561,7 +566,7 @@ def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str)
     if methylation:
         effective_config['methylation'] = True
         for argument, key in (('modbam', 'methylation_modbam'), ('pod5_dir', 'methylation_pod5_dir'),
-                              ('methylation_classifier', 'methylation_classifier')):
+                              ('methylation_classifier', 'methylation_classifier'), ('methylation_caller', 'methylation_caller')):
             value = getattr(args, argument, None)
             if value is not None:
                 effective_config[key] = value
@@ -619,6 +624,8 @@ def _run_container(config_path: Path, args: argparse.Namespace, *, backend: str)
         command.extend(["--modbam", Path(args.modbam).expanduser().resolve()])
     if args.methylation:
         command.append("--methylation")
+    if getattr(args, "methylation_caller", None):
+        command.extend(["--methylation-caller", args.methylation_caller])
     if args.methylation_classifier:
         command.append(f"--{args.methylation_classifier}")
     if args.pod5_dir:
@@ -713,6 +720,8 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.append("--force")
     if args.methylation:
         command.append("--methylation")
+    if getattr(args, "methylation_caller", None):
+        command.extend(["--methylation-caller", args.methylation_caller])
     if args.methylation_classifier:
         command.append(f"--{args.methylation_classifier}")
     if args.pod5_dir:
@@ -1725,6 +1734,7 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--root", help="Repository or extracted payload root")
     parser.add_argument("--image")
     parser.add_argument("--sif")
+    parser.add_argument("--methylation-caller", choices=("rockfish", "modkit"), help="CpG method: rockfish (default; raw POD5) or modkit (Dorado MM/ML)")
     parser.add_argument(
         "--methylation",
         action="store_true",
@@ -1796,6 +1806,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command")
     add_setup_commands(subparsers)
+    from .rockfish_setup import add_command as add_rockfish_command
+    add_rockfish_command(subparsers)
     add_web_command(subparsers)
     add_results_command(subparsers)
     add_reports_command(subparsers)
