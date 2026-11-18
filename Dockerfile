@@ -118,7 +118,9 @@ COPY . ${ONCOTRACER_HOME}/
 
 # Isolate Rockfish dependencies from CNA, variant and classifier runtimes.
 # Public caller/model only; user-licensed Sturgeon remains an external resource.
-RUN /opt/conda/bin/python -B -m oncotracer_cli.cli prepare-rockfish \
+RUN CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc \
+    CXX=/opt/conda/bin/x86_64-conda-linux-gnu-g++ \
+    /opt/conda/bin/python -B -m oncotracer_cli.cli prepare-rockfish \
     --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python --cuda
 ENV ONCOTRACER_ROCKFISH_PREFIX=/opt/oncotracer-rockfish
 

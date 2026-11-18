@@ -625,15 +625,14 @@ jobs:
           cat > "$RUNNER_TEMP/RELEASE_NOTES.md" <<EOF
           # OncoTracer v5.0.0
 
-          Fixes parallel Illumina/FFPE startup when the Nextflow cache is empty,
-          including installations with temporary files and results on different filesystems.
+          Version 5 makes Rockfish the default ONT methylation caller and retains explicit Modkit support.
 
-          - Prepare and verify the Nextflow distribution in the actual worker environment before scheduling samples.
-          - Publish immutable runtime generations atomically; reject incomplete downloads and isolate each JVM's native libraries.
-          - Test real parallel tasks with cold caches, concurrent preparation, damaged caches and read-only Docker distributions.
-          - Retain browser sample scheduling, validated resume, FFPE handling, ONT methylation setup and CNA coverage safeguards.
-          - Preserve existing v2.1.0 releases and reuse owned Conda tools only after dependency and inventory verification.
-          - Native CNA uses Python; complete Illumina variants use the bundled Nextflow workflow.
+          - Measure binary CpG 5mC from compatible R10.4.1, 5 kHz POD5 signal with pinned Rockfish source and model checksums.
+          - Generate move-tagged Dorado alignments when needed; retain measured-site QC and sample-level provenance.
+          - Support methylation-only GPU acceleration while keeping variants and Illumina analyses on CPU.
+          - Preserve the 4.1 ichorCNA fallback, Broad profiles, coarse rescues, FFPE handling and variant recovery behavior.
+          - Provide isolated Docker, Conda and Poetry caller setup with commands for fresh ONT, FFPE and fresh Illumina projects.
+          - Full study benchmark completion is reported separately from software and installation validation.
 
           Validated on exact commit: \`$MAIN_SHA\`
 

@@ -1,11 +1,10 @@
 # ONT methylation: leukemia or CNS classification
 
-Version 5 defaults to **Rockfish**. Prepare its raw-signal runtime using the [version 5 guide](../releases/5.0.0.md). The Dorado/Modkit workflows below remain available by explicitly selecting **Modkit**.
+Version 5 defaults to **Rockfish**; see the [setup guide](../releases/5.0.0.md). The examples below explicitly select **Modkit**.
 
 Choose **MARLIN** for leukemia or **Sturgeon** for CNS-tumor research. Select the classifier explicitly; review predictions alongside other laboratory findings.
 
-[Install first](../installation.md). Browser and terminal routes are below; see
-[resources](methylation_reference.md) and [SSH/headless](../headless.md) for details.
+[Install first](../installation.md). See [resources](methylation_reference.md) and [SSH/headless](../headless.md).
 
 Finished an ONT copy-number run? Follow the [post-ONT CpG video guide](../post_ont_cpg.md) to reuse original inputs and assign separate MARLIN/Sturgeon projects.
 
@@ -56,7 +55,7 @@ FASTQ read IDs determine which signal reads belong to each sample. Save, check, 
 
 ### Terminal example: leukemia using existing BAMs
 
-Replace the paths, barcode, and sample name below with yours:
+Replace paths, barcode and sample name:
 
 ```bash
 oncotracer setup --methylation-caller modkit --terminal \
@@ -73,7 +72,7 @@ This asks for remaining tool/model paths in the terminal. Check/run the saved
 `/work/leukemia-study/config/run.yml` below. `--no-browser` still starts a server.
 
 For unattended reuse, use a complete resource YAML from a previous project.
-Missing tools or assets stop setup. This alternative checks and runs automatically:
+Missing tools or assets stop setup. Check and run automatically:
 
 ```bash
 oncotracer setup --methylation-caller modkit --non-interactive --run \
@@ -95,8 +94,7 @@ oncotracer setup --methylation-caller modkit --non-interactive --run \
 | `--cpu` | Keep methylation tools on CPU, including MARLIN |
 | `--threads 8` | Request eight CPU worker threads |
 
-For CNS, the explicit terminal counterpart is below. Confirm the applicable
-Sturgeon license when prompted; setup does not grant a license.
+Confirm the applicable Sturgeon license when prompted; setup does not grant a license.
 
 ### Terminal / headless: CNS using existing BAMs
 
