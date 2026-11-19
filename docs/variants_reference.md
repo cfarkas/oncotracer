@@ -808,3 +808,11 @@ docker run --rm --user "$(id -u):$(id -g)" -v /data/project:/project \
 ```
 
 YAML paths must be valid inside the container. No image is published by these commands.
+
+## CPU and memory scheduling
+
+The complete Illumina workflow schedules independent calling and imputation tasks within each sample's CPU and memory allowance. Germline calling requests one CPU and up to 4 GiB; Mutect2 requests up to two CPUs and 16 GiB; each GLIMPSE2 phase chunk requests one CPU and up to 8 GiB. Every reservation is capped by the sample allowance. Alignment and other memory-intensive stages retain their larger budgets.
+
+Task memory is also passed to the tool implementation: GATK's Java heap and processor count follow the task reservation, rather than the entire sample allowance. Calling filters, reference panels, imputation thresholds, FFPE review and CNA rescue rules are unchanged. More samples or chunks can run concurrently when both CPU and memory fit; extra threads alone do not guarantee a proportional speedup.
+
+The Nextflow trace records requested CPUs and memory, measured CPU use and peak RSS, and task start/completion times. Use these measurements to size the cohort and compare fresh runs on the same inputs. Synthetic scheduler checks validate overlap and resource limits; they are not a biological speed benchmark.

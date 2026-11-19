@@ -539,13 +539,16 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('stage',choices=['align','merge','germline','normal_mutect','create_pon','somatic','prepare_clinvar','annotate','traits','ancestry','report'])
     p.add_argument('--config',required=True); p.add_argument('--sample'); p.add_argument('--threads',type=int,default=1)
+    p.add_argument('--task-memory-gb',type=float,help='Nextflow task memory reservation in GiB')
     p.add_argument('--lane'); p.add_argument('--library'); p.add_argument('--reads',nargs='+'); p.add_argument('--bams',nargs='+')
     p.add_argument('--pon'); p.add_argument('--normal-vcfs',nargs='+')
     p.add_argument('--bam'); p.add_argument('--kind'); p.add_argument('--vcf'); p.add_argument('--clinvar')
     p.add_argument('--qc'); p.add_argument('--traits'); p.add_argument('--ancestry'); p.add_argument('--annotations',nargs='+')
     p.add_argument('--imputed-vcfs',nargs='*')
     p.add_argument('--cached-trait-data')
-    a=p.parse_args(); c=read_json(a.config)
+    a=p.parse_args()
+    from task_resources import for_task
+    c=for_task(read_json(a.config),threads=a.threads,memory_gb=a.task_memory_gb)
     globals()[a.stage](a,c)
     from continuation import record
     record(a,c)

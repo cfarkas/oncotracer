@@ -70,7 +70,7 @@ process ALIGN {
     path '*.json', emit: qc
     script:
     """
-    '${params.python}' ${code}/pipeline.py align --config ${runtime} --sample '${sample}' --lane '${lane}' --library '${library}' --reads ${reads.collect { "'${it}'" }.join(' ')} --threads ${task.cpus}
+    '${params.python}' ${code}/pipeline.py align --config ${runtime} --sample '${sample}' --lane '${lane}' --library '${library}' --reads ${reads.collect { "'${it}'" }.join(' ')} --threads ${task.cpus} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process MERGE_MARKDUP {
@@ -89,7 +89,7 @@ process MERGE_MARKDUP {
     path '*.txt'
     script:
     """
-    '${params.python}' ${code}/pipeline.py merge --config ${runtime} --sample '${sample}' --bams ${bams.collect { "'${it}'" }.join(' ')} --threads ${task.cpus}
+    '${params.python}' ${code}/pipeline.py merge --config ${runtime} --sample '${sample}' --bams ${bams.collect { "'${it}'" }.join(' ')} --threads ${task.cpus} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process GERMLINE {
@@ -106,7 +106,7 @@ process GERMLINE {
     path '*.stats.txt'
     script:
     """
-    '${params.python}' ${code}/pipeline.py germline --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus}
+    '${params.python}' ${code}/pipeline.py germline --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process NORMAL_MUTECT {
@@ -122,7 +122,7 @@ process NORMAL_MUTECT {
     tuple val(sample), path("${sample}.pon.unfiltered.vcf.gz"), path("${sample}.pon.unfiltered.vcf.gz.tbi"), emit: vcf
     script:
     """
-    '${params.python}' ${code}/pipeline.py normal_mutect --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus}
+    '${params.python}' ${code}/pipeline.py normal_mutect --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process CREATE_PON {
@@ -138,7 +138,7 @@ process CREATE_PON {
     path 'somatic_pon.provenance.json'
     script:
     """
-    '${params.python}' ${code}/pipeline.py create_pon --config ${runtime} --normal-vcfs ${vcfs.collect { "'${it}'" }.join(' ')} --threads ${task.cpus}
+    '${params.python}' ${code}/pipeline.py create_pon --config ${runtime} --normal-vcfs ${vcfs.collect { "'${it}'" }.join(' ')} --threads ${task.cpus} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process SOMATIC {
@@ -158,7 +158,7 @@ process SOMATIC {
     path '*.tar.gz', optional: true
     script:
     """
-    '${params.python}' ${code}/pipeline.py somatic --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus} ${pon ? "--pon '${pon}'" : ''}
+    '${params.python}' ${code}/pipeline.py somatic --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus} ${pon ? "--pon '${pon}'" : ''} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process PREPARE_CLINVAR {
@@ -173,7 +173,7 @@ process PREPARE_CLINVAR {
     path 'clinvar.provenance.json'
     script:
     """
-    '${params.python}' ${code}/pipeline.py prepare_clinvar --config ${runtime}
+    '${params.python}' ${code}/pipeline.py prepare_clinvar --config ${runtime} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process ANNOTATE {
@@ -193,7 +193,7 @@ process ANNOTATE {
     path '*multianno*', optional: true
     script:
     """
-    '${params.python}' ${code}/pipeline.py annotate --config ${runtime} --sample '${sample}' --kind '${kind}' --vcf ${vcf} --clinvar ${clinvar} --threads ${task.cpus}
+    '${params.python}' ${code}/pipeline.py annotate --config ${runtime} --sample '${sample}' --kind '${kind}' --vcf ${vcf} --clinvar ${clinvar} --threads ${task.cpus} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process TRAITS_GWAS {
@@ -214,7 +214,7 @@ process TRAITS_GWAS {
     path '*.vcf.gz*', optional: true
     script:
     """
-    '${params.python}' ${code}/pipeline.py traits --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus} ${cached_genotypes ? '--cached-trait-data cached_traits' : ''} ${imputed ? "--imputed-vcfs " + imputed.findAll { it.toString().endsWith('.bcf') }.collect { "'${it}'" }.join(' ') : ''}
+    '${params.python}' ${code}/pipeline.py traits --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus} ${cached_genotypes ? '--cached-trait-data cached_traits' : ''} ${imputed ? "--imputed-vcfs " + imputed.findAll { it.toString().endsWith('.bcf') }.collect { "'${it}'" }.join(' ') : ''} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process VARIANT_EVIDENCE {
@@ -252,7 +252,7 @@ process ANCESTRY {
     path '*.html', optional: true
     script:
     """
-    '${params.python}' ${code}/pipeline.py ancestry --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus}
+    '${params.python}' ${code}/pipeline.py ancestry --config ${runtime} --sample '${sample}' --bam ${bam} --threads ${task.cpus} --task-memory-gb ${task.memory.toMega() / 1024.0}
     """
 }
 process ANCESTRY_EXPLORER {
