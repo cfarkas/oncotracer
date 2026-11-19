@@ -43,6 +43,9 @@ class TaskResourcesTests(unittest.TestCase):
         self.assertEqual(task['memory_gb'], 48)
         self.assertEqual(task['threads'], 1)
 
+    def test_direct_serial_helpers_accept_minimal_legacy_configs(self):
+        self.assertEqual(for_task({'sample':'S'}, threads=1), {'sample':'S', 'threads':1})
+
     def test_rejects_invalid_or_excessive_task_budgets(self):
         for threads in (0, -1, True, 1.5, 9):
             with self.subTest(threads=threads), self.assertRaises(ValueError):

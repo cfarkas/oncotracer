@@ -54,15 +54,17 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 
 ## Run saved projects
 
+Software release validation is separate from completion of the study benchmarks. Cohort runtimes are reported only after analysis and output validation finish.
+
 Prepare project YAMLs with raw inputs, references and models. For ONT, include POD5 paths and set `gpu_usage: false`, `methylation_gpu_usage: true` for GPU methylation and CPU variants. Adjust the example budgets to your host. [Commands and migration](docs/releases/5.0.0.md).
 
 ```bash
-oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 42 --parallel-samples 5 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
+oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 42 --parallel-samples 7 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
 oncotracer run --config /path/to/ONT/config/run.yml --backend docker --image carlosfarkas/oncotracer:5.0.0 --methylation --methylation-caller rockfish --threads 66 --parallel-samples 4 --no-merge-vcfs --resource-mode dynamic --storage-mode compact
-oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 18 --parallel-samples 2 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
+oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 18 --parallel-samples 3 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
 ```
 
-These concurrent examples require approximately 1 TiB RAM: FFPE/ONT/fresh budgets of 240/584/112 GiB.
+These concurrent examples require approximately 1 TiB RAM: FFPE/ONT/fresh budgets of 400/360/176 GiB, set with both analysis_memory and variant_memory in each YAML.
 
 ## Set up your analysis
 
