@@ -6,7 +6,7 @@ Analyze Illumina and Oxford Nanopore (ONT) copy-number changes and small variant
 
 ## Quick start
 
-Install with Linux and Python 3.10–3.13:
+Install with Linux and Python 3.10–3.13. No Git checkout is required:
 
 ```bash
 python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v5.0.0/oncotracer-5.0.0-py3-none-any.whl"
@@ -56,7 +56,7 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 
 Software release checks are separate from study benchmarks; runtimes require completed, validated analyses.
 
-Prepare project YAMLs with raw inputs, references and models. For ONT, include POD5 paths and set `gpu_usage: false`, `methylation_gpu_usage: true` for GPU methylation and CPU variants. Adjust the example budgets to your host. [Commands and migration](docs/releases/5.0.0.md).
+Prepare project YAMLs with raw inputs, references and models. For ONT, include POD5 paths and set `gpu_usage: false`, `methylation_gpu_usage: true` for GPU methylation and CPU variants. Adjust budgets to your host. [Commands and migration](docs/releases/5.0.0.md).
 
 ```bash
 oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 42 --parallel-samples 7 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
