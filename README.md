@@ -6,7 +6,7 @@ Analyze Illumina and Oxford Nanopore (ONT) copy-number changes and small variant
 
 ## Quick start
 
-Use Linux and Python 3.10–3.13. No Git checkout is required. Install in your Python environment:
+Install with Linux and Python 3.10–3.13:
 
 ```bash
 python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v5.0.0/oncotracer-5.0.0-py3-none-any.whl"
@@ -26,7 +26,7 @@ oncotracer --interactive --backend conda
 
 ### Docker
 
-With Docker running and accessible:
+With Docker running:
 
 ```bash
 oncotracer install --docker --image carlosfarkas/oncotracer:5.0.0
@@ -50,11 +50,11 @@ From the [source checkout](docs/installation_details.md#install-from-github), Ne
 nextflow run main.nf --interactive --backend conda
 ```
 
-Use the full path to `main.nf` from another directory, or `--backend docker` for Docker. Analysis starts only after **Run analysis**. [Nextflow and concurrent projects](docs/nextflow_entry.md).
+Use the full path to `main.nf` from another directory, or `--backend docker` for Docker. Select **Run analysis** to start. [Nextflow and concurrent projects](docs/nextflow_entry.md).
 
 ## Run saved projects
 
-Software release validation is separate from completion of the study benchmarks. Cohort runtimes are reported only after analysis and output validation finish.
+Software release checks are separate from study benchmarks; runtimes require completed, validated analyses.
 
 Prepare project YAMLs with raw inputs, references and models. For ONT, include POD5 paths and set `gpu_usage: false`, `methylation_gpu_usage: true` for GPU methylation and CPU variants. Adjust the example budgets to your host. [Commands and migration](docs/releases/5.0.0.md).
 
@@ -64,7 +64,7 @@ oncotracer run --config /path/to/ONT/config/run.yml --backend docker --image car
 oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 18 --parallel-samples 3 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
 ```
 
-These concurrent examples require approximately 1 TiB RAM: FFPE/ONT/fresh budgets of 400/360/176 GiB, set with both analysis_memory and variant_memory in each YAML.
+These examples need approximately 1 TiB RAM. Set FFPE/ONT/fresh YAML analysis_memory and variant_memory to 400/360/176GB.
 
 ## Set up your analysis
 
