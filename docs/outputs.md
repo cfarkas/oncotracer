@@ -64,7 +64,7 @@ The dashboard and combined report list **NOT ASSESSABLE** samples with their
 coverage metrics and reason. Open `06_workflow_summary/cna_assessment.html`
 (or its TSV/JSON) before interpreting CNA plots. These samples are omitted from
 CNA interpretation and cohort analyses; missing evidence is never a flat/normal
-profile or a deep-loss call. See [coverage checks and recovery](cna_evidence_assessment.md#coverage-comes-before-interpretation).
+profile or a deep-loss call. See [coverage checks and recovery](cna_evidence_assessment.md#sample-coverage-checks).
 
 ## Which result is authoritative?
 

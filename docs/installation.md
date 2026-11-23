@@ -62,7 +62,7 @@ Runs use prebuilt hg38 indexes by default. See [genome indexes](reference_indexe
 
 ## Nextflow entry
 
-If you have Nextflow and an [OncoTracer source checkout](installation_details.md#install-from-github), supply its full path from any directory:
+If you have Nextflow and an [OncoTracer source checkout](installation_details.md#editable-development-installation), supply its full path from any directory:
 
 ```bash
 nextflow run /absolute/path/to/oncotracer-src/main.nf --interactive --backend conda

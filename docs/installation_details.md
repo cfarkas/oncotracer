@@ -1,28 +1,40 @@
-# Advanced installation details
-
-Start with [installation](installation.md). This reference explains standalone
-builds, alternative backends, ownership checks and recovery behavior.
+# Installation reference
 
 ## Install from GitHub
 
-For development, install an editable checkout from the main branch:
+This installs the current `main` branch on Linux. You need Python 3.10–3.13,
+Git and [Conda](https://github.com/conda-forge/miniforge#install). Run:
 
 ```bash
-git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
-python3 -m venv oncotracer-env
-oncotracer-env/bin/python -m pip install -e ./oncotracer-src
-source oncotracer-env/bin/activate
+python3 -m venv ~/.venvs/oncotracer
+source ~/.venvs/oncotracer/bin/activate
+python -m pip install --upgrade --force-reinstall "git+https://github.com/cfarkas/oncotracer.git@main"
+oncotracer install --conda
+oncotracer doctor --backend conda
+oncotracer --interactive --backend conda
 ```
 
-Keep both folders for this route. A normal `pip install oncotracer` includes the
-application and its resources without requiring a checkout.
+The last command opens setup in your browser. Select your input files and project
+folder, review the settings, then click **Run analysis**. To reopen setup later,
+run `oncotracer --interactive --backend conda`.
 
-The main branch includes the complete Illumina GLIMPSE2 workflow and
-resume/FFPE repairs. For Docker, use the current image documented below or
-[build from source](containers.md#fastq-to-cna-and-variants) with both source
-provenance arguments.
+The application stays in `~/.venvs/oncotracer`; keep that directory after
+installation. You do not need to maintain a source checkout. To install a
+released version, use the [standard installation guide](installation.md).
 
-OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.13 is required by the portable zipapp. The selected backend supplies BWA, samtools, Picard, R, qDNAseq, HMMcopy, ichorCNA, the optional classifier, and GISTIC2.
+For Docker, replace the last three commands with:
+
+```bash
+oncotracer install --docker --image carlosfarkas/oncotracer:5.0.0
+oncotracer doctor --backend docker
+oncotracer --interactive --backend docker
+```
+
+Docker Engine must already be installed and running. If installation reports a
+missing PATH entry, apply the command it prints before opening a new terminal.
+
+The sections below cover backend options, shared installations and recovery.
+For source-code changes, see [editable development installation](#editable-development-installation).
 
 ## Choose the installation route
 
@@ -276,6 +288,23 @@ Failed publications use the same rule: after restoring the prior target,
 OncoTracer writes a durable `rolled_back` journal, seals the exact rollback
 inventory, and retains both records. A later invocation can resume between any
 of those steps without overwriting earlier evidence.
+
+## Development installations
+
+### Editable development installation
+
+Use an editable checkout when changing OncoTracer's code:
+
+```bash
+git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
+python3 -m venv oncotracer-env
+oncotracer-env/bin/python -m pip install -e ./oncotracer-src
+source oncotracer-env/bin/activate
+```
+
+Keep both `oncotracer-src` and `oncotracer-env`. Changes in the checkout are used
+by the installed command. Install the scientific tools with
+`oncotracer install --conda` before running an analysis.
 
 ### Poetry
 

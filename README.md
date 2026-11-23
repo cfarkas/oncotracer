@@ -34,37 +34,34 @@ oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
 
-The image is saved for later commands. See [installation](docs/installation.md) and [FFPE/ONT resources](docs/variants.md). Configure external Dorado and classifier resources for ONT methylation.
+OncoTracer remembers the Docker image selected during installation. Pass `--image` to use a different one. ONT methylation also needs Dorado and a MARLIN or Sturgeon model; follow the [caller setup guide](docs/releases/5.0.0.md).
 
-Use `oncotracer --detect-resources` (also `--detect_resources`) for [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) based on CPU/RAM. Choose the allocation during setup or **Review and run**.
+Run `oncotracer --detect-resources` to see how many samples your CPU and RAM can process in parallel. Select the allocation during setup or in **Review and run**. See [CPU and memory settings](docs/MULTISAMPLE_QUICKSTART.md).
 
-New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md) with read-support checks; existing settings persist. Options: `--resource-mode fixed` and `--no-merge-vcfs`.
+New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md), which checks read support for low-coverage calls. Existing projects keep their saved profile.
 
-For supported stages, install with `--gpu`, check with `doctor --gpu`, then choose **GPU usage → Yes**. See [GPU setup and memory limits](docs/gpu.md).
+For GPU support, follow the [GPU installation steps](docs/gpu.md#install-and-check), then select **GPU usage → Yes** in setup.
 
 ### Interactive setup with Nextflow
 
-From the [source checkout](docs/installation_details.md#install-from-github), Nextflow opens the same interface:
+From the [source checkout](docs/installation_details.md#editable-development-installation), Nextflow opens the same interface:
 
 ```bash
 nextflow run main.nf --interactive --backend conda
 ```
 
-Use the full path to `main.nf` from another directory, or `--backend docker` for Docker. Select **Run analysis** to start. [Nextflow and concurrent projects](docs/nextflow_entry.md).
+Use the full path to `main.nf` from another directory. Select **Run analysis** to start. See [Nextflow setup](docs/nextflow_entry.md).
 
-## Run saved projects
+## Run a saved project
 
-Software release checks are separate from study benchmarks; [58-sample results](docs/benchmarks/2026-11-23.md) include timings and QC.
-
-Prepare project YAMLs with raw inputs, references and models. For ONT, include POD5 paths and set `gpu_usage: false`, `methylation_gpu_usage: true` for GPU methylation and CPU variants. Adjust budgets to your host. [Commands and migration](docs/releases/5.0.0.md).
+Setup saves the project's settings in `config/run.yml`. To run that configuration
+from the terminal:
 
 ```bash
-oncotracer run --config /path/to/FFPE/config/run.yml --backend conda --threads 42 --parallel-samples 7 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
-oncotracer run --config /path/to/ONT/config/run.yml --backend docker --image carlosfarkas/oncotracer:5.0.0 --methylation --methylation-caller rockfish --threads 66 --parallel-samples 4 --no-merge-vcfs --resource-mode dynamic --storage-mode compact
-oncotracer run --config /path/to/Fresh/config/run.yml --backend conda --threads 18 --parallel-samples 3 --no-merge-vcfs --cpu --resource-mode fixed --storage-mode compact
+oncotracer run --config /path/to/project/config/run.yml --backend conda
 ```
 
-These examples need approximately 1 TiB RAM. Set FFPE/ONT/fresh YAML analysis_memory and variant_memory to 400/360/176GB.
+Use `--backend docker` for a Docker installation. The [version 5 run guide](docs/releases/5.0.0.md) provides complete FFPE, fresh Illumina and ONT commands, including GPU methylation settings. The [58-sample benchmark](docs/benchmarks/2026-11-23.md) reports timings, CPU/RAM/GPU use and sample QC. Software test results accompany each release.
 
 ## Set up your analysis
 
@@ -88,7 +85,7 @@ Use `oncotracer --interactive --project /path/to/existing-project`. Load saved s
 
 ### ONT input layout
 
-With the [current GitHub source](docs/installation_details.md#install-from-github), select `ONT/` with **one named folder per intended library**. Folder names become sample names; keep multiple libraries separate even when they share a patient.
+Select `ONT/` with **one folder per library**. Folder names become sample names; keep libraries separate even when they share a patient.
 
 ```text
 ONT/
@@ -115,7 +112,7 @@ POD5 with the pinned Rockfish runtime and compatible Dorado base model. Explicit
 Modkit selection accepts matching `MM`/`ML` BAMs or Dorado modification models. Legacy single MinKNOW runs, barcode folders and single ligation libraries
 remain supported. See [ONT settings](docs/configuration/ont.md) and the
 [CpG guide](docs/post_ont_cpg.md).
-Run `oncotracer check --config /path/to/project/config/run.yml` before execution. See the [headless guide](docs/headless.md) for SSH setup and the [uninstall guide](docs/uninstall.md) for removal.
+Run `oncotracer check --config /path/to/project/config/run.yml` before execution. For remote access, see [SSH setup](docs/headless.md).
 
 ## Guides and examples
 
