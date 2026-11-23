@@ -14,3 +14,5 @@ Benchmark source: 76da6c1b707f3ee14f0dc67f7521e394ff934e5d. The release source a
 have separate provenance. ONT retains its QC-limited exit and sample exclusions.
 Task-time sums overlap and must not be interpreted as cohort wall time.
 These data measure execution and output integrity, not diagnostic accuracy.
+
+CPU allocations distinguish physical cores from logical hardware threads. `cpu_topology.json` confirms the host topology at publication; affinity comes from the original run manifest. GPU memory/activity series include tracked analysis processes only. Allocation, mean CPU usage, RAM limits, application RAM, page cache and GPU VRAM are separate quantities.

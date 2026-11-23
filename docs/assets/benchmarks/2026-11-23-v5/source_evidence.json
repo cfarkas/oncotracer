@@ -19,6 +19,12 @@
       "source_sha256": "c81ad67d7d679346bbcfc27bb8a2ad1f502196f18630e00a668d023f121b744d"
     },
     {
+      "bytes": 13050,
+      "cohort": "all",
+      "role": "cpu_topology_confirmed_at_publication",
+      "source_sha256": "d85b7a7987d2d770ca1d78851d73ae71d821c032c98a284a36f3f489b94da494"
+    },
+    {
       "bytes": 8710619,
       "cohort": "Illumina_FFPE",
       "role": "full_output_validation",

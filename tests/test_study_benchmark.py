@@ -11,6 +11,13 @@ benchmark=importlib.util.module_from_spec(spec);spec.loader.exec_module(benchmar
 
 
 class StudyBenchmarkTests(unittest.TestCase):
+    def test_physical_cores_do_not_count_smt_siblings_twice(self):
+        topology={'cpus':[{'cpu':0,'core':0,'socket':0},{'cpu':64,'core':0,'socket':0},{'cpu':1,'core':1,'socket':0},{'cpu':65,'core':1,'socket':0}]}
+        self.assertEqual(benchmark.core_allocation('0-1,64-65',topology),(4,2))
+        self.assertEqual(benchmark.core_allocation('0-1,64-65',None),(4,None))
+        with self.assertRaises(ValueError):benchmark.core_allocation('0-2',topology)
+        with self.assertRaises(ValueError):benchmark.cpu_list('3-1')
+
     def test_parallel_intervals_are_not_added_as_wall_time(self):
         items=[dict(stage='calling',start=0,end=10,returncode=0),dict(stage='calling',start=5,end=15,returncode=0),dict(stage='calling',start=20,end=25,returncode=1)]
         result=benchmark.aggregate_intervals('cohort','native',items,0)[0]

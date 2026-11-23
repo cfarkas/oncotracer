@@ -111,7 +111,28 @@ def aggregate_intervals(cohort,layer,rows,origin):
     return result
 
 
-def export(root,recording,out,gpu_model=None):
+def cpu_list(value):
+    result=set()
+    for term in str(value).split(','):
+        limits=term.split('-')
+        if len(limits) not in (1,2) or not all(v.isdigit() for v in limits):
+            raise ValueError('Invalid CPU affinity')
+        lo=int(limits[0]);hi=int(limits[-1])
+        if hi<lo:raise ValueError('Reversed CPU range')
+        result.update(range(lo,hi+1))
+    return result
+
+
+def core_allocation(affinity,topology):
+    logical=cpu_list(affinity)
+    if not topology:return len(logical),None
+    by_cpu={int(row['cpu']):row for row in topology['cpus']}
+    if not logical.issubset(by_cpu):raise ValueError('CPU topology does not cover affinity')
+    physical={(by_cpu[c]['socket'],by_cpu[c]['core']) for c in logical}
+    return len(logical),len(physical)
+
+
+def export(root,recording,out,gpu_model=None,cpu_topology=None):
     root=Path(root).resolve();recording=Path(recording).resolve();out=Path(out).resolve()
     if root==out or root.is_relative_to(out):raise ValueError('Export directory overlaps study root')
     manifest=load(recording/'run_manifest.json');finished=load(root/'validation/final_status.json')
@@ -124,6 +145,8 @@ def export(root,recording,out,gpu_model=None):
     def record(path,role,cohort='all'):
         evidence.append(dict(cohort=cohort,role=role,source_sha256=sha(path),bytes=Path(path).stat().st_size))
     for path,role in [(recording/'run_manifest.json','run_manifest'),(recording/'resource_summary.json','resource_summary'),(root/'validation/final_status.json','final_validation')]:record(path,role)
+    topology=load(cpu_topology) if cpu_topology else None
+    if cpu_topology:record(cpu_topology,'cpu_topology_confirmed_at_publication')
     cohorts=[];stages=[];tasks=[];all_samples=[];qc={};validation=[]
     origin=timestamp(manifest['created_utc'])
     for job in manifest['jobs']:
@@ -150,7 +173,11 @@ def export(root,recording,out,gpu_model=None):
             checked_files=proof['checked_file_count'],checked_bytes=proof['checked_bytes'],
             validator_sha256=proof['validator_sha256'],source_commit=proof['source_commit'],source_sha256=proof['source_sha256']))
         validation_seconds=timestamp(proof['finished_at'])-timestamp(proof['started_at'])
+        logical,physical=core_allocation(job['cpuset_cpus'],topology)
+        if logical!=job['threads_budget']:raise ValueError('CPU affinity and thread budget differ')
         cohorts.append(dict(cohort=name,samples=len(samples),backend=job['backend'],threads_budget=job['threads_budget'],parallel_samples=job['parallel_samples'],
+            allocated_logical_cpus=logical,allocated_physical_cores=physical,cpu_affinity=job['cpuset_cpus'],
+            mean_active_logical_cpus=round(r['cpu_seconds']/r['wall_seconds'],4),
             memory_budget_gib=job['memory_gib'],methylation_gpu=(name=='ONT_Fresh'),
             analysis_wall_hours=round(r['wall_seconds']/3600,4),cpu_core_hours=round(r['cpu_core_hours'],4),
             peak_anonymous_ram_gib=round(r['observed_peak_ram_anon_bytes_gib'],4),
@@ -201,24 +228,32 @@ def export(root,recording,out,gpu_model=None):
                 p95_task_seconds=round(percentile(real,.95),3) if real else None,
                 max_peak_rss_gib=round(max(rss)/GIB,4) if rss else None,max_requested_memory_gib=round(max(requested)/GIB,4) if requested else None,
                 max_requested_cpus=max(int(x['cpus']) for x in items)))
-    columns=['elapsed_hours','cohort','cpu_cores','anonymous_ram_gib','cgroup_memory_including_cache_gib','gpu_memory_mib','allocated_project_disk_gib']
-    series=[];buckets={}
+    columns=['elapsed_hours','cohort','cpu_cores','anonymous_ram_gib','cgroup_memory_including_cache_gib','gpu_memory_mib','gpu_sm_percent','allocated_project_disk_gib']
+    series=[];buckets={};peaks=collections.defaultdict(dict)
     resource_path=recording/'resources_normalized.csv';record(resource_path,'resource_time_series')
     with resource_path.open() as h:
         for row in csv.DictReader(h):
             bucket=int(float(row['elapsed_seconds'])//300);key=(row['project'],bucket)
             if row['state'] not in ['running','active']:continue
+            for field in ['cpu_cores','gpu_memory_mib','gpu_sm_percent']:
+                if row.get(field) not in ('',None):peaks[row['project']][field]=max(float(row[field]),peaks[row['project']].get(field,0.))
             def numeric(field,scale=1):return float(row[field])/scale if row.get(field) not in ('',None) else None
-            item=dict(elapsed_hours=round(float(row['elapsed_seconds'])/3600,4),cohort=row['project'],cpu_cores=numeric('cpu_cores'),anonymous_ram_gib=numeric('ram_anon_bytes',GIB),cgroup_memory_including_cache_gib=numeric('memory_current_bytes',GIB),gpu_memory_mib=numeric('gpu_memory_mib'),allocated_project_disk_gib=numeric('project_allocated_bytes',GIB))
+            item=dict(elapsed_hours=round(float(row['elapsed_seconds'])/3600,4),cohort=row['project'],cpu_cores=numeric('cpu_cores'),anonymous_ram_gib=numeric('ram_anon_bytes',GIB),cgroup_memory_including_cache_gib=numeric('memory_current_bytes',GIB),gpu_memory_mib=numeric('gpu_memory_mib'),gpu_sm_percent=numeric('gpu_sm_percent'),allocated_project_disk_gib=numeric('project_allocated_bytes',GIB))
             buckets[key]=item  # Last observed sample per five-minute bucket, not a peak.
     series=list(buckets.values())
+    for cohort in cohorts:
+        peak=peaks[cohort['cohort']]
+        cohort['peak_sampled_logical_cpu_equivalents']=peak.get('cpu_cores')
+        cohort['peak_tracked_gpu_memory_mib']=peak.get('gpu_memory_mib')
+        cohort['peak_tracked_gpu_memory_gib']=round(peak['gpu_memory_mib']/1024,4) if 'gpu_memory_mib' in peak else None
+        cohort['gpu_scope']='Dorado and Rockfish methylation only; shared RTX A5000; CPU variants' if cohort['methylation_gpu'] else 'No GPU; CPU only'
     cpu={x['field'].rstrip(':'):x['data'] for x in manifest['hardware']['lscpu']['lscpu']}
     total_kib=int(re.search(r'MemTotal:\s+(\d+)',manifest['hardware']['meminfo'])[1])
     report=dict(schema='oncotracer-study-benchmark-v1',status='all_study_outputs_validated',version='5.0.0',
         benchmark_source_commit=manifest['source_commit'],benchmark_source_sha256=manifest['source_sha256'],
         benchmark_local_image_id=manifest['docker_image_id'],benchmark_started_utc=manifest['created_utc'],validation_finished_utc=finished['updated_at'],
         fresh_analyses=manifest['recording_type']=='fresh_analyses',sample_count=sum(c['samples'] for c in cohorts),
-        hardware=dict(cpu=cpu['Model name'],logical_cpus=int(cpu['CPU(s)']),ram_gib=round(total_kib/1024**2,3),gpu_model=gpu_model,gpu_model_source='operator-supplied hardware label' if gpu_model else 'not recorded'),
+        hardware=dict(cpu=cpu['Model name'],logical_cpus=int(cpu['CPU(s)']),physical_cores=int(cpu['Core(s) per socket'])*int(cpu['Socket(s)']),threads_per_core=int(cpu['Thread(s) per core']),ram_gib=round(total_kib/1024**2,3),gpu_model=gpu_model,gpu_model_source='operator-supplied hardware label' if gpu_model else 'not recorded'),
         concurrency='Three cohorts ran concurrently with separate CPU sets and memory limits; shared storage, reference caches and host background workloads.',
         scope='Operational completion, measured resources and output integrity; not truth-set sensitivity/specificity, clinical validation or a controlled v4.1 speed comparison.',
         timing_notes=['Analysis wall time includes run-time input/reference verification, analysis, reporting and finalization. Initial software installation and shared reference preparation occurred before timing.',
@@ -226,7 +261,9 @@ def export(root,recording,out,gpu_model=None):
           'Native trace spans include waits between commands; active unions exclude gaps. Summed command/task times overlap across parallel samples and must not be added to cohort wall time.',
           'Nextflow task timings cover the Illumina variant subworkflow, including recorded retries; per-process peak RSS is distinct from cohort cgroup memory including page cache.',
           'Resource time-series CSV retains the last sample in each five-minute bucket. Summary peaks use the full recorder, not the downsampled plot.',
-          'GPU device utilization includes other host processes; no exclusive GPU-hours or CPU-versus-GPU speedup is claimed.',
+          'CPU allocation counts logical hardware threads and distinct physical cores separately; physical counts require a topology file. Mean active logical CPUs = CPU seconds / analysis wall seconds; interval peak estimates can slightly exceed the affinity count because collection is asynchronous.',
+          'RAM anonymous measurements include shared memory. Cgroup memory additionally includes page cache. These are separate from GPU memory.',
+          'GPU memory and SM series sum only tracked analysis-process measurements from nvidia-smi. Device-wide activity includes other host processes; no exclusive GPU-hours or CPU-versus-GPU speedup is claimed.',
           'Empty metrics mean unavailable, not zero.'],
         cohorts=cohorts,qc=qc,validation=validation)
     write_json(out/'benchmark_summary.json',report);write_json(out/'source_evidence.json',dict(evidence=evidence))
@@ -261,11 +298,12 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--root',type=Path);p.add_argument('--recording',type=Path);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--bundle',type=Path)
+    p.add_argument('--cpu-topology',type=Path,help='Optional JSON CPU/core/socket mapping to count physical cores')
     p.add_argument('--gpu-model',help='Optional hardware model label; otherwise unreported')
     a=p.parse_args()
     if a.root or a.recording:
         if not a.root or not a.recording:p.error('--root and --recording must be supplied together')
-        report=export(a.root,a.recording,a.output,a.gpu_model)
+        report=export(a.root,a.recording,a.output,a.gpu_model,a.cpu_topology)
         print(json.dumps(dict(status=report['status'],samples=report['sample_count'],cohorts=report['cohorts']),indent=2))
     if a.bundle:bundle(a.output,a.bundle)
 

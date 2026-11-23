@@ -686,6 +686,10 @@ jobs:
           - Provide isolated Docker, Conda and Poetry caller setup with commands for fresh ONT, FFPE and fresh Illumina projects.
           - All three fresh study cohorts passed full output validation: 26 FFPE Illumina, 11 fresh Illumina and 21 ONT libraries; all 58 variant workflows completed.
           - Measured analysis wall times: 77.10 h FFPE, 75.67 h fresh Illumina and 61.79 h ONT, running concurrently with separate resource limits.
+          - FFPE: 21 physical cores / 42 logical CPUs, 7 parallel samples, 400 GiB RAM limit; peak application RAM 97.8 GiB; no GPU.
+          - Fresh Illumina: 9 physical cores / 18 logical CPUs, 3 parallel samples, 176 GiB RAM limit; peak application RAM 60.4 GiB; no GPU.
+          - ONT: 33 physical cores / 66 logical CPUs, 4 parallel samples, 360 GiB RAM limit; peak application RAM 37.8 GiB. Dorado/Rockfish methylation used one shared RTX A5000 (24 GiB VRAM), with 22.6 GiB peak tracked GPU memory; variants remained on CPU.
+          - Mean active logical CPUs across the full runs: 18.81 FFPE, 8.70 fresh Illumina and 12.64 ONT. Allocations are per cohort, not per sample; memory including page cache is reported separately in the benchmark.
           - ONT retains its QC-limited exit: 7/21 primary CNA assessments, six additional coarse relative profiles and 20/21 completed methylation libraries. These are execution/QC results, not diagnostic accuracy estimates.
           - Download the study benchmark bundle for every recorded stage, Illumina variant subprocess, aggregate CPU/RAM/disk measurements, evidence hashes and reproducible commands.
           - The benchmark used commit 76da6c1b707f3ee14f0dc67f7521e394ff934e5d; scientific runtime sources are unchanged in this release. Published artifacts have their own exact provenance.
