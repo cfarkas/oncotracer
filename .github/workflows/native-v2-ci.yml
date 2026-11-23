@@ -144,6 +144,7 @@ jobs:
             tests/test_reuse_validation.py \
             tests/test_clinvar_resource.py \
             tests/test_release_workflow.py \
+            tests/test_study_benchmark.py \
             tests/test_release_validation_resume.py \
             tests/test_pypi_publish.py \
             tests/test_python_distribution.py

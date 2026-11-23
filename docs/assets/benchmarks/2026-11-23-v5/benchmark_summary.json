@@ -1,0 +1,182 @@
+{
+  "benchmark_local_image_id": "sha256:b2f50f3c3cfab45da03357f5c904e46e4897c1c3d1a81ade629cf860fa5fef47",
+  "benchmark_source_commit": "76da6c1b707f3ee14f0dc67f7521e394ff934e5d",
+  "benchmark_source_sha256": "d5926b562648ead29745cfa465ebd90401286fc1ac8cae9428b6b14a0c385d22",
+  "benchmark_started_utc": "2026-11-19T21:43:10.259450+00:00",
+  "cohorts": [
+    {
+      "analysis_wall_hours": 77.0956,
+      "backend": "conda",
+      "checked_output_bytes": 598398100791,
+      "checked_output_files": 27807,
+      "cohort": "Illumina_FFPE",
+      "cpu_core_hours": 1450.5327,
+      "memory_budget_gib": 400,
+      "methylation_gpu": false,
+      "output_validation": "passed",
+      "parallel_samples": 7,
+      "peak_anonymous_ram_gib": 97.7773,
+      "peak_cgroup_memory_including_cache_gib": 400.0,
+      "peak_project_allocated_disk_gib": 1496.1849,
+      "samples": 26,
+      "threads_budget": 42,
+      "validation_hours": 1.4664,
+      "workflow_exit_code": 0,
+      "workflow_status": "complete"
+    },
+    {
+      "analysis_wall_hours": 61.7886,
+      "backend": "docker",
+      "checked_output_bytes": 143575809101,
+      "checked_output_files": 43729,
+      "cohort": "ONT_Fresh",
+      "cpu_core_hours": 781.2111,
+      "memory_budget_gib": 360,
+      "methylation_gpu": true,
+      "output_validation": "passed",
+      "parallel_samples": 4,
+      "peak_anonymous_ram_gib": 37.801,
+      "peak_cgroup_memory_including_cache_gib": 291.5881,
+      "peak_project_allocated_disk_gib": 145.8078,
+      "samples": 21,
+      "threads_budget": 66,
+      "validation_hours": 0.4651,
+      "workflow_exit_code": 2,
+      "workflow_status": "partial_failure"
+    },
+    {
+      "analysis_wall_hours": 75.6668,
+      "backend": "conda",
+      "checked_output_bytes": 189805797405,
+      "checked_output_files": 11713,
+      "cohort": "Illumina_Fresh",
+      "cpu_core_hours": 658.0168,
+      "memory_budget_gib": 176,
+      "methylation_gpu": false,
+      "output_validation": "passed",
+      "parallel_samples": 3,
+      "peak_anonymous_ram_gib": 60.4234,
+      "peak_cgroup_memory_including_cache_gib": 176.0,
+      "peak_project_allocated_disk_gib": 568.8444,
+      "samples": 11,
+      "threads_budget": 18,
+      "validation_hours": 0.2213,
+      "workflow_exit_code": 0,
+      "workflow_status": "complete"
+    }
+  ],
+  "concurrency": "Three cohorts ran concurrently with separate CPU sets and memory limits; shared storage, reference caches and host background workloads.",
+  "fresh_analyses": true,
+  "hardware": {
+    "cpu": "AMD EPYC 7713 64-Core Processor",
+    "gpu_model": "NVIDIA RTX A5000 (24 GiB)",
+    "gpu_model_source": "operator-supplied hardware label",
+    "logical_cpus": 128,
+    "ram_gib": 995.515
+  },
+  "qc": {
+    "Illumina_FFPE": {
+      "cna_recovery": {
+        "primary_retained": 26
+      },
+      "methylation_classifiers": {},
+      "methylation_completed": 0,
+      "primary_cna": {
+        "complete": 26
+      },
+      "selected_cna_status": {
+        "primary_retained": 26
+      },
+      "variant_completed": 26,
+      "variant_failed": 0
+    },
+    "Illumina_Fresh": {
+      "cna_recovery": {
+        "primary_retained": 11
+      },
+      "methylation_classifiers": {},
+      "methylation_completed": 0,
+      "primary_cna": {
+        "complete": 11
+      },
+      "selected_cna_status": {
+        "primary_retained": 11
+      },
+      "variant_completed": 11,
+      "variant_failed": 0
+    },
+    "ONT_Fresh": {
+      "cna_recovery": {
+        "assessable_coarse_relative_profile": 6,
+        "not_assessable": 8,
+        "primary_retained": 7
+      },
+      "methylation_classifiers": {
+        "marlin": 13,
+        "sturgeon": 8
+      },
+      "methylation_completed": 20,
+      "primary_cna": {
+        "complete": 7,
+        "not_assessable": 14
+      },
+      "selected_cna_status": {
+        "assessable_coarse_relative_profile": 6,
+        "not_assessable": 8,
+        "primary_retained": 7
+      },
+      "variant_completed": 21,
+      "variant_failed": 0
+    }
+  },
+  "sample_count": 58,
+  "schema": "oncotracer-study-benchmark-v1",
+  "scope": "Operational completion, measured resources and output integrity; not truth-set sensitivity/specificity, clinical validation or a controlled v4.1 speed comparison.",
+  "status": "all_study_outputs_validated",
+  "timing_notes": [
+    "Analysis wall time includes run-time input/reference verification, analysis, reporting and finalization. Initial software installation and shared reference preparation occurred before timing.",
+    "Validation wall time is reported separately after analysis exit. Output validation hashes complete files and checks VCF indexes/sample identities and report PDFs.",
+    "Native trace spans include waits between commands; active unions exclude gaps. Summed command/task times overlap across parallel samples and must not be added to cohort wall time.",
+    "Nextflow task timings cover the Illumina variant subworkflow, including recorded retries; per-process peak RSS is distinct from cohort cgroup memory including page cache.",
+    "Resource time-series CSV retains the last sample in each five-minute bucket. Summary peaks use the full recorder, not the downsampled plot.",
+    "GPU device utilization includes other host processes; no exclusive GPU-hours or CPU-versus-GPU speedup is claimed.",
+    "Empty metrics mean unavailable, not zero."
+  ],
+  "validation": [
+    {
+      "checked_bytes": 598398100791,
+      "checked_files": 27807,
+      "cohort": "Illumina_FFPE",
+      "qc_limited": false,
+      "source_commit": "76da6c1b707f3ee14f0dc67f7521e394ff934e5d",
+      "source_sha256": "d5926b562648ead29745cfa465ebd90401286fc1ac8cae9428b6b14a0c385d22",
+      "status": "passed",
+      "validator_sha256": "f103794d8a5bd1afd34b2ed79010268214db534202f1d4e0deaa65dda88f7445",
+      "workflow_status": "complete"
+    },
+    {
+      "checked_bytes": 143575809101,
+      "checked_files": 43729,
+      "cohort": "ONT_Fresh",
+      "qc_limited": true,
+      "source_commit": "76da6c1b707f3ee14f0dc67f7521e394ff934e5d",
+      "source_sha256": "d5926b562648ead29745cfa465ebd90401286fc1ac8cae9428b6b14a0c385d22",
+      "status": "passed",
+      "validator_sha256": "f103794d8a5bd1afd34b2ed79010268214db534202f1d4e0deaa65dda88f7445",
+      "workflow_status": "partial_failure"
+    },
+    {
+      "checked_bytes": 189805797405,
+      "checked_files": 11713,
+      "cohort": "Illumina_Fresh",
+      "qc_limited": false,
+      "source_commit": "76da6c1b707f3ee14f0dc67f7521e394ff934e5d",
+      "source_sha256": "d5926b562648ead29745cfa465ebd90401286fc1ac8cae9428b6b14a0c385d22",
+      "status": "passed",
+      "validator_sha256": "f103794d8a5bd1afd34b2ed79010268214db534202f1d4e0deaa65dda88f7445",
+      "workflow_status": "complete"
+    }
+  ],
+  "validation_finished_utc": "2026-11-23T04:17:24.008180+00:00",
+  "version": "5.0.0"
+}

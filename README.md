@@ -54,7 +54,7 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 
 ## Run saved projects
 
-Software release checks are separate from study benchmarks; runtimes require completed, validated analyses.
+Software release checks are separate from study benchmarks; [58-sample results](docs/benchmarks/2026-11-23.md) include timings and QC.
 
 Prepare project YAMLs with raw inputs, references and models. For ONT, include POD5 paths and set `gpu_usage: false`, `methylation_gpu_usage: true` for GPU methylation and CPU variants. Adjust budgets to your host. [Commands and migration](docs/releases/5.0.0.md).
 

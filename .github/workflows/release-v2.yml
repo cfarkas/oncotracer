@@ -227,6 +227,28 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Build and verify versioned Python distributions
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
+        run: |
+          set -Eeuo pipefail
+          python3 -m pip install build
+          python3 -m build --outdir "$RUNNER_TEMP/python-distributions"
+          python3 scripts/verify_python_dist.py \
+            --dist-dir "$RUNNER_TEMP/python-distributions" \
+            --expected-version 5.0.0 --expected-commit "$MAIN_SHA" \
+            --expected-source-sha256 "$SOURCE_SHA256" \
+            --output "$RUNNER_TEMP/python-distribution-check.json"
+          python3 -m venv "$RUNNER_TEMP/release-wheel-smoke"
+          "$RUNNER_TEMP/release-wheel-smoke/bin/python" -m pip install \
+            --no-index --no-deps "$RUNNER_TEMP/python-distributions/oncotracer-5.0.0-py3-none-any.whl"
+          python3 scripts/smoke_python_install.py \
+            --python "$RUNNER_TEMP/release-wheel-smoke/bin/python" \
+            --expected-commit "$MAIN_SHA" --expected-source-sha256 "$SOURCE_SHA256" \
+            --expected-version 5.0.0 --output "$RUNNER_TEMP/python-wheel-smoke.json"
+
       - name: Build and authenticate copied release executable
         if: steps.gate.outputs.ready == 'true'
         id: binary
@@ -565,7 +587,28 @@ jobs:
           Q2_ARTIFACT_DIGEST: ${{ steps.parity.outputs.q2_artifact_digest }}
         run: |
           set -Eeuo pipefail
+          BENCHMARK_DIR=docs/assets/benchmarks/2026-11-23-v5
+          jq -e '.schema == "oncotracer-study-benchmark-v1" and
+            .status == "all_study_outputs_validated" and .sample_count == 58 and
+            ([.validation[] | select(.status != "passed")] | length) == 0' \
+            "$BENCHMARK_DIR/benchmark_summary.json" >/dev/null
+          BENCHMARK_COMMIT="$(jq -r .benchmark_source_commit "$BENCHMARK_DIR/benchmark_summary.json")"
+          BENCHMARK_SOURCE="$(jq -r .benchmark_source_sha256 "$BENCHMARK_DIR/benchmark_summary.json")"
+          git merge-base --is-ancestor "$BENCHMARK_COMMIT" "$MAIN_SHA"
+          # Reporting and packaging can change; do not attribute these study
+          # measurements to modified scientific execution code or environments.
+          git diff --exit-code "$BENCHMARK_COMMIT" "$MAIN_SHA" -- \
+            oncotracer_cli bin environments main.nf nextflow.config \
+            Dockerfile Dockerfile.update pyproject.toml poetry.lock
+          python3 scripts/export_study_benchmark.py --output "$BENCHMARK_DIR" \
+            --bundle release/oncotracer-v5.0.0-study-benchmark.tar.gz
+          BENCHMARK_SHA256="$(sha256sum release/oncotracer-v5.0.0-study-benchmark.tar.gz | awk '{print $1}')"
+          cp "$RUNNER_TEMP/python-distributions/oncotracer-5.0.0-py3-none-any.whl" release/
+          cp "$RUNNER_TEMP/python-distributions/oncotracer-5.0.0.tar.gz" release/
           jq -n \
+            --arg benchmark_commit "$BENCHMARK_COMMIT" \
+            --arg benchmark_source "$BENCHMARK_SOURCE" \
+            --arg benchmark_sha256 "$BENCHMARK_SHA256" \
             --arg commit "$MAIN_SHA" \
             --arg source_sha256 "$SOURCE_SHA256" \
             --arg binary_sha256 "$BINARY_SHA256" \
@@ -591,6 +634,15 @@ jobs:
               source_tree_dirty: false,
               binary_sha256: $binary_sha256,
               parity_audit_bundle_sha256: $parity_sha256,
+              study_benchmark: {
+                source_commit: $benchmark_commit,
+                source_sha256: $benchmark_source,
+                bundle_sha256: $benchmark_sha256,
+                samples: 58,
+                output_validation: "all_study_outputs_validated",
+                scientific_runtime_source_unchanged: true,
+                scope: "Operational completion and resources; ONT retains sample-level QC exclusions; no diagnostic accuracy or v4.1 speedup claim"
+              },
               native_nextflow_required: false,
               container: {
                 reference: ("ghcr.io/cfarkas/oncotracer@" + $image_digest),
@@ -632,7 +684,12 @@ jobs:
           - Support methylation-only GPU acceleration while keeping variants and Illumina analyses on CPU.
           - Preserve the 4.1 ichorCNA fallback, Broad profiles, coarse rescues, FFPE handling and variant recovery behavior.
           - Provide isolated Docker, Conda and Poetry caller setup with commands for fresh ONT, FFPE and fresh Illumina projects.
-          - Full study benchmark completion is reported separately from software and installation validation.
+          - All three fresh study cohorts passed full output validation: 26 FFPE Illumina, 11 fresh Illumina and 21 ONT libraries; all 58 variant workflows completed.
+          - Measured analysis wall times: 77.10 h FFPE, 75.67 h fresh Illumina and 61.79 h ONT, running concurrently with separate resource limits.
+          - ONT retains its QC-limited exit: 7/21 primary CNA assessments, six additional coarse relative profiles and 20/21 completed methylation libraries. These are execution/QC results, not diagnostic accuracy estimates.
+          - Download the study benchmark bundle for every recorded stage, Illumina variant subprocess, aggregate CPU/RAM/disk measurements, evidence hashes and reproducible commands.
+          - The benchmark used commit 76da6c1b707f3ee14f0dc67f7521e394ff934e5d; scientific runtime sources are unchanged in this release. Published artifacts have their own exact provenance.
+          - Step-by-step guide: https://github.com/cfarkas/oncotracer/blob/v5.0.0/docs/benchmarks/2026-11-23.md
 
           Validated on exact commit: \`$MAIN_SHA\`
 
@@ -645,6 +702,8 @@ jobs:
           (
             cd release
             sha256sum oncotracer oncotracer-v5.0.0-parity-audit.tar.gz \
+              oncotracer-v5.0.0-study-benchmark.tar.gz \
+              oncotracer-5.0.0-py3-none-any.whl oncotracer-5.0.0.tar.gz \
               release-provenance.json > SHA256SUMS
             sha256sum --strict -c SHA256SUMS
           )
@@ -757,6 +816,9 @@ jobs:
           assets=(
             "$ACCEPTED_RELEASE/oncotracer"
             "$ACCEPTED_RELEASE/oncotracer-v5.0.0-parity-audit.tar.gz"
+            "$ACCEPTED_RELEASE/oncotracer-v5.0.0-study-benchmark.tar.gz"
+            "$ACCEPTED_RELEASE/oncotracer-5.0.0-py3-none-any.whl"
+            "$ACCEPTED_RELEASE/oncotracer-5.0.0.tar.gz"
             "$ACCEPTED_RELEASE/release-provenance.json"
             "$ACCEPTED_RELEASE/SHA256SUMS"
           )
@@ -766,7 +828,7 @@ jobs:
             test "$(stat -c '%h' -- "$asset")" -eq 1
             test "$(stat -c '%a' -- "$asset")" = 400
           done
-          expected_assets='["SHA256SUMS","oncotracer","oncotracer-v5.0.0-parity-audit.tar.gz","release-provenance.json"]'
+          expected_assets='["SHA256SUMS","oncotracer","oncotracer-v5.0.0-parity-audit.tar.gz","oncotracer-v5.0.0-study-benchmark.tar.gz","oncotracer-5.0.0-py3-none-any.whl","oncotracer-5.0.0.tar.gz","release-provenance.json"]'
           if [[ "$RELEASE_EXISTS" == true ]]; then
             gh api -H 'Accept: application/vnd.github+json' \
               "/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
@@ -823,7 +885,7 @@ jobs:
             .tagName == "v5.0.0" and .isDraft == false and
             .isPrerelease == false and .targetCommitish == $sha and
             ([.assets[].name] | sort) ==
-              (["SHA256SUMS","oncotracer","oncotracer-v5.0.0-parity-audit.tar.gz","release-provenance.json"] | sort)
+              (["SHA256SUMS","oncotracer","oncotracer-v5.0.0-parity-audit.tar.gz","oncotracer-v5.0.0-study-benchmark.tar.gz","oncotracer-5.0.0-py3-none-any.whl","oncotracer-5.0.0.tar.gz","release-provenance.json"] | sort)
           ' "$RUNNER_TEMP/published-release.json"
           for asset in "${assets[@]}"; do
             name="${asset##*/}"
@@ -841,7 +903,7 @@ jobs:
             }
           done
 
-          # Re-download the exact four assets and run the same clean-room
+          # Re-download the exact seven assets and run the same clean-room
           # acceptance implementation used before any permanent mutation.
           PUBLISHED_RELEASE_DOWNLOAD="$RUNNER_TEMP/oncotracer-published-release-download-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           POSTPUBLICATION_ACCEPTANCE="$RUNNER_TEMP/oncotracer-released-beginner-acceptance-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"

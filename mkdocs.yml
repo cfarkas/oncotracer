@@ -85,6 +85,7 @@ nav:
       - Poetry Development Install: poetry.md
       - Implementation Details: architecture_details.md
       - Parity and release gate: parity_release.md
+      - Version 5 completed study benchmark: benchmarks/2026-11-23.md
       - Resource scheduling benchmark: benchmarks/2026-11-07.md
 
 markdown_extensions:

@@ -1,0 +1,466 @@
+{
+  "evidence": [
+    {
+      "bytes": 29994,
+      "cohort": "all",
+      "role": "run_manifest",
+      "source_sha256": "4a19508c52a51cb71760c3df921510a6703c7a754492d7db7e836786a2d633a5"
+    },
+    {
+      "bytes": 1776,
+      "cohort": "all",
+      "role": "resource_summary",
+      "source_sha256": "82888262e2dbd65715e2aeb596623fbaae976159618703757e65d2172720f65d"
+    },
+    {
+      "bytes": 1223,
+      "cohort": "all",
+      "role": "final_validation",
+      "source_sha256": "c81ad67d7d679346bbcfc27bb8a2ad1f502196f18630e00a668d023f121b744d"
+    },
+    {
+      "bytes": 8710619,
+      "cohort": "Illumina_FFPE",
+      "role": "full_output_validation",
+      "source_sha256": "32a3c1fdecd0b5e4e03667f59f9d381e14dd39595678e730eb3717aa1b4e4195"
+    },
+    {
+      "bytes": 13981,
+      "cohort": "Illumina_FFPE",
+      "role": "workflow_summary",
+      "source_sha256": "2840c7dbe71584e754bdd51404e6caef3876499b483c7374dd55cd6799f48f99"
+    },
+    {
+      "bytes": 10374,
+      "cohort": "Illumina_FFPE",
+      "role": "selected_cna_assessment",
+      "source_sha256": "dc4dce204b73c6f9b508d0e913e28eeaab05eeedd710ad5e4f8deb2531808fe2"
+    },
+    {
+      "bytes": 79973,
+      "cohort": "Illumina_FFPE",
+      "role": "native_trace",
+      "source_sha256": "af3893c3b41c4abec6bd294acbacb09f62a7db4a94a3b25f20e86e5dbfcf96be"
+    },
+    {
+      "bytes": 10276878,
+      "cohort": "Illumina_FFPE",
+      "role": "variant_status",
+      "source_sha256": "715508475313ad2b0b1fe7d73411988b361332183d16b34d486291f059c2f9a2"
+    },
+    {
+      "bytes": 251563,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "21f2cde54287efedc7c0fa89081a43c3df31efb0b98677ba561ecb083dcd8d0b"
+    },
+    {
+      "bytes": 251241,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "412001a0ab23d8172edd2bd98c0e837bd6a04be1e3b76e55026d686616f39d76"
+    },
+    {
+      "bytes": 254866,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "f74715554794cdec2b658cd4137663091e502cf48eeb4954f0fe0e05bc98c127"
+    },
+    {
+      "bytes": 251530,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "50db6848e719835b83a0d84aeb5154b2895f8d4f076fb3aecd083381cd366f1c"
+    },
+    {
+      "bytes": 251323,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "f7e644b98b70fc799a00bba56385be1483db24de0ab7ab0a3af08427f6a94204"
+    },
+    {
+      "bytes": 252691,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "1eba8c0c21f5033cf19d64b2dc8776a67f03cbce1b6406653742341a8899edfe"
+    },
+    {
+      "bytes": 252091,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "bbd767d8bac605930849957474dd8d8789ddbf72d33615d688697d4f97cc7e0e"
+    },
+    {
+      "bytes": 251275,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "b458b4fe840147815a7385ef2d61a2bf427f4e4eaeace5b406e96ced16c78eb8"
+    },
+    {
+      "bytes": 250788,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "5b06b582cde77376debbbac4e8db763968a34919c7de1649105a52761c9b3818"
+    },
+    {
+      "bytes": 252692,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "cadd09664f4b7b4cd9f4a21c925f06ae696d8d07719323797b8c6610a5ab26fd"
+    },
+    {
+      "bytes": 250678,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "b2e4a88389d48d7204e28042f6e4d5afef0ca98aee48e24adc14926fe8b2e995"
+    },
+    {
+      "bytes": 253176,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "0ca070a23e9a415031f41ee7eafcb1eb502f9dd1e1c54caf59a8d95470c59584"
+    },
+    {
+      "bytes": 251741,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "0ccfda34a82df078458d009ccf2b333b0d4a64288d8f3f10aacf89c02eaf00a0"
+    },
+    {
+      "bytes": 251878,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "cacd2f48a4cde961b49f1408d87a13fdc0ce59def0d07445a598d2ebb6b20709"
+    },
+    {
+      "bytes": 250831,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "b9ac62ce75c9a342fd56accd39b4bcff64a0577d1fcbb3b88eb22a686f95ec58"
+    },
+    {
+      "bytes": 251826,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "4c949b9b4540a8cff29256674a8dd0c244a968e1f3b85f1ee04df2b0b7e82ff1"
+    },
+    {
+      "bytes": 253048,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "7f04cd2e51a5b55db4a41b89b738295bb3bfbeb6e7332073a7b38fdc58f4904d"
+    },
+    {
+      "bytes": 253168,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "ee13f4ae4ac2199f4fbb10054800810318e4f254c4c2bc9fad67365820873cee"
+    },
+    {
+      "bytes": 254355,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "0ce30cd710e683d0b4bead808142ea7554f457a52a911b50357df27871430bb7"
+    },
+    {
+      "bytes": 252659,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "605e0c9ffae9c735e7e85f411669661e2e512127e6fffdd9026a5ee6e9be7f7f"
+    },
+    {
+      "bytes": 253098,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "403a4c0324b0402d5ab9c94f33625bfd55db9a0fa49355d0ef2d0f0e767812b9"
+    },
+    {
+      "bytes": 250348,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "3c652ace50a51f97f40491d5e2fb7a08b2cb930a330ba8ed6d282f983e0a19da"
+    },
+    {
+      "bytes": 250281,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "26d28f610b8f84693d6b222574a669c94dba19d9faed1006308a04b77f9ba39e"
+    },
+    {
+      "bytes": 248609,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "e89375cd8eb02fc9e58dfe6038fdeb011435da95b5d516f7607c283a1bc71af5"
+    },
+    {
+      "bytes": 249413,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "dc762a6274c3eb3ed1c226e6023d4387fd36ab62676d45692f16b01f9b1d57f3"
+    },
+    {
+      "bytes": 250264,
+      "cohort": "Illumina_FFPE",
+      "role": "nextflow_task_trace",
+      "source_sha256": "2651464e687eb5a6354c8e012efd58de40014947d451e0c3a5d726175c1c91d1"
+    },
+    {
+      "bytes": 14883670,
+      "cohort": "ONT_Fresh",
+      "role": "full_output_validation",
+      "source_sha256": "1b184b1bf279c0b9897cddaf63c2dafb9109c727a489579485163514102d14e9"
+    },
+    {
+      "bytes": 21269,
+      "cohort": "ONT_Fresh",
+      "role": "workflow_summary",
+      "source_sha256": "5a303bf15df7fb64fbd2cfc892d67dd4e2df445ff4fd933372ba993408959e1d"
+    },
+    {
+      "bytes": 18274,
+      "cohort": "ONT_Fresh",
+      "role": "selected_cna_assessment",
+      "source_sha256": "82752f5450ea9701de0d26850e868ed3b111ad2f20de73e88dcd55be2465282d"
+    },
+    {
+      "bytes": 213126,
+      "cohort": "ONT_Fresh",
+      "role": "native_trace",
+      "source_sha256": "7d821b0450e6d78a603811ff295e96f53042ba994b85ff72a48a326df95a74e5"
+    },
+    {
+      "bytes": 7350,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "c1962d395cad332bb654476b17bd3625248547d2f09e24725bf9c843392952a8"
+    },
+    {
+      "bytes": 7350,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "34eeff312c1bad0dbcc0ffaf06cd251335b106a2a624d8aa37078f5e166ae150"
+    },
+    {
+      "bytes": 7448,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "1557572c52ff5d9c4dc0aa8c64cd5530b44def7d0512c09022b61c5de7d3a926"
+    },
+    {
+      "bytes": 7350,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "080bf633f47ba1d38a4c26b0ff1cf4cf9bb0b6f9f7f460aae71d2643af4cbc3f"
+    },
+    {
+      "bytes": 7350,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "63c0894c09b141fe6fb7b2c3ce9eae48b0a0e4f425564c18a820c918fcd395c4"
+    },
+    {
+      "bytes": 7056,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "ce9ab183cf956c4ceafe7ffa7fd38c78549a57fb810b96334602ab512b779e20"
+    },
+    {
+      "bytes": 7350,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "1e3f131d409283cd25c96ac11ad3b41fa4e1b91f4956b012f150c22de41f4ba9"
+    },
+    {
+      "bytes": 7350,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "55751ed0229b57f2aa08ecfafee8e027b7912df54ba0d5c54896d169add06ba4"
+    },
+    {
+      "bytes": 7350,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "de1d531d9dee84f543b7b3c787b86f38422752c5f2b169681ae716e09ef8fafd"
+    },
+    {
+      "bytes": 7350,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "f9c679a6a8cf3232874975707991c60714cfe4fd9d934fa9725392ab399822d3"
+    },
+    {
+      "bytes": 7350,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "f94b57daa79f51ccc5e20c42f4ee5af26a0dcbfa622f381d94c5fcea3fdebfdd"
+    },
+    {
+      "bytes": 6340,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "13fe8e2e5e0c22ab30197de1ba04135a958258751345993e2795ffa669e7a896"
+    },
+    {
+      "bytes": 6340,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "46ba44eb770efa40364e7ab0f079028387a48193da0fd9f2a8297c0f88ea06a6"
+    },
+    {
+      "bytes": 6424,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "4b4222ea46cb24d9d30dbb892091b9583a6039a8ca0fb3d996805c810457448f"
+    },
+    {
+      "bytes": 4930,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "de6fc9c429ad666fe740fad648cd879f422316112945c65b46d864c1b62ec868"
+    },
+    {
+      "bytes": 6424,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "f332e3823046182aaf2165d4c6d7213c41b2f1a59100be24b52d23e912cd4b61"
+    },
+    {
+      "bytes": 6340,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "70853d8f12146f17efbf7e2354b9c1a86fee8f34beae5056e138786bc4ad493c"
+    },
+    {
+      "bytes": 6340,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "3db03530f675c9e6c052032ebd2ac5cc7480b02687151c52c6cdbbd8776d4bac"
+    },
+    {
+      "bytes": 7448,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "5b8f48e17c5cf46a5db66c539fd17e44cac4cbc331ef68c5b9bb806080a0350a"
+    },
+    {
+      "bytes": 7448,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "6c80322767ea44f5ef72f334802f4e1ea9724adc1ec6997d527554308962be36"
+    },
+    {
+      "bytes": 6382,
+      "cohort": "ONT_Fresh",
+      "role": "methylation_trace",
+      "source_sha256": "da1bacd845ce6691a2c6262c0ea5ad85a43b5aaa9202f5c8e68ce6a46515f9ba"
+    },
+    {
+      "bytes": 160399,
+      "cohort": "ONT_Fresh",
+      "role": "variant_status",
+      "source_sha256": "08c96f4e07f68d3a01793f13f8505f91d200e3732f2da233f66498e3866060e1"
+    },
+    {
+      "bytes": 3712619,
+      "cohort": "Illumina_Fresh",
+      "role": "full_output_validation",
+      "source_sha256": "a07261cd0c64e374c48f68a50deeef0ef78de408cd20a44cb80a4f17935fcbf1"
+    },
+    {
+      "bytes": 9485,
+      "cohort": "Illumina_Fresh",
+      "role": "workflow_summary",
+      "source_sha256": "bd6182ca37ec8e41bd20f446667acee7d46c65c09914965fea653c1d94bca0fd"
+    },
+    {
+      "bytes": 4478,
+      "cohort": "Illumina_Fresh",
+      "role": "selected_cna_assessment",
+      "source_sha256": "d7328d6de3a435b22bb586ecc3134e206404243c719e69314f62f911a4ee0489"
+    },
+    {
+      "bytes": 49004,
+      "cohort": "Illumina_Fresh",
+      "role": "native_trace",
+      "source_sha256": "12ef7773ece8a0aa41504bd9123f0f337d664fd23af6b3174ce0cde1acc8c2e1"
+    },
+    {
+      "bytes": 4088495,
+      "cohort": "Illumina_Fresh",
+      "role": "variant_status",
+      "source_sha256": "ca4d5be25103c5718476c74d45acafa1270ee3aa9c8fe9a36380b64dac11ea52"
+    },
+    {
+      "bytes": 250993,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "d1bb601114317a952d54a0cf2f6d14182e2bddd2ba87034386202c17b1d3b5d8"
+    },
+    {
+      "bytes": 253500,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "8b6863eb8e9be09abb3f1118890f4d384da17781d4949cb63fdcf79f5ee839bf"
+    },
+    {
+      "bytes": 253327,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "97dc2e2039cbf94e67977fd45448709697ff0f227870e3a2c41c4588c9d4e6dc"
+    },
+    {
+      "bytes": 254173,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "b56e8af53b163b88f21045150da0d0e3bfec378e294fcbd10c90a196097ebe48"
+    },
+    {
+      "bytes": 254323,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "b005d6de8d67512b7a956d820875660bfa1651c9666210efba76a8c6fb486a90"
+    },
+    {
+      "bytes": 254404,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "e8b63a9e7a1ad365d8f62d36d5342e848a356113184bbea692e8e4ebeadc7cdc"
+    },
+    {
+      "bytes": 254627,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "32d41c5836e45febf8058884f0d6f287282dbda3e20deeffb8db3b8e2b04e207"
+    },
+    {
+      "bytes": 255115,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "f5c9ff8e56bacd40472497b49a2d991c1fe891095325da41634b9d9a637d47f8"
+    },
+    {
+      "bytes": 255040,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "7fd064466c96162cff36f6e04dd6d21d64e9b68a7419c872ca0a0c15830737af"
+    },
+    {
+      "bytes": 252847,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "d1b93fdc4554bd6673ebb90f91205dbad0c096f160048b5603701a88c611385e"
+    },
+    {
+      "bytes": 252750,
+      "cohort": "Illumina_Fresh",
+      "role": "nextflow_task_trace",
+      "source_sha256": "06231f7d64924c71d7d846075bcf96217f9fec0bead5a98d3f4cf01ec75d5d91"
+    },
+    {
+      "bytes": 19988440,
+      "cohort": "all",
+      "role": "resource_time_series",
+      "source_sha256": "58609efc93c22dbe50f05eb50cc8d20cdae054334f49956ba62f29d1a9b69554"
+    }
+  ]
+}

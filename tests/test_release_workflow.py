@@ -668,6 +668,12 @@ esac
             (release / "oncotracer-v5.0.0-parity-audit.tar.gz").write_bytes(
                 b"parity-audit\n"
             )
+            for name in ("oncotracer-v5.0.0-study-benchmark.tar.gz",
+                         "oncotracer-5.0.0-py3-none-any.whl", "oncotracer-5.0.0.tar.gz"):
+                (release / name).write_bytes((name + "\n").encode())
+            benchmark_sha = hashlib.sha256(
+                (release / "oncotracer-v5.0.0-study-benchmark.tar.gz").read_bytes()
+            ).hexdigest()
             binary_sha = hashlib.sha256(
                 (release / "oncotracer").read_bytes()
             ).hexdigest()
@@ -683,6 +689,11 @@ esac
                 "source_tree_dirty": False,
                 "binary_sha256": binary_sha,
                 "parity_audit_bundle_sha256": parity_sha,
+                "study_benchmark": {
+                    "bundle_sha256": benchmark_sha,
+                    "output_validation": "all_study_outputs_validated",
+                    "scientific_runtime_source_unchanged": True,
+                },
                 "native_nextflow_required": False,
                 "container": {
                     "reference": f"ghcr.io/cfarkas/oncotracer@{image_digest}",
@@ -734,6 +745,9 @@ esac
                 names = (
                     "oncotracer",
                     "oncotracer-v5.0.0-parity-audit.tar.gz",
+                    "oncotracer-v5.0.0-study-benchmark.tar.gz",
+                    "oncotracer-5.0.0-py3-none-any.whl",
+                    "oncotracer-5.0.0.tar.gz",
                     "release-provenance.json",
                 )
                 lines = [

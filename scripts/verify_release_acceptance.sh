@@ -38,6 +38,9 @@ expected_assets=(
   SHA256SUMS
   oncotracer
   oncotracer-v5.0.0-parity-audit.tar.gz
+  oncotracer-v5.0.0-study-benchmark.tar.gz
+  oncotracer-5.0.0-py3-none-any.whl
+  oncotracer-5.0.0.tar.gz
   release-provenance.json
 )
 shopt -s dotglob nullglob
@@ -48,7 +51,7 @@ for entry in "${release_entries[@]}"; do
   test ! -L "$entry"
   test "$(stat -c '%h' -- "$entry")" -eq 1
   case "${entry##*/}" in
-    SHA256SUMS|oncotracer|oncotracer-v5.0.0-parity-audit.tar.gz|release-provenance.json)
+    SHA256SUMS|oncotracer|oncotracer-v5.0.0-parity-audit.tar.gz|oncotracer-v5.0.0-study-benchmark.tar.gz|oncotracer-5.0.0-py3-none-any.whl|oncotracer-5.0.0.tar.gz|release-provenance.json)
       ;;
     *)
       echo "unexpected release entry: ${entry##*/}" >&2
@@ -93,8 +96,8 @@ done
 chmod 0755 "$ACCEPTANCE_RELEASE/oncotracer"
 
 cd "$ACCEPTANCE_RELEASE"
-test "$(wc -l < SHA256SUMS)" -eq 3
-for asset in oncotracer oncotracer-v5.0.0-parity-audit.tar.gz release-provenance.json; do
+test "$(wc -l < SHA256SUMS)" -eq 6
+for asset in oncotracer oncotracer-v5.0.0-parity-audit.tar.gz oncotracer-v5.0.0-study-benchmark.tar.gz oncotracer-5.0.0-py3-none-any.whl oncotracer-5.0.0.tar.gz release-provenance.json; do
   awk -v expected="$asset" '
     BEGIN { count = 0 }
     NF == 2 && $1 ~ /^[0-9a-f]{64}$/ && $2 == expected { count++ }
@@ -105,6 +108,7 @@ sha256sum --strict -c SHA256SUMS
 test "$(sha256sum oncotracer | awk '{print $1}')" = "$BINARY_SHA256"
 PARITY_SHA256="$(sha256sum oncotracer-v5.0.0-parity-audit.tar.gz | awk '{print $1}')"
 [[ "$PARITY_SHA256" =~ ^[0-9a-f]{64}$ ]]
+BENCHMARK_SHA256="$(sha256sum oncotracer-v5.0.0-study-benchmark.tar.gz | awk '{print $1}')"
 
 BEGINNER_CONFIG="$ACCEPTANCE_ROOT/config"
 BEGINNER_DATA="$ACCEPTANCE_ROOT/data"
@@ -148,7 +152,8 @@ jq -e \
   --arg source "$SOURCE_SHA256" \
   --arg binary "$BINARY_SHA256" \
   --arg digest "$IMAGE_DIGEST" \
-  --arg parity "$PARITY_SHA256" '
+  --arg parity "$PARITY_SHA256" \
+  --arg benchmark "$BENCHMARK_SHA256" '
     def positive_integer:
       type == "number" and . > 0 and . == floor;
     def sha256_digest:
@@ -158,6 +163,9 @@ jq -e \
     .source_commit == $commit and .source_sha256 == $source and
     .source_tree_dirty == false and .binary_sha256 == $binary and
     .parity_audit_bundle_sha256 == $parity and
+    .study_benchmark.bundle_sha256 == $benchmark and
+    .study_benchmark.output_validation == "all_study_outputs_validated" and
+    .study_benchmark.scientific_runtime_source_unchanged == true and
     .native_nextflow_required == false and
     .container.reference == ("ghcr.io/cfarkas/oncotracer@" + $digest) and
     .container.digest == $digest and .container.nextflow_present == true and
@@ -241,7 +249,7 @@ for entry in "${release_entries_after[@]}"; do
   test ! -L "$entry"
   test "$(stat -c '%h' -- "$entry")" -eq 1
   case "${entry##*/}" in
-    SHA256SUMS|oncotracer|oncotracer-v5.0.0-parity-audit.tar.gz|release-provenance.json)
+    SHA256SUMS|oncotracer|oncotracer-v5.0.0-parity-audit.tar.gz|oncotracer-v5.0.0-study-benchmark.tar.gz|oncotracer-5.0.0-py3-none-any.whl|oncotracer-5.0.0.tar.gz|release-provenance.json)
       ;;
     *)
       echo "acceptance command added an unexpected release entry: ${entry##*/}" >&2
