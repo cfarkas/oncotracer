@@ -51,6 +51,14 @@ class ScientificCiResources(unittest.TestCase):
         self.assertFalse(a[2])
         self.assertNotEqual(a[0], b[0])
 
+    def test_parallel_quickstarts_isolate_conda_package_writes_by_runner(self):
+        for suite in ('1', '2'):
+            workflow = ROOT / '.github/workflows' / ('native-v2-quickstart' + suite + '-parity.yml')
+            entries = [line.strip() for line in workflow.read_text().splitlines() if line.strip().startswith('pkgs-dirs:')]
+            self.assertEqual(len(entries), 1)
+            self.assertTrue(entries[0].endswith('/${{ runner.name }}'),
+                            'Parallel runners must not share a writable Conda package directory')
+
     def test_relative_shared_cache_is_rejected(self):
         with self.assertRaises((ValueError, RuntimeError, AssertionError)):
             ci.reference_cache_location(Path('/run'), {'ONCOTRACER_CI_REFERENCE_CACHE': '../cache'}, {'bwa': 'a' * 64, 'minimap2': 'b' * 64})

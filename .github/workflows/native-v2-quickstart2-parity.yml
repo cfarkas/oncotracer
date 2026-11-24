@@ -62,7 +62,7 @@ jobs:
         with:
           miniforge-version: latest
           installation-dir: ${{ runner.temp }}/miniforge-${{ github.run_id }}-${{ github.run_attempt }}
-          pkgs-dirs: ${{ vars.ONCOTRACER_CI_PACKAGE_CACHE || format('{0}/oncotracer-conda-pkgs', runner.tool_cache) }}
+          pkgs-dirs: ${{ vars.ONCOTRACER_CI_PACKAGE_CACHE || format('{0}/oncotracer-conda-pkgs', runner.tool_cache) }}/${{ runner.name }}
           activate-environment: base
           conda-remove-defaults: true
 
