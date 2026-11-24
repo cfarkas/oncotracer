@@ -17,6 +17,9 @@ concurrency:
 env:
   CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   GITHUB_TOKEN: ${{ github.token }}
+  ONCOTRACER_CI_THREADS: ${{ vars.ONCOTRACER_CI_THREADS }}
+  ONCOTRACER_CI_REFERENCE_CACHE: ${{ vars.ONCOTRACER_CI_REFERENCE_CACHE }}
+  ONCOTRACER_CI_INPUT_CACHE: ${{ vars.ONCOTRACER_CI_INPUT_CACHE }}
 
 jobs:
   parity:
@@ -58,6 +61,8 @@ jobs:
         uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v5.0.0
         with:
           miniforge-version: latest
+          installation-dir: ${{ runner.temp }}/miniforge-${{ github.run_id }}-${{ github.run_attempt }}
+          pkgs-dirs: ${{ vars.ONCOTRACER_CI_PACKAGE_CACHE || format('{0}/oncotracer-conda-pkgs', runner.tool_cache) }}
           activate-environment: base
           conda-remove-defaults: true
 

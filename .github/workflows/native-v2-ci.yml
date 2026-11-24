@@ -142,7 +142,7 @@ jobs:
             tests/test_report_command.py \
             tests/test_literature_retrieval.py \
             tests/test_model_cache_environment.py \
-            tests/test_download_resume.py tests/test_science_input_downloads.py \
+            tests/test_download_resume.py tests/test_science_input_downloads.py tests/test_ci_science_resources.py \
             tests/test_first_run_experience.py \
             tests/test_documented_workflows.py \
             tests/test_batch_setup.py \

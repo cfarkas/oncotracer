@@ -15,6 +15,33 @@ sys.path.insert(0,str(REPO/'tests'))
 from native_science_audit import BASELINE,BASELINE_SOURCE,SCHEMA,SAMPLES,digest,read,write,verify,require
 
 
+
+def allocated_threads(environ):
+    """Use this runner's CPU allocation, capped by an optional job budget."""
+    available = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else (os.cpu_count() or 1)
+    requested = environ.get('ONCOTRACER_CI_THREADS', '').strip()
+    try:
+        budget = int(requested) if requested else available
+    except ValueError as error:
+        raise ValueError('ONCOTRACER_CI_THREADS must be a positive integer') from error
+    require(budget > 0, 'ONCOTRACER_CI_THREADS must be positive')
+    return min(budget, available)
+
+
+def reference_cache_location(root, environ, build_identities):
+    """Keep immutable reference indexes separate from fresh sample outputs."""
+    require(set(build_identities) == {'bwa', 'minimap2'}, 'Incomplete reference tool identities')
+    key = hashlib.sha256(json.dumps(build_identities, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    configured = environ.get('ONCOTRACER_CI_REFERENCE_CACHE', '').strip()
+    if not configured and environ.get('RUNNER_TOOL_CACHE'):
+        configured = str(Path(environ['RUNNER_TOOL_CACHE']) / 'oncotracer-reference-cache')
+    if not configured:
+        return root / 'reference', key, False
+    cache = Path(configured).expanduser()
+    require(cache.is_absolute(), 'The CI reference cache must use an absolute path')
+    return cache / ('hg38-' + key), key, True
+
+
 def command(argv,**kwargs):
     print('+ '+' '.join(map(str,argv)),flush=True)
     return subprocess.check_output(list(map(str,argv)),text=True,**kwargs).strip()
@@ -46,6 +73,7 @@ def copy_evidence(source,target):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('suite',choices=SAMPLES);args=parser.parse_args()
     env=os.environ.copy();suite=args.suite
+    threads=allocated_threads(env)
     workspace=Path(env['GITHUB_WORKSPACE']);temp=Path(env['RUNNER_TEMP'])
     stamp=env['GITHUB_RUN_ID']+'-'+env['GITHUB_RUN_ATTEMPT']
     root=workspace/('oncotracer-parity-'+stamp+'-'+suite)
@@ -69,6 +97,22 @@ def main():
         shutil.copy2(definition,inventory/(name+'.yml'))
         (inventory/(name+'.explicit.txt')).write_text(command(['conda','list','--explicit','--prefix',destination]))
         env['ONCOTRACER_'+name.upper()+'_PREFIX']=str(destination)
+    sys.path.insert(0, str(REPO))
+    from oncotracer_cli import engine
+    toolchain = engine.Toolchain(core_prefix=prefix / 'core')
+    contracts = {kind: engine._index_build_contract(kind, engine.HG38_ASSETS['genome.fa'],
+                 engine.HG38_ASSETS['genome.fa.fai'], toolchain.executable('core', kind))
+                 for kind in ('bwa', 'minimap2')}
+    identities = {kind: engine._index_build_identity(contract) for kind, contract in contracts.items()}
+    reference_root, reference_key, shared_reference = reference_cache_location(root, env, identities)
+    write(audit / 'reference_inputs.json', dict(schema='oncotracer-ci-reference-inputs-v1',
+          reference_root=str(reference_root), cache_key=reference_key, persistent_cache=shared_reference,
+          genome_sha256=engine.HG38_ASSETS, index_build_identities=identities))
+    write(audit / 'runtime_resources.json', dict(schema='oncotracer-ci-resources-v1',
+          threads=threads, requested_threads=env.get('ONCOTRACER_CI_THREADS') or None,
+          affinity_cpus=sorted(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else None,
+          gpu=False))
+    print(f'Scientific CPU budget: {threads}; reference inputs: {reference_root}', flush=True)
     for name,source,commit in [('baseline',baseline,BASELINE),('candidate',REPO,candidate)]:
         target=root/(name+'-oncotracer');identity=build(source,target,commit)
         (audit/name).mkdir();write(audit/name/'provenance.json',identity)
@@ -78,8 +122,9 @@ def main():
     fetch_command=[sys.executable,str(REPO/'scripts/fetch_native_science_inputs.py'),suite,
                     '--test-root',str(input_root),'--receipt',str(audit/'input_downloads.json'),
                     '--reuse-root',str(workspace)]
-    if env.get('RUNNER_TOOL_CACHE'):
-        fetch_command.extend(['--cache-root',str(Path(env['RUNNER_TOOL_CACHE'])/'oncotracer-public-inputs')])
+    input_cache=env.get('ONCOTRACER_CI_INPUT_CACHE') or (str(Path(env['RUNNER_TOOL_CACHE'])/'oncotracer-public-inputs') if env.get('RUNNER_TOOL_CACHE') else None)
+    if input_cache:
+        fetch_command.extend(['--cache-root',input_cache])
     subprocess.run(fetch_command,env=env,check=True)
     subprocess.run([str(binary),'quickstart','1' if suite=='quickstart1' else '2','--test-root',str(input_root),'--download-only'],env=env,check=True)
     files=sorted(p for p in input_root.rglob('*') if p.is_file() and p.name.endswith(('.fastq.gz','.fq.gz')))
@@ -98,12 +143,12 @@ def main():
                 destination=root/side/dataset;outputs.append(destination)
                 config=root/(side+'-'+dataset+'.yml')
                 subprocess.run([sys.executable,str(REPO/'tests/make_parity_config.py'),'--source',str(source_config),'--destination',str(config),
-                                '--lpwgs-root',str(root/'reference'),'--outdir',str(destination)],check=True)
+                                '--lpwgs-root',str(reference_root),'--outdir',str(destination)],check=True)
                 # Baseline and candidate have the same scientific policy. The
                 # candidate additionally exercises automatic cohort rendering.
                 with config.open('a') as handle:handle.write('\nrun_variants: false\ncohort_figure: true\n')
                 with (reports/(side+'-'+dataset+'.log')).open('w') as log:
-                    result=subprocess.run([str(root/(side+'-oncotracer')),'run','--backend','host','--config',str(config),'--threads','4'],env=env,stdout=log,stderr=subprocess.STDOUT)
+                    result=subprocess.run([str(root/(side+'-oncotracer')),'run','--backend','host','--config',str(config),'--threads',str(threads)],env=env,stdout=log,stderr=subprocess.STDOUT)
                 record['datasets'][dataset][side+'_exit_code']=result.returncode
                 require(result.returncode in (0,2),'Scientific run failed: '+side+'/'+dataset+'; inspect its complete log')
                 copy_evidence(destination,audit/side/dataset)
