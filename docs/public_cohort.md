@@ -103,6 +103,20 @@ MD5
 Continue only when all six lines say `OK`. The versioned manifest records each
 exact size and MD5 checksum. Repeat an interrupted `curl` command to resume.
 
+If ENA's HTTPS endpoint returns a short response or repeatedly times out, use
+its anonymous FTP endpoint by replacing `https://` with `ftp://` in the commands
+above, then repeat all six MD5 checks. This retrieves the same deposited files.
+From a source checkout, the checked download helper also handles this directly:
+
+```bash
+python3 scripts/fetch_native_science_inputs.py quickstart2 \
+  --test-root /path/to/my/analyses_dir/oncotracer-quickstart2 \
+  --receipt /path/to/my/analyses_dir/oncotracer-quickstart2-downloads.json
+```
+
+The helper writes the verified reads under `public/hcc1143_lpwgs/` inside that
+test directory. Select that folder during setup.
+
 <a id="2-open-setup-and-run"></a>
 
 <a id="2-follow-the-browser-walkthrough"></a>

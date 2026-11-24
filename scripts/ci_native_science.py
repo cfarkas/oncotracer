@@ -73,6 +73,11 @@ def main():
         target=root/(name+'-oncotracer');identity=build(source,target,commit)
         (audit/name).mkdir();write(audit/name/'provenance.json',identity)
     binary=root/'candidate-oncotracer';input_root=root/'input'
+    # Public ENA FTP avoids the short HTML responses seen on its HTTPS endpoint.
+    # Both transports retain the manifest's full byte count and publisher MD5.
+    subprocess.run([sys.executable,str(REPO/'scripts/fetch_native_science_inputs.py'),suite,
+                    '--test-root',str(input_root),'--receipt',str(audit/'input_downloads.json'),
+                    '--reuse-root',str(workspace)],env=env,check=True)
     subprocess.run([str(binary),'quickstart','1' if suite=='quickstart1' else '2','--test-root',str(input_root),'--download-only'],env=env,check=True)
     files=sorted(p for p in input_root.rglob('*') if p.is_file() and p.name.endswith(('.fastq.gz','.fq.gz')))
     require(files,'No public FASTQs downloaded')

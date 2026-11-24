@@ -21,6 +21,10 @@ concurrency:
 jobs:
   source-and-binary:
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      PIP_DEFAULT_TIMEOUT: "60"
+      PIP_RETRIES: "3"
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -44,10 +48,34 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.11"
-      - name: Install source-test dependencies
+      - name: Install Ubuntu test dependencies
+        timeout-minutes: 25
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends r-base-core parallel bcftools samtools
+          set -Eeuo pipefail
+          # Bypass the hosted runner's EC2 mirror chain, which can stall before tests.
+          # Keep these settings for Playwright's later apt dependency installation.
+          APT_SOURCES="$RUNNER_TEMP/oncotracer-ubuntu.list"
+          cat > "$APT_SOURCES" <<'SOURCES'
+          deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu noble main restricted universe multiverse
+          deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse
+          deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://security.ubuntu.com/ubuntu noble-security main restricted universe multiverse
+          SOURCES
+          sudo -n tee /etc/apt/apt.conf.d/99oncotracer-ci >/dev/null <<APT
+          Dir::Etc::sourcelist "$APT_SOURCES";
+          Dir::Etc::sourceparts "-";
+          Acquire::Retries "3";
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          DPkg::Lock::Timeout "60";
+          APT::Update::Error-Mode "any";
+          APT
+          sudo -n timeout --signal=TERM --kill-after=30s 8m apt-get update
+          sudo -n env DEBIAN_FRONTEND=noninteractive \
+            timeout --signal=TERM --kill-after=30s 12m \
+            apt-get install -y --no-install-recommends r-base-core parallel bcftools samtools
+      - name: Install Python test dependencies
+        timeout-minutes: 15
+        run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install \
             pandas openpyxl numpy scipy scikit-learn matplotlib jinja2 \
@@ -114,7 +142,7 @@ jobs:
             tests/test_report_command.py \
             tests/test_literature_retrieval.py \
             tests/test_model_cache_environment.py \
-            tests/test_download_resume.py \
+            tests/test_download_resume.py tests/test_science_input_downloads.py \
             tests/test_first_run_experience.py \
             tests/test_documented_workflows.py \
             tests/test_batch_setup.py \
@@ -140,6 +168,7 @@ jobs:
             tests/test_output_safety.py \
             tests/test_hosted_ci_storage_safety.py \
             tests/test_ci_parity_resource_guards.py \
+            tests/test_ci_dependency_install.py \
             tests/test_ichor_asset_identity.py \
             tests/test_reuse_validation.py \
             tests/test_clinvar_resource.py \
@@ -150,6 +179,7 @@ jobs:
             tests/test_python_distribution.py
           python3 -m unittest discover -s tests -p 'test_glimpse*.py'
       - name: Test resource choices and Run dispatch in Firefox
+        timeout-minutes: 20
         run: |
           python3 -m pip install playwright
           python3 -m playwright install --with-deps firefox
@@ -244,6 +274,7 @@ jobs:
           )
           PY
       - name: Verify Poetry launcher installation
+        timeout-minutes: 20
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install 'poetry>=2,<3'
@@ -251,11 +282,13 @@ jobs:
           poetry install --no-interaction
           poetry run oncotracer --version | grep -F 'OncoTracer 5.0.0'
       - name: Verify GPU controls in Firefox without starting analysis
+        timeout-minutes: 15
         run: |
           python3 -m pip install playwright
           python3 -m playwright install --with-deps firefox
           XDG_CONFIG_HOME="$RUNNER_TEMP/browser-config" python3 -B -m unittest tests.test_sample_resource_browser
       - name: Build documentation strictly
+        timeout-minutes: 15
         run: |
           python3 -m pip install -r docs/requirements.txt
           mkdocs build --strict
