@@ -68,6 +68,62 @@ class PublicInputTests(unittest.TestCase):
         self.assertEqual(download.call_count,1);self.assertIsNone(rows[0]['reused_from'])
         self.assertEqual(previous.read_bytes(),b'x'*len(self.body))
 
+    def test_persistent_cache_survives_a_new_checkout_and_copies_independently(self):
+        cache = self.root / 'tool-cache'
+        with patch.object(fetcher, 'download', side_effect=self.write_valid) as download:
+            first = fetcher.fetch_inputs('quickstart2', self.root / 'old-checkout', cache_root=cache)
+        self.assertEqual(download.call_count, 1)
+        self.assertTrue(first[0]['cache_saved'])
+        with patch.object(fetcher, 'download') as download:
+            second = fetcher.fetch_inputs('quickstart2', self.root / 'new-checkout', self.receipt, cache_root=cache)
+        download.assert_not_called()
+        self.assertEqual(second[0]['transport'], 'verified_cache')
+        cached = cache / self.record['md5'] / 'reads.fastq.gz'
+        copied = self.root / 'new-checkout' / self.record['relative_path']
+        self.assertNotEqual(cached.stat().st_ino, copied.stat().st_ino)
+        copied.write_bytes(b'changed analysis input')
+        self.assertTrue(fetcher.valid(cached, self.record))
+
+    def test_same_length_corrupt_cache_is_replaced_only_after_verified_download(self):
+        cache = self.root / 'tool-cache'
+        cached = cache / self.record['md5'] / 'reads.fastq.gz'
+        cached.parent.mkdir(parents=True); cached.write_bytes(b'x' * len(self.body))
+        with patch.object(fetcher, 'download', side_effect=self.write_valid) as download:
+            rows = fetcher.fetch_inputs('quickstart2', self.root / 'checkout', cache_root=cache)
+        self.assertEqual(download.call_count, 1)
+        self.assertTrue(rows[0]['cache_saved'])
+        self.assertEqual(cached.read_bytes(), self.body)
+        self.assertIsNone(rows[0]['reused_from'])
+
+    def test_cache_write_failure_does_not_reject_authenticated_network_input(self):
+        cache = self.root / 'tool-cache'
+        cache.write_bytes(b'not a directory')
+        with patch.object(fetcher, 'download', side_effect=self.write_valid):
+            rows = fetcher.fetch_inputs('quickstart2', self.root / 'checkout', self.receipt, cache_root=cache)
+        self.assertFalse(rows[0]['cache_saved'])
+        self.assertTrue(rows[0]['cache_errors'])
+        self.assertTrue(json.loads(self.receipt.read_text())['complete'])
+
+    def test_cache_copy_changed_during_transfer_cannot_replace_input(self):
+        source = self.root / 'cached.fastq.gz'; source.write_bytes(self.body)
+        target = self.root / 'input.fastq.gz'
+        def changed(source, destination):
+            Path(destination).write_bytes(b'x' * len(self.body))
+        with patch.object(fetcher.shutil, 'copyfile', side_effect=changed):
+            with self.assertRaisesRegex(fetcher.OncoTracerError, 'changed while copying'):
+                fetcher.copy_verified(source, target, self.record)
+        self.assertFalse(target.exists())
+        self.assertEqual(list(self.root.glob('.input.fastq.gz.*')), [])
+
+    def test_cache_directory_escape_is_rejected(self):
+        cache = self.root / 'cache'; cache.mkdir()
+        external = self.root / 'outside'; external.mkdir()
+        (cache / self.record['md5']).symlink_to(external, target_is_directory=True)
+        with patch.object(fetcher, 'download') as download:
+            with self.assertRaisesRegex(ValueError, 'cache destination escapes'):
+                fetcher.fetch_inputs('quickstart2', self.root / 'checkout', cache_root=cache)
+        download.assert_not_called()
+
     def test_fallback_is_not_available_for_arbitrary_hosts_or_credentials(self):
         for url in ['https://example.org/vol1/fastq/a.fastq.gz','https://user:secret@ftp.sra.ebi.ac.uk/vol1/fastq/a.fastq.gz',
                     'https://ftp.sra.ebi.ac.uk/vol1/fastq/../a.fastq.gz','https://ftp.sra.ebi.ac.uk/vol1/fastq/a.fastq.gz?token=x']:

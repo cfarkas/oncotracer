@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -49,6 +50,23 @@ def valid(path: Path, spec: dict) -> bool:
     return digest.hexdigest() == spec['md5']
 
 
+def copy_verified(source: Path, target: Path, spec: dict) -> bool:
+    """Publish an independent copy after checking source and copy in full."""
+    if not valid(source, spec):
+        return False
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=target.parent, prefix='.' + target.name + '.', delete=False) as stream:
+        temporary = Path(stream.name)
+    try:
+        shutil.copyfile(source, temporary)
+        if not valid(temporary, spec):
+            raise OncoTracerError('Cached public input changed while copying')
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return True
+
+
 def reuse_previous_input(suite: str, spec: dict, target: Path, reuse_root: Path | None) -> str | None:
     if reuse_root is None:
         return None
@@ -76,8 +94,9 @@ def reuse_previous_input(suite: str, spec: dict, target: Path, reuse_root: Path 
 
 
 def fetch_inputs(suite: str, root: Path, receipt: Path | None = None,
-                 reuse_root: Path | None = None) -> list[dict]:
+                 reuse_root: Path | None = None, cache_root: Path | None = None) -> list[dict]:
     root = root.expanduser().resolve()
+    cache_root = cache_root.expanduser().resolve() if cache_root else None
     records = []
     for spec in inputs(suite):
         choices = sources(spec['url'])
@@ -88,8 +107,20 @@ def fetch_inputs(suite: str, root: Path, receipt: Path | None = None,
         if relative.is_absolute() or '..' in relative.parts or not target.resolve().is_relative_to(root):
             raise ValueError('Public input destination escapes the test directory')
         errors = []
+        cache_errors = []
+        cached = cache_root / spec['md5'] / relative.name if cache_root else None
+        if cached and not cached.resolve().is_relative_to(cache_root):
+            raise ValueError('Public input cache destination escapes its directory')
         transport = 'verified_existing'
         reused_from = None
+        if cached and not valid(target, spec):
+            try:
+                if copy_verified(cached, target, spec):
+                    transport = 'verified_cache'
+                    reused_from = str(cached)
+                    print('Reused checksum-verified public cache:', target.name, flush=True)
+            except (OSError, OncoTracerError) as error:
+                cache_errors.append(str(error))
         if not valid(target, spec):
             reused_from = reuse_previous_input(suite, spec, target, reuse_root)
             if reused_from:
@@ -109,7 +140,14 @@ def fetch_inputs(suite: str, root: Path, receipt: Path | None = None,
                     print('Source failed; trying the next verified transport:', str(error), file=sys.stderr, flush=True)
             else:
                 raise OncoTracerError('All ENA transports failed for ' + target.name + ': ' + json.dumps(errors))
-        records.append(dict(**spec, transport=transport, sha256=sha256_file(target), failed_sources=errors, reused_from=reused_from))
+        cache_saved = False
+        if cached:
+            try:
+                cache_saved = valid(cached, spec) or copy_verified(target, cached, spec)
+            except (OSError, OncoTracerError) as error:
+                cache_errors.append(str(error))
+        records.append(dict(**spec, transport=transport, sha256=sha256_file(target), failed_sources=errors,
+                            reused_from=reused_from, cache_saved=cache_saved, cache_errors=cache_errors))
         if receipt:
             atomic_write_json(receipt, dict(suite=suite, complete=False, files=records))
     if receipt:
@@ -123,8 +161,9 @@ def main() -> int:
     parser.add_argument('--test-root', required=True, type=Path)
     parser.add_argument('--receipt', type=Path)
     parser.add_argument('--reuse-root', type=Path, help='Reuse checksum-verified public FASTQs from prior benchmark input directories')
+    parser.add_argument('--cache-root', type=Path, help='Persistent public FASTQ cache, keyed by publisher MD5; fully checked on every reuse')
     args = parser.parse_args()
-    files = fetch_inputs(args.suite, args.test_root, args.receipt, args.reuse_root)
+    files = fetch_inputs(args.suite, args.test_root, args.receipt, args.reuse_root, args.cache_root)
     print('Verified', len(files), 'public FASTQs;', sum(row['bytes'] for row in files), 'bytes', flush=True)
     return 0
 
