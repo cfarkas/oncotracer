@@ -115,25 +115,58 @@ class ResourceBoundsTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which('parallel'),'GNU Parallel required')
     def test_real_parallel_grows_after_other_samples_finish_without_replay(self):
         with tempfile.TemporaryDirectory(prefix='dynamic pool ') as folder:
-            root=Path(folder);events=root/'events';worker=root/'worker.py'
-            worker.write_text("import os,sys,time,json\nfrom pathlib import Path\np=Path(sys.argv[1]);n=sys.argv[2]\nfd=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_APPEND,0o600)\nos.write(fd,(json.dumps(['start',n,time.time()])+'\\n').encode());time.sleep(.25)\nos.write(fd,(json.dumps(['end',n,time.time()])+'\\n').encode());os.close(fd)\n")
+            root=Path(folder);events=root/'events';worker=root/'worker.py';release=root/'release'
+            # Hold admitted workers until the test observes all four slots.
+            # A short sleep races interpreter/Parallel startup on busy CI disks.
+            worker.write_text("import os,sys,time,json\nfrom pathlib import Path\np=Path(sys.argv[1]);release=Path(sys.argv[2]);n=sys.argv[3]\nfd=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_APPEND,0o600)\nos.write(fd,(json.dumps(['start',n,time.time()])+'\\n').encode())\nwhile not release.exists():time.sleep(.03)\nos.write(fd,(json.dumps(['end',n,time.time()])+'\\n').encode());os.close(fd)\n")
             pool=DynamicResources(root,['a','b','c','d'],allocation(),interval=.02,hardware=lambda:hardware()).start()
+            process=None
+            stdout_path=root/'stdout.log';stderr_path=root/'stderr.log'
+
+            def wait_for_starts(expected):
+                deadline=time.monotonic()+60
+                while True:
+                    rows=[json.loads(line) for line in events.read_text().splitlines()] if events.exists() else []
+                    starts=[row for row in rows if row[0]=='start']
+                    if len(starts)>=expected:
+                        self.assertEqual(len(starts),expected)
+                        self.assertTrue(all(row[0]=='start' for row in rows),'Held workers must remain active')
+                        return
+                    if process.poll() is not None or time.monotonic()>=deadline:
+                        budget=(pool.sample_directory('a')/'budget.json').read_text()
+                        self.fail(f'Expected {expected} active workers; observed {len(starts)}; '
+                                  f'exit={process.poll()}; stderr={stderr_path.read_text()}; budget={budget}')
+                    time.sleep(.03)
+
             try:
                 for sample in ['a','b','c','d']:pool.update(sample,'running')
                 wrapper=pool.parallel_wrapper('a');inputs=root/'inputs';inputs.write_text(''.join(str(i)+'\n' for i in range(16)))
-                argv=[str(wrapper),'--joblog',str(root/'jobs'),'-j','1',shlex.join([sys.executable,str(worker),str(events)])+' {}','::::',str(inputs)]
-                process=subprocess.Popen(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
-                deadline=time.monotonic()+10
-                while not events.exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.03)
-                self.assertTrue(events.exists())
-                for sample in ['b','c','d']:pool.update(sample,'finished')
-                stdout,stderr=process.communicate(timeout=20);self.assertEqual(process.returncode,0,stderr)
+                argv=[str(wrapper),'--joblog',str(root/'jobs'),'-j','1',shlex.join([sys.executable,str(worker),str(events),str(release)])+' {}','::::',str(inputs)]
+                with stdout_path.open('w') as stdout,stderr_path.open('w') as stderr:
+                    process=subprocess.Popen(argv,stdout=stdout,stderr=stderr,start_new_session=True)
+                    wait_for_starts(1)
+                    self.assertEqual(read_budget(pool.sample_directory('a'))['worker_limit'],1)
+                    for sample in ['b','c','d']:pool.update(sample,'finished')
+                    wait_for_starts(4)
+                    release.touch()
+                    process.wait(timeout=60)
+                self.assertEqual(process.returncode,0,stderr_path.read_text())
                 running=peak=0;started=[]
                 for kind,n,stamp in map(json.loads,events.read_text().splitlines()):
                     if kind=='start':running+=1;started.append(n);peak=max(peak,running)
                     else:running-=1
-                self.assertEqual(len(started),16);self.assertEqual(len(set(started)),16);self.assertEqual(running,0);self.assertEqual(peak,4)
-                self.assertEqual(len(list(csv.DictReader((root/'jobs').read_text().splitlines(),delimiter='\t'))),16)
-            finally:pool.close()
+                self.assertEqual(len(started),16);self.assertEqual(set(started),{str(i) for i in range(16)});self.assertEqual(running,0);self.assertEqual(peak,4)
+                jobs=list(csv.DictReader((root/'jobs').read_text().splitlines(),delimiter='\t'))
+                self.assertEqual(len(jobs),16)
+                self.assertTrue(all(int(job['Exitval'])==0 and int(job['Signal'])==0 for job in jobs))
+            finally:
+                release.touch()
+                pool.close()
+                if process is not None:
+                    try:process.wait(timeout=30)
+                    except subprocess.TimeoutExpired:
+                        from oncotracer_cli.sample_execution import SampleRunner
+                        SampleRunner._stop_group(process)
+                        process.wait(timeout=5)
 
 if __name__=='__main__':unittest.main()
