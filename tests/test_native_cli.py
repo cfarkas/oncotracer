@@ -40,9 +40,70 @@ from oncotracer_cli.runtime import (  # noqa: E402
 )
 
 
+class CommandHelpTests(unittest.TestCase):
+    def test_interactive_alias_keeps_browser_options_and_boundaries(self):
+        from oncotracer_cli.cli import parse_arguments
+        for options in ([], ["--backend", "docker"], ["--ffpe", "--backend", "docker"],
+                        ["--mode", "ont", "--threads", "8"]):
+            with self.subTest(options=options):
+                alias = parse_arguments(["interactive", *options])
+                original = parse_arguments(["--interactive", *options])
+                self.assertEqual(vars(alias), vars(original))
+                self.assertFalse(alias.run)
+        for flags in (["--run"], ["--terminal"], ["--samplesheet", "samples.csv"]):
+            with self.subTest(flags=flags), self.assertRaisesRegex(OncoTracerError, "without starting analysis"):
+                parse_arguments(["interactive", *flags])
+
+    def test_help_alias_supports_commands_and_interactive_setup(self):
+        from oncotracer_cli.cli import parse_arguments
+        for command, expected in (([], "usage: oncotracer"), (["run"], "--config"),
+                                  (["interactive"], "--backend")):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), self.assertRaises(SystemExit) as result:
+                parse_arguments(["help", *command])
+            self.assertEqual(result.exception.code, 0)
+            self.assertIn(expected, output.getvalue())
+
+    def test_unknown_commands_offer_valid_commands_without_running(self):
+        from oncotracer_cli import cli
+        for token, expected in (("interactve", "oncotracer interactive"),
+                                ("runn", "oncotracer run"),
+                                ("nonsense", "oncotracer --interactive --backend docker"),
+                                ("--docker", "oncotracer --help"),
+                                ("--interactve", "oncotracer --interactive")):
+            output = io.StringIO()
+            with self.subTest(token=token), contextlib.redirect_stderr(output), \
+                    patch.object(cli, "execute_run", side_effect=AssertionError("analysis started")), \
+                    patch.object(cli, "isolated_payload_cache", side_effect=AssertionError("runtime touched")):
+                self.assertEqual(cli.main([token]), 2)
+            self.assertIn(expected, output.getvalue())
+            self.assertIn("oncotracer --help", output.getvalue())
+            self.assertNotIn("v2 subcommand", output.getvalue())
+
+    def test_misspelled_options_suggest_the_option_for_that_command(self):
+        from oncotracer_cli.cli import parse_arguments
+        for values, option, command in ((["interactive", "--backned", "docker"], "--backend", "setup"),
+                                       (["run", "--config", "x.yml", "--treads", "8"], "--threads", "run")):
+            output = io.StringIO()
+            with self.subTest(values=values), contextlib.redirect_stderr(output), self.assertRaises(SystemExit) as result:
+                parse_arguments(values)
+            self.assertEqual(result.exception.code, 2)
+            self.assertIn("Did you mean '" + option + "'", output.getvalue())
+            self.assertIn("oncotracer " + command + " --help", output.getvalue())
+
+    def test_missing_required_argument_preserves_error_and_adds_help(self):
+        from oncotracer_cli.cli import parse_arguments
+        output = io.StringIO()
+        with contextlib.redirect_stderr(output), self.assertRaises(SystemExit) as result:
+            parse_arguments(["run"])
+        self.assertEqual(result.exception.code, 2)
+        self.assertIn("--config", output.getvalue())
+        self.assertIn("oncotracer run --help", output.getvalue())
+
+
 class NativeCliTests(unittest.TestCase):
     def test_version_is_v2(self) -> None:
-        self.assertEqual(__version__, "6.0.0")
+        self.assertEqual(__version__, "6.0.1")
 
     def test_parser_exposes_native_commands(self) -> None:
         parser = build_parser()
@@ -70,7 +131,7 @@ class NativeCliTests(unittest.TestCase):
     def test_docker_install_default_still_pulls(self) -> None:
         from oncotracer_cli import cli
         for flags, image in [
-            ([], "carlosfarkas/oncotracer:6.0.0"),
+            ([], "carlosfarkas/oncotracer:6.0.1"),
             (["--image", "registry/image:tag"], "registry/image:tag"),
         ]:
             with self.subTest(image=image):

@@ -125,6 +125,54 @@ class SampleJobBrowserTests(unittest.TestCase):
         self.assertEqual(self.runs,[])
         self.assertFalse(self.errors,self.errors)
 
+    def test_detect_tools_real_request_and_error_recovery(self):
+        from oncotracer_cli.runtime import OncoTracerError
+        ont = self.root / 'ont-inputs' / 'SYNTHETIC' / 'fastq_pass'
+        ont.mkdir(parents=True)
+        (ont / 'reads.fastq').write_text('@synthetic\nACGT\n+\nIIII\n')
+        for platform, folder in (('ont', ont.parent.parent), ('illumina', self.reads)):
+            with self.subTest(platform=platform):
+                self.page.goto(self.server.origin + '/#' + self.state.token)
+                self.page.reload()
+                self.page.wait_for_selector('main:not([inert])')
+                self.page.locator('#choose-new-analysis').click()
+                self.page.locator('#choose-' + platform).click()
+                self.page.locator('#variant-fresh').click()
+                self.page.locator('#input-folder').fill(str(folder))
+                self.page.locator('#scan').click()
+                self.page.wait_for_selector('#samples-card:not([hidden])')
+                self.page.locator('.type-select').first.select_option('cancer')
+                self.page.locator('#backend').select_option('docker')
+                self.page.locator('#variants').check()
+                self.page.evaluate("document.querySelectorAll('details').forEach(field=>field.open=true)")
+                supplied = str(self.root / 'my-licensed-annovar')
+                self.page.locator('#variant_annovar_dir').fill(supplied)
+                button = self.page.locator('#variant-autodetect')
+                expect(button).to_have_text('Detect tools')
+                with self.page.expect_response(lambda response: response.url.endswith('/api/variant-resources')) as response:
+                    button.click()
+                self.assertEqual(response.value.status, 200, response.value.text())
+                self.assertTrue(response.value.json()['resources'])
+                expect(self.page.locator('#variant-resource-dialog')).to_be_visible()
+                expect(self.page.locator('#variant-detection-status')).to_contain_text('Check complete')
+                expect(self.page.locator('#variant_annovar_dir')).to_have_value(supplied)
+                self.page.locator('#variant-resource-close').click()
+                message = 'Test resource error: <b>unavailable path</b>'
+                with patch.object(self.state, 'variant_resources', side_effect=OncoTracerError(message)):
+                    button.click()
+                    expect(self.page.locator('#variant-detection-status')).to_contain_text(message)
+                    expect(button).to_be_enabled()
+                expect(self.page.locator('#variant_annovar_dir')).to_have_value(supplied)
+                expect(self.page.locator('#variant-resource-review')).to_be_hidden()
+                expect(self.page.locator('#variant-detection-results')).to_be_hidden()
+                expect(self.page.locator('#variant-detection-status b')).to_have_count(0)
+                button.click()
+                expect(self.page.locator('#variant-resource-dialog')).to_be_visible()
+                expect(self.page.locator('#variant-detection-status')).to_contain_text('Check complete')
+                self.assertEqual(self.runs, [])
+                self.assertIsNone(self.state.job)
+                self.assertFalse(self.errors, self.errors)
+
     def test_docker_methylation_shows_managed_resources_and_license(self):
         ont=self.root/'ont-inputs';library=ont/'SYNTHETIC'
         (library/'fastq_pass').mkdir(parents=True)

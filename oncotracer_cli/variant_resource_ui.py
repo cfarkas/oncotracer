@@ -199,7 +199,7 @@ function resetVariantResourceResults(){
   if(variantDetectionApplying)return;
   variantResourceLastResult=null;syncVariantInstallChoices();
   const result=document.getElementById('variant-detection-results');
-  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use detect_tools again to refresh the resource list.';}
+  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use Detect tools again to refresh the resource list.';}
   const review=document.getElementById('variant-resource-review');if(review)review.hidden=true;
   for(const status of document.querySelectorAll('.variant-path-status')){status.textContent='';delete status.dataset.state;}
 }
@@ -292,7 +292,7 @@ function renderVariantResources(result,scope='all'){
     appendVariantResourceLinks(detail,guide.links);
     container.append(detail);
   }
-  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use detect_tools again. Resource detection itself never installs software.','hint'));
+  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use Detect tools again. Resource detection itself never installs software.','hint'));
   if(!resources.length&&!candidates.length&&!guides.length)container.append(node('p','No matching resource was returned for this field. Use Browse to select an existing path.','hint'));
   const audit=node('details');audit.append(node('summary','Search details and limitations'));
   for(const note of result.notes||[])audit.append(node('p',note,'hint'));
@@ -322,7 +322,7 @@ async function detectVariantResources(payload,scope='all',openDialog=true){
     if(managedChanged)status.textContent='Caller environment updated to the validated OncoTracer installation: '+result.managed_variant_prefix;
     document.getElementById('variant-resource-review').hidden=false;if(openDialog)openVariantResourceDialog();
     return result;
-  }catch(error){status.textContent='Resource check could not finish. Your entered paths were kept.';throw error;}
+  }catch(error){variantResourceLastResult=null;syncVariantInstallChoices();document.getElementById('variant-detection-results').hidden=true;status.textContent='Resource check could not finish: '+(error.message||String(error))+' Your entered paths were kept.';throw error;}
 }
 async function detectVariantResourcesBeforeSave(){
   const result=await detectVariantResources(variantResourcePayload(),'all',false);

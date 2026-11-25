@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Global native command-line interface for OncoTracer v2."""
+"""Global native command-line interface for OncoTracer."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from .sample_resources import parallel_value, parallel_argument
 import argparse
 import contextlib
 import csv
+import difflib
 import io
 import json
 import os
@@ -63,7 +64,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:6.0.0"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:6.0.1"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -1791,11 +1792,64 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
     )
 
 
+class CommandArgumentParser(argparse.ArgumentParser):
+    """Keep argparse failures, adding scoped help and non-executing suggestions."""
+
+    def parse_args(self, args=None, namespace=None):
+        values = list(sys.argv[1:] if args is None else args)
+        self._error_context = self
+        if values:
+            for action in self._actions:
+                if isinstance(action, argparse._SubParsersAction) and values[0] in action.choices:
+                    self._error_context = action.choices[values[0]]
+                    break
+        return super().parse_args(values, namespace)
+
+    def error(self, message):
+        context = getattr(self, "_error_context", self)
+        hints = []
+        if message.startswith("unrecognized arguments:"):
+            for token in message.split(":", 1)[1].split():
+                option = token.split("=", 1)[0]
+                if not option.startswith("-"):
+                    continue
+                matches = difflib.get_close_matches(option, context._option_string_actions, n=1, cutoff=0.7)
+                if matches:
+                    hint = f"Did you mean '{matches[0]}'?"
+                    if hint not in hints:
+                        hints.append(hint)
+        hints.append(f"For available options, run '{context.prog} --help'.")
+        super().error(message + "\n" + "\n".join(hints))
+
+
+def _unknown_command_message(token: str) -> str:
+    parser = build_parser()
+    commands = set(parser._option_string_actions)
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            commands.update(action.choices)
+    commands.difference_update({"internal-run"})
+    commands.update({"interactive", "help"})
+    matches = difflib.get_close_matches(token, sorted(commands), n=1, cutoff=0.6)
+    kind = "option" if token.startswith("-") else "command"
+    lines = [f"Unknown {kind} {token!r}."]
+    if matches:
+        lines.append(f"Did you mean 'oncotracer {matches[0]}'?")
+    lines.extend([
+        "Interactive setup: oncotracer --interactive --backend docker",
+        "Run a saved project: oncotracer run --config /path/to/project/config/run.yml --backend docker",
+        "All commands: oncotracer --help",
+        "Command options: oncotracer <command> --help",
+    ])
+    return "\n".join(lines)
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = CommandArgumentParser(
         prog="oncotracer",
         description="Native LP-WGS CNA and variant analysis.",
-        epilog=("Browser setup: oncotracer --interactive [--ffpe] [setup options]. "
+        epilog=("Browser setup: oncotracer interactive [--ffpe] [setup options] "
+                "(also oncotracer --interactive). Command help: oncotracer help COMMAND. "
                 "Continue ONT CpG setup: oncotracer --interactive --cpg-from PROJECT. "
                 "Use oncotracer setup --help for project, input, backend and resource options."),
     )
@@ -1898,7 +1952,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _legacy_to_modern(values: list[str]) -> list[str]:
-    """Translate v1 launcher syntax while keeping v2 execution native."""
+    """Translate v1 launcher syntax while keeping execution native."""
+    unknown_token = values[0] if values else ""
     if values and values[0] in {"--paper_report", "--paper-report"}:
         return ["paper-report", *values[1:]]
     if (
@@ -1965,13 +2020,17 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "--auto_outdir": "--outdir",
         }
         return ["auto", *[mapping.get(value, value) for value in values]]
-    raise OncoTracerError("use an OncoTracer v2 subcommand; run 'oncotracer --help'")
+    raise OncoTracerError(_unknown_command_message(unknown_token))
 
 
 def parse_arguments(values: Sequence[str], parser: argparse.ArgumentParser | None = None) -> argparse.Namespace:
     """Resolve the public browser alias without weakening setup/run boundaries."""
     parser = parser or build_parser()
     values = list(values)
+    if values and values[0] == "help":
+        values = [*values[1:], "--help"]
+    if values and values[0] == "interactive":
+        values = ["--interactive", *values[1:]]
     top_level = bool(values) and values[0].startswith("-")
     detection = {"--detect-resources", "--detect_resources"}
     if top_level and detection.intersection(values):

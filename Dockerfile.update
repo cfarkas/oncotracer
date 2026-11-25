@@ -56,7 +56,7 @@ RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
     && NXF_HOME=/tmp/nextflow-build nextflow -version \
     && rm -rf /tmp/nextflow-build /tmp/nextflow
 
-LABEL org.opencontainers.image.version="6.0.0" \
+LABEL org.opencontainers.image.version="6.0.1" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
       org.opencontainers.image.source.sha256="${SOURCE_SHA256}"
 

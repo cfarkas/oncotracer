@@ -3,10 +3,10 @@
 The recommended v6 route uses Docker for scientific tools and a small Python
 application for project setup. Use Linux x86-64 and Python 3.10–3.13.
 
-## Quick start: OncoTracer 6.0.0
+## Quick start: OncoTracer 6.0.1
 
 The [published study benchmark](benchmarks/2026-11-23.md) records v5 runs.
-See the [v6 release details](releases/6.0.0.md) for this version's changes and validation.
+See the [v6 release details](releases/6.0.1.md) for this version's changes and validation.
 
 Install [Docker Engine](https://docs.docker.com/engine/install/) and check that
 `docker info` works for your user. Then install the application:
@@ -14,7 +14,7 @@ Install [Docker Engine](https://docs.docker.com/engine/install/) and check that
 ```bash
 python3 -m venv oncotracer-env
 source oncotracer-env/bin/activate
-python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.0.0/oncotracer-6.0.0-py3-none-any.whl"
+python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.0.1/oncotracer-6.0.1-py3-none-any.whl"
 ```
 
 No Git checkout is needed. `pip install oncotracer` follows the separate PyPI
@@ -35,7 +35,7 @@ table and inspect CPU/RAM allocation without downloading or writing files.
 ## Browser setup
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:6.0.0
+oncotracer install --docker --image carlosfarkas/oncotracer:6.0.1
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```

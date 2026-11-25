@@ -34,11 +34,13 @@ PATH_FIELDS = {
     "variant_tool_prefix", "variant_strelka_prefix", "variant_targets_bed", "variant_clair3_model", "variant_clairsto_sif",
     "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_prefix", "variant_ffperase_sif",
     "variant_annovar_dir", "variant_annovar_db", "variant_varlociraptor_scenario",
+    "variant_quilt2_reference_dir", "variant_quilt2_cache",
 }
 SETTING_FIELDS = {"variant_engine", "variant_ffperase", "variant_varlociraptor", "variant_annovar", "variant_reference_build",
                   "variant_clairsto_platform", "variant_specimen_type", "variant_callers", "variant_varlociraptor_fdr",
                   "variant_varlociraptor_events", "variant_varlociraptor_sample", "variant_ont_profile",
-                  "variant_download_resources", "variant_accept_ffperase_license"}
+                  "variant_download_resources", "variant_accept_ffperase_license",
+                  "variant_ont_imputation", "variant_monte_carlo_linkage"}
 ENV_FIELDS = {
     "variant_tool_prefix": ("ONCOTRACER_VARIANTS_PREFIX",),
     "variant_strelka_prefix": ("ONCOTRACER_STRELKA_PREFIX",),
@@ -79,13 +81,16 @@ def _payload(data):
     if len(set(callers)) != len(callers) or any(c not in CALLERS[mode] for c in callers):
         raise OncoTracerError(f"Choose unique {mode} callers from: {', '.join(CALLERS[mode])}")
     values = data.get("values", {})
-    if not isinstance(values, Mapping) or any(k not in PATH_FIELDS | SETTING_FIELDS for k in values):
+    if not isinstance(values, Mapping):
         raise OncoTracerError("values must contain supported variant resource/settings fields")
+    unsupported = sorted(str(key) for key in values if key not in PATH_FIELDS | SETTING_FIELDS)
+    if unsupported:
+        raise OncoTracerError("Unsupported resource settings: " + ", ".join(unsupported) + ". Refresh the setup page after upgrading OncoTracer.")
     normalized = {}
     for key, value in values.items():
         if value is None:
             continue
-        if key in {'variant_download_resources', 'variant_accept_ffperase_license'}:
+        if key in {'variant_download_resources', 'variant_accept_ffperase_license', 'variant_monte_carlo_linkage'}:
             if type(value) is not bool:
                 raise OncoTracerError(f'{key} must be true or false')
             normalized[key] = value
@@ -95,7 +100,8 @@ def _payload(data):
     for key, allowed in (("variant_ffperase", {"", "required", "off"}),
                          ("variant_varlociraptor", {"", "required", "off"}),
                          ("variant_annovar", {"", "auto", "off"}),
-                         ("variant_reference_build", {"", "hg19", "hg38"})):
+                         ("variant_reference_build", {"", "hg19", "hg38"}),
+                         ("variant_ont_imputation", {"", "off", "quilt2"})):
         if values.get(key, "") not in allowed:
             raise OncoTracerError(f"Invalid {key}")
     image = _string(data.get("docker_image", ""), "docker_image")
@@ -691,7 +697,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
     return {**({"managed_variant_prefix": str(runtime_selection.prefix)} if runtime_selection.managed else {}),
             "backend": backend, "fields": fields, "resources": resources, "candidates": candidates, "install_guides": guides,
             "searched": search.searched, "notes": ["Read-only discovery: no executable, model, installer, download or analysis was run. Review suggestions before saving.",
-            "Only common installation folders and a bounded set of their children were checked. For resources elsewhere, enter the exact path and select detect_tools again.",
+            "Only common installation folders and a bounded set of their children were checked. For resources elsewhere, enter the exact path and select Detect tools again.",
             "Clinical target BEDs, Varlociraptor scenarios and reference genomes are never selected from filenames; supply the intended files explicitly.", *search.notes]}
 
 

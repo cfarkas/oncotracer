@@ -135,11 +135,11 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 </details></section>
 <details id="variant-advanced-settings" open><summary>Resources and advanced settings</summary>
 <section class="variant-section" hidden id="variant-tools-section" aria-labelledby="variant-tools-title">
-<div class="variant-section-heading"><span class="variant-step">2</span><div><h3 id="variant-tools-title">Caller tools and models</h3><p class="hint">Start with detect_tools. Open paths only to review or change them.</p></div></div>
+<div class="variant-section-heading"><span class="variant-step">2</span><div><h3 id="variant-tools-title">Caller tools and models</h3><p class="hint">Start with Detect tools. Open paths only to review or change them.</p></div></div>
 <div class="variant-detection">
 <div class="variant-block-heading"><div><strong>Required tools</strong><p class="hint">Detect local tools, or install the missing caller environments.</p></div></div>
 <label for="variant-tools-folder">Tools folder to search (optional)</label><div class="variant-path-row"><input id="variant-tools-folder" placeholder="Choose a folder containing tools or Conda environments"><button id="variant-tools-browse" type="button">Choose tools folder</button></div>
-<div class="actions"><button id="variant-autodetect" type="button" class="primary variant-detect-glow">detect_tools</button><button id="variant-resource-review" type="button" hidden>Review resource details</button></div>
+<div class="actions"><button id="variant-autodetect" type="button" class="primary variant-detect-glow">Detect tools</button><button id="variant-resource-review" type="button" hidden>Review resource details</button></div>
 <p id="variant-detection-status" class="hint" role="status" aria-live="polite">Simulate resource discovery in fictional /demo folders; your computer is not inspected.</p>
 <div id="variant-install-choices" class="variant-install-choices" hidden><p class="hint">Missing tools detected. Choose how to install them.</p><div class="actions"><button id="variant-install-conda" data-variant-install="conda" type="button" class="primary">Install with Conda</button><button id="variant-install-docker" data-variant-install="docker" type="button" class="primary">Install with Docker</button></div></div>
 <p id="variant-install-overview" class="hint" role="status" aria-live="polite" hidden></p><button id="variant-install-review" type="button" hidden>View installation progress</button></div>
@@ -240,7 +240,7 @@ main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
 <button id="resume-detect-resources" type="button">Detect sample-job options</button>
 <button id="resume-apply-resources" type="button">Apply resources and check</button><p class="hint">Run analysis also applies and checks these choices before starting.</p>
 </section><div class="actions"><button id="run" class="primary">Simulate Run</button><button id="stop" hidden>Stop simulation</button><span id="job-status" role="status"></span><a id="open-results" class="result-link" target="_blank" rel="noopener noreferrer" hidden>Open simulated results</a><button id="new-analysis" hidden>Set up another analysis</button></div><div id="run-progress" hidden><div class="hardware"><div><strong id="run-elapsed">0s</strong><span>Elapsed</span></div><div><strong id="run-step-eta">Waiting for progress</strong><span>Current step ETA</span></div><div><strong id="run-overall-eta">Not yet known</strong><span>Overall analysis ETA</span></div></div><p id="run-stage"></p><p id="run-eta-note" class="hint"></p></div><p id="log-path" class="folderpath"></p><pre id="logs" class="logs" hidden></pre></section>
-</div><section id="demo-results" class="card demo-result-card" hidden><span class="demo-chip">Illustrative results</span><h2 id="demo-results-heading" tabindex="-1">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id="demo-result-summary"></dl><p class="notice">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href="../../installation/">Install OncoTracer →</a></section><footer class="demo-footer">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>7c26e72060b5</code>.</footer></main>
+</div><section id="demo-results" class="card demo-result-card" hidden><span class="demo-chip">Illustrative results</span><h2 id="demo-results-heading" tabindex="-1">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id="demo-result-summary"></dl><p class="notice">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href="../../installation/">Install OncoTracer →</a></section><footer class="demo-footer">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>004f29897ce8</code>.</footer></main>
 <dialog id="variant-resource-dialog" aria-labelledby="variant-resource-title">
 <div class="variant-dialog-heading"><div><span class="eyebrow">Tools, models and annotation</span><h2 id="variant-resource-title">Detected resources</h2></div><button id="variant-resource-close" type="button" autofocus>Close</button></div>
 <p id="variant-resource-dialog-status" class="hint" role="status" aria-live="polite"></p><section id="variant-install-panel" class="variant-install-panel" hidden>
@@ -1315,7 +1315,7 @@ function resetVariantResourceResults(){
   if(variantDetectionApplying)return;
   variantResourceLastResult=null;syncVariantInstallChoices();
   const result=document.getElementById('variant-detection-results');
-  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use detect_tools again to refresh the resource list.';}
+  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use Detect tools again to refresh the resource list.';}
   const review=document.getElementById('variant-resource-review');if(review)review.hidden=true;
   for(const status of document.querySelectorAll('.variant-path-status')){status.textContent='';delete status.dataset.state;}
 }
@@ -1408,7 +1408,7 @@ function renderVariantResources(result,scope='all'){
     appendVariantResourceLinks(detail,guide.links);
     container.append(detail);
   }
-  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use detect_tools again. Resource detection itself never installs software.','hint'));
+  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use Detect tools again. Resource detection itself never installs software.','hint'));
   if(!resources.length&&!candidates.length&&!guides.length)container.append(node('p','No matching resource was returned for this field. Use Browse to select an existing path.','hint'));
   const audit=node('details');audit.append(node('summary','Search details and limitations'));
   for(const note of result.notes||[])audit.append(node('p',note,'hint'));
@@ -1438,7 +1438,7 @@ async function detectVariantResources(payload,scope='all',openDialog=true){
     if(managedChanged)status.textContent='Caller environment updated to the validated OncoTracer installation: '+result.managed_variant_prefix;
     document.getElementById('variant-resource-review').hidden=false;if(openDialog)openVariantResourceDialog();
     return result;
-  }catch(error){status.textContent='Resource check could not finish. Your entered paths were kept.';throw error;}
+  }catch(error){variantResourceLastResult=null;syncVariantInstallChoices();document.getElementById('variant-detection-results').hidden=true;status.textContent='Resource check could not finish: '+(error.message||String(error))+' Your entered paths were kept.';throw error;}
 }
 async function detectVariantResourcesBeforeSave(){
   const result=await detectVariantResources(variantResourcePayload(),'all',false);

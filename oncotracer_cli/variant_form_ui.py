@@ -51,7 +51,7 @@ def variant_form(*, existing_bam=False):
 </details></section>
 <details id="variant-advanced-settings" open><summary>Resources and advanced settings</summary>
 <section class="variant-section" hidden id="variant-tools-section" aria-labelledby="variant-tools-title">
-<div class="variant-section-heading"><span class="variant-step">2</span><div><h3 id="variant-tools-title">Caller tools and models</h3><p class="hint">Start with detect_tools. Open paths only to review or change them.</p></div></div>
+<div class="variant-section-heading"><span class="variant-step">2</span><div><h3 id="variant-tools-title">Caller tools and models</h3><p class="hint">Start with Detect tools. Open paths only to review or change them.</p></div></div>
 <!-- VARIANT_RESOURCE_PANEL -->
 <p id="variant-tool-note" class="hint"></p>{threads}
 <div id="variant-parallel-controls"><h4>Parallel sample resources</h4><div class="grid"><div><label for="variant_parallel_samples">Samples running at once</label><input id="variant_parallel_samples" value="auto" placeholder="auto or a positive integer"></div><div><label for="variant_memory">Total analysis memory</label><input id="variant_memory" value="auto" placeholder="auto or 64GB"></div></div><p class="hint">CPU and RAM budgets are shared across samples. Auto checks CPU affinity, container limits and available RAM before running. Illumina complete variant analysis needs at least 32 GiB per simultaneous sample. Saved explicit limits are retained.</p></div>

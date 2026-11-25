@@ -16,11 +16,11 @@ permissions:
   packages: write
 
 concurrency:
-  group: release-native-v6.0.0
+  group: release-native-v6.0.1
   cancel-in-progress: false
 
 env:
-  RELEASE_TAG: v6.0.0
+  RELEASE_TAG: v6.0.1
   IMAGE_NAME: ghcr.io/cfarkas/oncotracer
   SCIENCE_BASELINE_COMMIT: 4b8a1d320360c16df210843bce906d2116a1551b
   SCIENCE_BASELINE_SHA256: 08a981f0148e79768def515426e113d3d98940dd34032ee48466196f3e40d921
@@ -206,7 +206,7 @@ jobs:
             2> "$RUNNER_TEMP/existing-release.error" || RELEASE_STATUS=$?
           if [[ "$RELEASE_STATUS" -eq 0 ]]; then
             jq -e --arg sha "$MAIN_SHA" '
-              .tag_name == "v6.0.0" and .draft == false and
+              .tag_name == "v6.0.1" and .draft == false and
               .prerelease == false and .target_commitish == $sha
             ' "$RUNNER_TEMP/existing-release.json"
             RELEASE_EXISTS=true
@@ -240,16 +240,16 @@ jobs:
           python3 -m build --outdir "$RUNNER_TEMP/python-distributions"
           python3 scripts/verify_python_dist.py \
             --dist-dir "$RUNNER_TEMP/python-distributions" \
-            --expected-version 6.0.0 --expected-commit "$MAIN_SHA" \
+            --expected-version 6.0.1 --expected-commit "$MAIN_SHA" \
             --expected-source-sha256 "$SOURCE_SHA256" \
             --output "$RUNNER_TEMP/python-distribution-check.json"
           python3 -m venv "$RUNNER_TEMP/release-wheel-smoke"
           "$RUNNER_TEMP/release-wheel-smoke/bin/python" -m pip install \
-            --no-index --no-deps "$RUNNER_TEMP/python-distributions/oncotracer-6.0.0-py3-none-any.whl"
+            --no-index --no-deps "$RUNNER_TEMP/python-distributions/oncotracer-6.0.1-py3-none-any.whl"
           python3 scripts/smoke_python_install.py \
             --python "$RUNNER_TEMP/release-wheel-smoke/bin/python" \
             --expected-commit "$MAIN_SHA" --expected-source-sha256 "$SOURCE_SHA256" \
-            --expected-version 6.0.0 --output "$RUNNER_TEMP/python-wheel-smoke.json"
+            --expected-version 6.0.1 --output "$RUNNER_TEMP/python-wheel-smoke.json"
 
       - name: Build and authenticate copied release executable
         if: steps.gate.outputs.ready == 'true'
@@ -266,7 +266,7 @@ jobs:
             --source-sha256 "$SOURCE_SHA256"
           chmod 0755 release/oncotracer
           BINARY_SHA256="$(sha256sum release/oncotracer | awk '{print $1}')"
-          release/oncotracer --version | grep -F 'OncoTracer 6.0.0'
+          release/oncotracer --version | grep -F 'OncoTracer 6.0.1'
           release/oncotracer provenance --json > "$RUNNER_TEMP/binary-provenance.json"
           jq -e --arg commit "$MAIN_SHA" --arg source "$SOURCE_SHA256" --arg binary "$BINARY_SHA256" '
             .source_commit == $commit and .source_sha256 == $source and
@@ -327,8 +327,8 @@ jobs:
           tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
             --mode='u+rwX,go+rX,go-w' --format=gnu \
             -C "$PARITY_DIR" -cf - quickstart1 quickstart2 \
-            | gzip -n -9 > release/oncotracer-v6.0.0-parity-audit.tar.gz
-          PARITY_SHA256="$(sha256sum release/oncotracer-v6.0.0-parity-audit.tar.gz | awk '{print $1}')"
+            | gzip -n -9 > release/oncotracer-v6.0.1-parity-audit.tar.gz
+          PARITY_SHA256="$(sha256sum release/oncotracer-v6.0.1-parity-audit.tar.gz | awk '{print $1}')"
           {
             IFS=$'\t' read -r q1_artifact_id q1_artifact_name q1_artifact_digest <<< "$Q1_RECORD"
             IFS=$'\t' read -r q2_artifact_id q2_artifact_name q2_artifact_digest <<< "$Q2_RECORD"
@@ -379,14 +379,14 @@ jobs:
           context: ${{ runner.temp }}/oncotracer-v2-release-context
           load: true
           push: false
-          tags: oncotracer:v6.0.0-release-candidate
+          tags: oncotracer:v6.0.1-release-candidate
           build-args: |
             SOURCE_COMMIT=${{ steps.gate.outputs.main_sha }}
             SOURCE_SHA256=${{ steps.source.outputs.source_sha256 }}
           labels: |
             org.opencontainers.image.revision=${{ steps.gate.outputs.main_sha }}
             org.opencontainers.image.source.sha256=${{ steps.source.outputs.source_sha256 }}
-            org.opencontainers.image.version=6.0.0
+            org.opencontainers.image.version=6.0.1
 
       - name: Authenticate candidate and classify stable container state
         if: steps.gate.outputs.ready == 'true'
@@ -398,8 +398,8 @@ jobs:
           RELEASE_BINARY_SHA256: ${{ steps.binary.outputs.sha256 }}
         run: |
           set -Eeuo pipefail
-          docker run --rm oncotracer:v6.0.0-release-candidate --version | grep -F 'OncoTracer 6.0.0'
-          docker run --rm oncotracer:v6.0.0-release-candidate provenance --json \
+          docker run --rm oncotracer:v6.0.1-release-candidate --version | grep -F 'OncoTracer 6.0.1'
+          docker run --rm oncotracer:v6.0.1-release-candidate provenance --json \
             > "$RUNNER_TEMP/container-provenance.json"
           CONTAINER_BINARY_SHA256="$(jq -r '.binary_sha256' "$RUNNER_TEMP/container-provenance.json")"
           test "$CONTAINER_BINARY_SHA256" = "$RELEASE_BINARY_SHA256"
@@ -407,16 +407,16 @@ jobs:
             .source_commit == $commit and .source_sha256 == $source and
             .source_tree_dirty == false
           ' "$RUNNER_TEMP/container-provenance.json"
-          docker run --rm oncotracer:v6.0.0-release-candidate doctor --backend host --json \
+          docker run --rm oncotracer:v6.0.1-release-candidate doctor --backend host --json \
             > "$RUNNER_TEMP/container-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/container-doctor.json"
-          docker run --rm --entrypoint bash oncotracer:v6.0.0-release-candidate \
+          docker run --rm --entrypoint bash oncotracer:v6.0.1-release-candidate \
             -c 'nextflow -version'
 
           CURRENT_MAIN="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           test "$CURRENT_MAIN" = "$MAIN_SHA"
-          CANDIDATE_TAG="$IMAGE_NAME:v6.0.0-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          docker tag oncotracer:v6.0.0-release-candidate "$CANDIDATE_TAG"
+          CANDIDATE_TAG="$IMAGE_NAME:v6.0.1-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker tag oncotracer:v6.0.1-release-candidate "$CANDIDATE_TAG"
           docker push "$CANDIDATE_TAG"
           CANDIDATE_DIGEST="$(scripts/release_registry_digest.sh "$CANDIDATE_TAG")"
           [[ "$CANDIDATE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
@@ -431,10 +431,10 @@ jobs:
           # On the first run this intentionally stops after the candidate push;
           # an administrator can make the package Public and retry the workflow.
           test "$CANDIDATE_TAG" = \
-            "ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          docker image rm "ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            "ghcr.io/cfarkas/oncotracer:v6.0.1-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker image rm "ghcr.io/cfarkas/oncotracer:v6.0.1-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           if docker image inspect \
-            "ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            "ghcr.io/cfarkas/oncotracer:v6.0.1-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             >/dev/null 2>&1; then
             echo "run-owned candidate tag is still available locally" >&2
             exit 1
@@ -447,7 +447,7 @@ jobs:
             DOCKER_CONFIG="$ANONYMOUS_DOCKER_CONFIG" \
             docker pull "$CANDIDATE_IMAGE"
           test ! -e "$ANONYMOUS_DOCKER_CONFIG/config.json"
-          docker run --rm "$CANDIDATE_IMAGE" --version | grep -F 'OncoTracer 6.0.0'
+          docker run --rm "$CANDIDATE_IMAGE" --version | grep -F 'OncoTracer 6.0.1'
           ANONYMOUS_BINARY_SHA256="$(docker run --rm --entrypoint sha256sum \
             "$CANDIDATE_IMAGE" /usr/local/bin/oncotracer | awk 'NR == 1 {print $1}')"
           test "$ANONYMOUS_BINARY_SHA256" = "$RELEASE_BINARY_SHA256"
@@ -475,7 +475,7 @@ jobs:
             --username "$GITHUB_ACTOR" --password-stdin
 
           REGISTRY_STATE="$(scripts/release_registry_pair.sh \
-            "$IMAGE_NAME:6.0.0" "$IMAGE_NAME:v6.0.0")"
+            "$IMAGE_NAME:6.0.1" "$IMAGE_NAME:v6.0.1")"
           IFS=$'\t' read -r STABLE_STATE STABLE_FIELD2 STABLE_FIELD3 \
             STABLE_FIELD4 STABLE_EXTRA <<< "$REGISTRY_STATE"
           test -z "$STABLE_EXTRA"
@@ -498,10 +498,10 @@ jobs:
               IMAGE_DIGEST="$STABLE_FIELD4"
               [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
               if [[ ! (
-                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:6.0.0" &&
-                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v6.0.0" ||
-                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v6.0.0" &&
-                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:6.0.0"
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:6.0.1" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v6.0.1" ||
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v6.0.1" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:6.0.1"
               ) ]]; then
                 echo "invalid partial stable registry state: $REGISTRY_STATE" >&2
                 exit 1
@@ -516,7 +516,7 @@ jobs:
 
           PUBLISHED_IMAGE="$IMAGE_NAME@$IMAGE_DIGEST"
           docker pull "$PUBLISHED_IMAGE"
-          docker run --rm "$PUBLISHED_IMAGE" --version | grep -F 'OncoTracer 6.0.0'
+          docker run --rm "$PUBLISHED_IMAGE" --version | grep -F 'OncoTracer 6.0.1'
           PUBLISHED_BINARY_SHA256="$(docker run --rm --entrypoint sha256sum \
             "$PUBLISHED_IMAGE" /usr/local/bin/oncotracer | awk 'NR == 1 {print $1}')"
           [[ "$PUBLISHED_BINARY_SHA256" =~ ^[0-9a-f]{64}$ ]]
@@ -551,7 +551,7 @@ jobs:
             "$IMAGE_DIGEST"
 
           AUTHENTICATED_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
-            "$IMAGE_NAME:6.0.0" "$IMAGE_NAME:v6.0.0")"
+            "$IMAGE_NAME:6.0.1" "$IMAGE_NAME:v6.0.1")"
           test "$AUTHENTICATED_REGISTRY_STATE" = "$REGISTRY_STATE" || {
             echo "stable registry state changed during authentication" >&2
             exit 1
@@ -605,8 +605,8 @@ jobs:
           python3 scripts/export_study_benchmark.py --output "$BENCHMARK_DIR" \
             --bundle release/oncotracer-v5.0.0-study-benchmark.tar.gz
           BENCHMARK_SHA256="$(sha256sum release/oncotracer-v5.0.0-study-benchmark.tar.gz | awk '{print $1}')"
-          cp "$RUNNER_TEMP/python-distributions/oncotracer-6.0.0-py3-none-any.whl" release/
-          cp "$RUNNER_TEMP/python-distributions/oncotracer-6.0.0.tar.gz" release/
+          cp "$RUNNER_TEMP/python-distributions/oncotracer-6.0.1-py3-none-any.whl" release/
+          cp "$RUNNER_TEMP/python-distributions/oncotracer-6.0.1.tar.gz" release/
           jq -n \
             --arg benchmark_commit "$BENCHMARK_COMMIT" \
             --arg benchmark_source "$BENCHMARK_SOURCE" \
@@ -629,8 +629,8 @@ jobs:
             --arg q2_artifact_digest "$Q2_ARTIFACT_DIGEST" '
             {
               schema: "oncotracer-v2-release-provenance-v3",
-              version: "6.0.0",
-              release_tag: "v6.0.0",
+              version: "6.0.1",
+              release_tag: "v6.0.1",
               source_commit: $commit,
               source_sha256: $source_sha256,
               source_tree_dirty: false,
@@ -679,7 +679,12 @@ jobs:
             }
           ' > release/release-provenance.json
           cat > "$RUNNER_TEMP/RELEASE_NOTES.md" <<EOF
-          # OncoTracer v6.0.0
+          # OncoTracer v6.0.1
+
+          - Fix browser launch with \`oncotracer interactive\`; the existing \`oncotracer --interactive\` form remains supported.
+          - Suggest valid commands and options when input is mistyped, and point argument errors to the relevant help.
+          - Add \`oncotracer help\` and \`oncotracer help run\`. Suggestions never start analysis.
+          - Fix Detect tools rejecting browser imputation settings; show resource-check errors beside the button while preserving entered paths.
 
           - Run with one sample table: \`oncotracer launch --samples samples.csv --project my-run --specimen fresh\`.
           - Automatically prepare Docker tools, references and pinned methylation resources; save the full YAML for review and reuse.
@@ -701,7 +706,7 @@ jobs:
           - ONT retains its QC-limited exit: 7/21 primary CNA assessments, six additional coarse relative profiles and 20/21 completed methylation libraries. These are execution/QC results, not diagnostic accuracy estimates.
           - Download the study benchmark bundle for every recorded stage, Illumina variant subprocess, aggregate CPU/RAM/disk measurements, evidence hashes and reproducible commands.
           - The 58-sample study benchmark is historical v5 evidence from commit 76da6c1b707f3ee14f0dc67f7521e394ff934e5d. Its timings are not v6 measurements. Current validation and published artifacts have their own exact provenance.
-          - Start v6 from one sample table: https://github.com/cfarkas/oncotracer/blob/v6.0.0/docs/launch.md
+          - Start v6 from one sample table: https://github.com/cfarkas/oncotracer/blob/v6.0.1/docs/launch.md
           - Historical v5 benchmark: https://github.com/cfarkas/oncotracer/blob/v5.0.0/docs/benchmarks/2026-11-23.md
 
           Validated on exact commit: \`$MAIN_SHA\`
@@ -714,9 +719,9 @@ jobs:
           EOF
           (
             cd release
-            sha256sum oncotracer oncotracer-v6.0.0-parity-audit.tar.gz \
+            sha256sum oncotracer oncotracer-v6.0.1-parity-audit.tar.gz \
               oncotracer-v5.0.0-study-benchmark.tar.gz \
-              oncotracer-6.0.0-py3-none-any.whl oncotracer-6.0.0.tar.gz \
+              oncotracer-6.0.1-py3-none-any.whl oncotracer-6.0.1.tar.gz \
               release-provenance.json > SHA256SUMS
             sha256sum --strict -c SHA256SUMS
           )
@@ -763,10 +768,10 @@ jobs:
               ;;
             partial)
               if [[ ! (
-                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:6.0.0" &&
-                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v6.0.0" ||
-                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v6.0.0" &&
-                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:6.0.0"
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:6.0.1" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v6.0.1" ||
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v6.0.1" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:6.0.1"
               ) ]]; then
                 echo "invalid captured partial stable registry state" >&2
                 exit 1
@@ -784,7 +789,7 @@ jobs:
           # permanent mutation. Any source advance or stable-tag change fails
           # closed instead of publishing from a stale classification.
           PREPUBLISH_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
-            "$IMAGE_NAME:6.0.0" "$IMAGE_NAME:v6.0.0")"
+            "$IMAGE_NAME:6.0.1" "$IMAGE_NAME:v6.0.1")"
           test "$PREPUBLISH_REGISTRY_STATE" = "$EXPECTED_REGISTRY_STATE" || {
             echo "stable registry state changed after prepublication acceptance" >&2
             exit 1
@@ -795,7 +800,7 @@ jobs:
             missing)
               bash scripts/release_registry_put_if_absent.sh \
                 "$CANDIDATE_TAG" "$IMAGE_DIGEST" "$MAIN_SHA" \
-                "$IMAGE_NAME:6.0.0" "$IMAGE_NAME:v6.0.0"
+                "$IMAGE_NAME:6.0.1" "$IMAGE_NAME:v6.0.1"
               ;;
             partial)
               bash scripts/release_registry_put_if_absent.sh \
@@ -807,7 +812,7 @@ jobs:
           esac
 
           FINAL_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
-            "$IMAGE_NAME:6.0.0" "$IMAGE_NAME:v6.0.0")"
+            "$IMAGE_NAME:6.0.1" "$IMAGE_NAME:v6.0.1")"
           printf -v EXPECTED_FINAL_REGISTRY_STATE 'existing\t%s' "$IMAGE_DIGEST"
           test "$FINAL_REGISTRY_STATE" = "$EXPECTED_FINAL_REGISTRY_STATE"
 
@@ -828,10 +833,10 @@ jobs:
           test "$(stat -c '%a' -- "$ACCEPTED_RELEASE")" = 500
           assets=(
             "$ACCEPTED_RELEASE/oncotracer"
-            "$ACCEPTED_RELEASE/oncotracer-v6.0.0-parity-audit.tar.gz"
+            "$ACCEPTED_RELEASE/oncotracer-v6.0.1-parity-audit.tar.gz"
             "$ACCEPTED_RELEASE/oncotracer-v5.0.0-study-benchmark.tar.gz"
-            "$ACCEPTED_RELEASE/oncotracer-6.0.0-py3-none-any.whl"
-            "$ACCEPTED_RELEASE/oncotracer-6.0.0.tar.gz"
+            "$ACCEPTED_RELEASE/oncotracer-6.0.1-py3-none-any.whl"
+            "$ACCEPTED_RELEASE/oncotracer-6.0.1.tar.gz"
             "$ACCEPTED_RELEASE/release-provenance.json"
             "$ACCEPTED_RELEASE/SHA256SUMS"
           )
@@ -841,13 +846,13 @@ jobs:
             test "$(stat -c '%h' -- "$asset")" -eq 1
             test "$(stat -c '%a' -- "$asset")" = 400
           done
-          expected_assets='["SHA256SUMS","oncotracer","oncotracer-v6.0.0-parity-audit.tar.gz","oncotracer-v5.0.0-study-benchmark.tar.gz","oncotracer-6.0.0-py3-none-any.whl","oncotracer-6.0.0.tar.gz","release-provenance.json"]'
+          expected_assets='["SHA256SUMS","oncotracer","oncotracer-v6.0.1-parity-audit.tar.gz","oncotracer-v5.0.0-study-benchmark.tar.gz","oncotracer-6.0.1-py3-none-any.whl","oncotracer-6.0.1.tar.gz","release-provenance.json"]'
           if [[ "$RELEASE_EXISTS" == true ]]; then
             gh api -H 'Accept: application/vnd.github+json' \
               "/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
               > "$RUNNER_TEMP/existing-release-before-upload.json"
             jq -e --arg sha "$MAIN_SHA" --argjson expected "$expected_assets" '
-              .tag_name == "v6.0.0" and .draft == false and
+              .tag_name == "v6.0.1" and .draft == false and
               .prerelease == false and .target_commitish == $sha and
               ([.assets[].name] | length) == ([.assets[].name] | unique | length) and
               (([.assets[].name] - $expected) | length) == 0
@@ -882,11 +887,11 @@ jobs:
                 --repo "$GITHUB_REPOSITORY"
             fi
             gh release edit "$RELEASE_TAG" --target "$MAIN_SHA" \
-              --title 'OncoTracer v6.0.0' --notes-file "$RUNNER_TEMP/RELEASE_NOTES.md" \
+              --title 'OncoTracer v6.0.1' --notes-file "$RUNNER_TEMP/RELEASE_NOTES.md" \
               --latest --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$RELEASE_TAG" "${assets[@]}" \
-              --target "$MAIN_SHA" --title 'OncoTracer v6.0.0' \
+              --target "$MAIN_SHA" --title 'OncoTracer v6.0.1' \
               --notes-file "$RUNNER_TEMP/RELEASE_NOTES.md" --latest \
               --repo "$GITHUB_REPOSITORY"
           fi
@@ -895,10 +900,10 @@ jobs:
             --json tagName,isDraft,isPrerelease,targetCommitish,assets \
             > "$RUNNER_TEMP/published-release.json"
           jq -e --arg sha "$MAIN_SHA" '
-            .tagName == "v6.0.0" and .isDraft == false and
+            .tagName == "v6.0.1" and .isDraft == false and
             .isPrerelease == false and .targetCommitish == $sha and
             ([.assets[].name] | sort) ==
-              (["SHA256SUMS","oncotracer","oncotracer-v6.0.0-parity-audit.tar.gz","oncotracer-v5.0.0-study-benchmark.tar.gz","oncotracer-6.0.0-py3-none-any.whl","oncotracer-6.0.0.tar.gz","release-provenance.json"] | sort)
+              (["SHA256SUMS","oncotracer","oncotracer-v6.0.1-parity-audit.tar.gz","oncotracer-v5.0.0-study-benchmark.tar.gz","oncotracer-6.0.1-py3-none-any.whl","oncotracer-6.0.1.tar.gz","release-provenance.json"] | sort)
           ' "$RUNNER_TEMP/published-release.json"
           for asset in "${assets[@]}"; do
             name="${asset##*/}"

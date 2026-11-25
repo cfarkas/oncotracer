@@ -1,0 +1,589 @@
+{
+  "schema": 1,
+  "description": "Preserve earlier recorded tutorial evidence through the 6.0.1 command-help and browser resource-request fixes. Reversible changes authenticate both source hashes; old videos are not claimed to demonstrate these fixes.",
+  "recorded_commit": "7e1332b240cec2d76a7a118c22bf5dcfa870af51",
+  "files": {
+    "docs/assets/setup-demo/index.html": {
+      "recorded_sha256": "55093a8b7d0b95a1b2085efb4dd19bd76a666aa95966bd1e30db1f47d56926a1",
+      "current_sha256": "fa0cb69cacc034643eaf7f67206675165a782ec2cddba4e24a7b1b745f5091b0",
+      "changes": [
+        {
+          "start": 51343,
+          "end": 51576,
+          "current": "<div class=\"variant-section-heading\"><span class=\"variant-step\">2</span><div><h3 id=\"variant-tools-title\">Caller tools and models</h3><p class=\"hint\">Start with Detect tools. Open paths only to review or change them.</p></div></div>\n",
+          "recorded": "<div class=\"variant-section-heading\"><span class=\"variant-step\">2</span><div><h3 id=\"variant-tools-title\">Caller tools and models</h3><p class=\"hint\">Start with detect_tools. Open paths only to review or change them.</p></div></div>\n"
+        },
+        {
+          "start": 52065,
+          "end": 52286,
+          "current": "<div class=\"actions\"><button id=\"variant-autodetect\" type=\"button\" class=\"primary variant-detect-glow\">Detect tools</button><button id=\"variant-resource-review\" type=\"button\" hidden>Review resource details</button></div>\n",
+          "recorded": "<div class=\"actions\"><button id=\"variant-autodetect\" type=\"button\" class=\"primary variant-detect-glow\">detect_tools</button><button id=\"variant-resource-review\" type=\"button\" hidden>Review resource details</button></div>\n"
+        },
+        {
+          "start": 79879,
+          "end": 80654,
+          "current": "</div><section id=\"demo-results\" class=\"card demo-result-card\" hidden><span class=\"demo-chip\">Illustrative results</span><h2 id=\"demo-results-heading\" tabindex=\"-1\">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id=\"demo-result-summary\"></dl><p class=\"notice\">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href=\"../../installation/\">Install OncoTracer \u2192</a></section><footer class=\"demo-footer\">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>004f29897ce8</code>.</footer></main>\n",
+          "recorded": "</div><section id=\"demo-results\" class=\"card demo-result-card\" hidden><span class=\"demo-chip\">Illustrative results</span><h2 id=\"demo-results-heading\" tabindex=\"-1\">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id=\"demo-result-summary\"></dl><p class=\"notice\">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href=\"../../installation/\">Install OncoTracer \u2192</a></section><footer class=\"demo-footer\">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>7c26e72060b5</code>.</footer></main>\n"
+        },
+        {
+          "start": 195676,
+          "end": 195863,
+          "current": "  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use Detect tools again to refresh the resource list.';}\n",
+          "recorded": "  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use detect_tools again to refresh the resource list.';}\n"
+        },
+        {
+          "start": 205949,
+          "end": 206152,
+          "current": "  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use Detect tools again. Resource detection itself never installs software.','hint'));\n",
+          "recorded": "  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use detect_tools again. Resource detection itself never installs software.','hint'));\n"
+        },
+        {
+          "start": 209267,
+          "end": 209540,
+          "current": "  }catch(error){variantResourceLastResult=null;syncVariantInstallChoices();document.getElementById('variant-detection-results').hidden=true;status.textContent='Resource check could not finish: '+(error.message||String(error))+' Your entered paths were kept.';throw error;}\n",
+          "recorded": "  }catch(error){status.textContent='Resource check could not finish. Your entered paths were kept.';throw error;}\n"
+        }
+      ]
+    },
+    "oncotracer_cli/__init__.py": {
+      "recorded_sha256": "043be678eaf39f45efccbd1f12fde20c680d14f0accad8bfd0637cc9f262b7c8",
+      "current_sha256": "5eb4288aaa5b4e94b98886034ee7d8aaa452bf9760089ef68c9ab060474b2073",
+      "changes": [
+        {
+          "start": 43,
+          "end": 65,
+          "current": "__version__ = \"6.0.1\"\n",
+          "recorded": "__version__ = \"6.0.0\"\n"
+        }
+      ]
+    },
+    "oncotracer_cli/cli.py": {
+      "recorded_sha256": "4b1e22b00f5bc8afb344d3405a9a8277e1a97fc46a54eb4e815c04adb72f76fc",
+      "current_sha256": "e149081840eed9d81a9a48865fe19d412e7e9bc860e371d0b0d2c2f768eaadfd",
+      "changes": [
+        {
+          "start": 23,
+          "end": 82,
+          "current": "\"\"\"Global native command-line interface for OncoTracer.\"\"\"\n",
+          "recorded": "\"\"\"Global native command-line interface for OncoTracer v2.\"\"\"\n"
+        },
+        {
+          "start": 229,
+          "end": 244,
+          "current": "import difflib\n",
+          "recorded": ""
+        },
+        {
+          "start": 1667,
+          "end": 1715,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:6.0.1\"\n",
+          "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:6.0.0\"\n"
+        },
+        {
+          "start": 73536,
+          "end": 75852,
+          "current": "class CommandArgumentParser(argparse.ArgumentParser):\n    \"\"\"Keep argparse failures, adding scoped help and non-executing suggestions.\"\"\"\n\n    def parse_args(self, args=None, namespace=None):\n        values = list(sys.argv[1:] if args is None else args)\n        self._error_context = self\n        if values:\n            for action in self._actions:\n                if isinstance(action, argparse._SubParsersAction) and values[0] in action.choices:\n                    self._error_context = action.choices[values[0]]\n                    break\n        return super().parse_args(values, namespace)\n\n    def error(self, message):\n        context = getattr(self, \"_error_context\", self)\n        hints = []\n        if message.startswith(\"unrecognized arguments:\"):\n            for token in message.split(\":\", 1)[1].split():\n                option = token.split(\"=\", 1)[0]\n                if not option.startswith(\"-\"):\n                    continue\n                matches = difflib.get_close_matches(option, context._option_string_actions, n=1, cutoff=0.7)\n                if matches:\n                    hint = f\"Did you mean '{matches[0]}'?\"\n                    if hint not in hints:\n                        hints.append(hint)\n        hints.append(f\"For available options, run '{context.prog} --help'.\")\n        super().error(message + \"\\n\" + \"\\n\".join(hints))\n\n\ndef _unknown_command_message(token: str) -> str:\n    parser = build_parser()\n    commands = set(parser._option_string_actions)\n    for action in parser._actions:\n        if isinstance(action, argparse._SubParsersAction):\n            commands.update(action.choices)\n    commands.difference_update({\"internal-run\"})\n    commands.update({\"interactive\", \"help\"})\n    matches = difflib.get_close_matches(token, sorted(commands), n=1, cutoff=0.6)\n    kind = \"option\" if token.startswith(\"-\") else \"command\"\n    lines = [f\"Unknown {kind} {token!r}.\"]\n    if matches:\n        lines.append(f\"Did you mean 'oncotracer {matches[0]}'?\")\n    lines.extend([\n        \"Interactive setup: oncotracer --interactive --backend docker\",\n        \"Run a saved project: oncotracer run --config /path/to/project/config/run.yml --backend docker\",\n        \"All commands: oncotracer --help\",\n        \"Command options: oncotracer <command> --help\",\n    ])\n    return \"\\n\".join(lines)\n\n\n",
+          "recorded": ""
+        },
+        {
+          "start": 75899,
+          "end": 75935,
+          "current": "    parser = CommandArgumentParser(\n",
+          "recorded": "    parser = argparse.ArgumentParser(\n"
+        },
+        {
+          "start": 76025,
+          "end": 76198,
+          "current": "        epilog=(\"Browser setup: oncotracer interactive [--ffpe] [setup options] \"\n                \"(also oncotracer --interactive). Command help: oncotracer help COMMAND. \"\n",
+          "recorded": "        epilog=(\"Browser setup: oncotracer --interactive [--ffpe] [setup options]. \"\n"
+        },
+        {
+          "start": 81401,
+          "end": 81520,
+          "current": "    \"\"\"Translate v1 launcher syntax while keeping execution native.\"\"\"\n    unknown_token = values[0] if values else \"\"\n",
+          "recorded": "    \"\"\"Translate v1 launcher syntax while keeping v2 execution native.\"\"\"\n"
+        },
+        {
+          "start": 83593,
+          "end": 83660,
+          "current": "    raise OncoTracerError(_unknown_command_message(unknown_token))\n",
+          "recorded": "    raise OncoTracerError(\"use an OncoTracer v2 subcommand; run 'oncotracer --help'\")\n"
+        },
+        {
+          "start": 83922,
+          "end": 84096,
+          "current": "    if values and values[0] == \"help\":\n        values = [*values[1:], \"--help\"]\n    if values and values[0] == \"interactive\":\n        values = [\"--interactive\", *values[1:]]\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/install_safety.py": {
+      "recorded_sha256": "fb47fe50afa66a54551bbf00088c0ca84c517b81090790004ae1f783a479465b",
+      "current_sha256": "8b9435dff83630d1e05a5e81dd147b6315106c871f0b5978028457b3acf06c83",
+      "changes": [
+        {
+          "start": 3972,
+          "end": 4054,
+          "current": "        # Recognize known prior owned environments during release upgrades. Reuse\n",
+          "recorded": "        # Recognize known prior owned environments during the 6.0.0 upgrade. Reuse\n"
+        },
+        {
+          "start": 4249,
+          "end": 4360,
+          "current": "            \"2.3.1rc1\", \"2.3.1rc2\", \"2.3.1rc3\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\", \"6.0.0\",\n",
+          "recorded": "            \"2.3.1rc1\", \"2.3.1rc2\", \"2.3.1rc3\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\",\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_form_ui.py": {
+      "recorded_sha256": "cd62c3b10309a8b7738cb098f1ac80453bf6d0a03c3c0017aa931ffa7c007db8",
+      "current_sha256": "d1b282545f2daab47a98234d026f9263ebca61cff8d329bc7f7e6e90d74c40cf",
+      "changes": [
+        {
+          "start": 7889,
+          "end": 8122,
+          "current": "<div class=\"variant-section-heading\"><span class=\"variant-step\">2</span><div><h3 id=\"variant-tools-title\">Caller tools and models</h3><p class=\"hint\">Start with Detect tools. Open paths only to review or change them.</p></div></div>\n",
+          "recorded": "<div class=\"variant-section-heading\"><span class=\"variant-step\">2</span><div><h3 id=\"variant-tools-title\">Caller tools and models</h3><p class=\"hint\">Start with detect_tools. Open paths only to review or change them.</p></div></div>\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_install_ui.py": {
+      "recorded_sha256": "c93a998b8df2c8286b2675a3db8aca40dc30fd8b66ec96f2e8ab71ace5460e8a",
+      "current_sha256": "3e781fdffa0509e7e5c2c2f5430facb04871c4be02fa166eae6b3bdd1548bae0",
+      "changes": [
+        {
+          "start": 578,
+          "end": 799,
+          "current": "<div class=\"actions\"><button id=\"variant-autodetect\" type=\"button\" class=\"primary variant-detect-glow\">Detect tools</button><button id=\"variant-resource-review\" type=\"button\" hidden>Review resource details</button></div>\n",
+          "recorded": "<div class=\"actions\"><button id=\"variant-autodetect\" type=\"button\" class=\"primary variant-detect-glow\">detect_tools</button><button id=\"variant-resource-review\" type=\"button\" hidden>Review resource details</button></div>\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_resource_ui.py": {
+      "recorded_sha256": "e6f8bb17e7ba7b21dfaaee81a6005a510ffdb739be6d1f68f5be544b3253bd21",
+      "current_sha256": "26776396ea444fa10e4e22b2b6eea3faa4ac250c109a065b63119ed55e4f5c8f",
+      "changes": [
+        {
+          "start": 22534,
+          "end": 22721,
+          "current": "  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use Detect tools again to refresh the resource list.';}\n",
+          "recorded": "  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use detect_tools again to refresh the resource list.';}\n"
+        },
+        {
+          "start": 32807,
+          "end": 33010,
+          "current": "  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use Detect tools again. Resource detection itself never installs software.','hint'));\n",
+          "recorded": "  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use detect_tools again. Resource detection itself never installs software.','hint'));\n"
+        },
+        {
+          "start": 36125,
+          "end": 36398,
+          "current": "  }catch(error){variantResourceLastResult=null;syncVariantInstallChoices();document.getElementById('variant-detection-results').hidden=true;status.textContent='Resource check could not finish: '+(error.message||String(error))+' Your entered paths were kept.';throw error;}\n",
+          "recorded": "  }catch(error){status.textContent='Resource check could not finish. Your entered paths were kept.';throw error;}\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_resources.py": {
+      "recorded_sha256": "6e4cee41ff168643c534e9d264a578cf9c25fe71f5fcd949a43a46f6a626b94d",
+      "current_sha256": "aaa4330af5cbe6643b83e19f6b5e7fbdba42f4cf27df29a33abc564bb7168f59",
+      "changes": [
+        {
+          "start": 1730,
+          "end": 1790,
+          "current": "    \"variant_quilt2_reference_dir\", \"variant_quilt2_cache\",\n",
+          "recorded": ""
+        },
+        {
+          "start": 2144,
+          "end": 2302,
+          "current": "                  \"variant_download_resources\", \"variant_accept_ffperase_license\",\n                  \"variant_ont_imputation\", \"variant_monte_carlo_linkage\"}\n",
+          "recorded": "                  \"variant_download_resources\", \"variant_accept_ffperase_license\"}\n"
+        },
+        {
+          "start": 4491,
+          "end": 4531,
+          "current": "    if not isinstance(values, Mapping):\n",
+          "recorded": "    if not isinstance(values, Mapping) or any(k not in PATH_FIELDS | SETTING_FIELDS for k in values):\n"
+        },
+        {
+          "start": 4627,
+          "end": 4890,
+          "current": "    unsupported = sorted(str(key) for key in values if key not in PATH_FIELDS | SETTING_FIELDS)\n    if unsupported:\n        raise OncoTracerError(\"Unsupported resource settings: \" + \", \".join(unsupported) + \". Refresh the setup page after upgrading OncoTracer.\")\n",
+          "recorded": ""
+        },
+        {
+          "start": 4995,
+          "end": 5111,
+          "current": "        if key in {'variant_download_resources', 'variant_accept_ffperase_license', 'variant_monte_carlo_linkage'}:\n",
+          "recorded": "        if key in {'variant_download_resources', 'variant_accept_ffperase_license'}:\n"
+        },
+        {
+          "start": 5561,
+          "end": 5714,
+          "current": "                         (\"variant_reference_build\", {\"\", \"hg19\", \"hg38\"}),\n                         (\"variant_ont_imputation\", {\"\", \"off\", \"quilt2\"})):\n",
+          "recorded": "                         (\"variant_reference_build\", {\"\", \"hg19\", \"hg38\"})):\n"
+        },
+        {
+          "start": 41479,
+          "end": 41654,
+          "current": "            \"Only common installation folders and a bounded set of their children were checked. For resources elsewhere, enter the exact path and select Detect tools again.\",\n",
+          "recorded": "            \"Only common installation folders and a bounded set of their children were checked. For resources elsewhere, enter the exact path and select detect_tools again.\",\n"
+        }
+      ]
+    },
+    "tests/browser_variant_install_smoke.py": {
+      "recorded_sha256": "fad5c6ded79a7903f2dafb845c8f99b4a5b35796a88f1736a4b5269556ee135f",
+      "current_sha256": "ae534d5b8840231ccf476ebb4245205ebe7e7ffd8a7f629c710c7d6b61dfc591",
+      "changes": [
+        {
+          "start": 8185,
+          "end": 8372,
+          "current": "        assert js(\"return document.querySelector('#variant-autodetect').textContent==='Detect tools'&&getComputedStyle(document.querySelector('#variant-autodetect')).boxShadow!=='none'\")\n",
+          "recorded": "        assert js(\"return document.querySelector('#variant-autodetect').textContent==='detect_tools'&&getComputedStyle(document.querySelector('#variant-autodetect')).boxShadow!=='none'\")\n"
+        },
+        {
+          "start": 8590,
+          "end": 8698,
+          "current": "        checks.append('Glowing Detect tools is visible; installation choices stay hidden before detection')\n",
+          "recorded": "        checks.append('Glowing detect_tools is visible; installation choices stay hidden before detection')\n"
+        }
+      ]
+    },
+    "tests/native_science_audit.py": {
+      "recorded_sha256": "d1c4b936b6a893789c72b646cc7ace9f764f183eaf64a6a678fd81232a5ed1ab",
+      "current_sha256": "0a339aa84670da1498f480690b84c448f516724c9fbea7e1b2ab9114e601de22",
+      "changes": [
+        {
+          "start": 1537,
+          "end": 1602,
+          "current": "              'candidate':(candidate_sha,source_sha256,'6.0.1')}\n",
+          "recorded": "              'candidate':(candidate_sha,source_sha256,'6.0.0')}\n"
+        }
+      ]
+    },
+    "tests/test_docs_style.py": {
+      "recorded_sha256": "76b27a3277d61e47e9fc7f46bf781f4558f98ec6c58124488922d9006e1f1bde",
+      "current_sha256": "341e882b7b6f64816010b38790b2b3c2729d6b7661855f87f499989422a7773b",
+      "changes": [
+        {
+          "start": 6250,
+          "end": 6291,
+          "current": "        \"carlosfarkas/oncotracer:6.0.1\",\n",
+          "recorded": "        \"carlosfarkas/oncotracer:6.0.0\",\n"
+        },
+        {
+          "start": 7695,
+          "end": 7744,
+          "current": "        \"oncotracer-v6.0.1-parity-audit.tar.gz\",\n",
+          "recorded": "        \"oncotracer-v6.0.0-parity-audit.tar.gz\",\n"
+        }
+      ]
+    },
+    "tests/test_install_safety.py": {
+      "recorded_sha256": "3bfc193f889e34df4dd14ae02db5fa2f982e00365e54484bee958d27254eb26b",
+      "current_sha256": "8d8b3d8b76d38888dfca007dbca6d291dfb757b2a62aa31a3ea45957b29843c5",
+      "changes": [
+        {
+          "start": 3179,
+          "end": 3310,
+          "current": "        for version in (\"2.1.0\", \"2.3.0\", \"2.3.1rc2\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\", \"6.0.0\", __version__):\n",
+          "recorded": "        for version in (\"2.1.0\", \"2.3.0\", \"2.3.1rc2\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\", __version__):\n"
+        },
+        {
+          "start": 41536,
+          "end": 41588,
+          "current": "        for version in (\"2.1.0\", \"2.2.0\", \"6.0.0\"):\n",
+          "recorded": "        for version in (\"2.1.0\", \"2.2.0\"):\n"
+        }
+      ]
+    },
+    "tests/test_native_cli.py": {
+      "recorded_sha256": "cb3730b0c8d7b89aada6673c2af7d43946dbbd2ee57b7a0de839ad3a573ef5cd",
+      "current_sha256": "e959a0e45235454388cfd4f08fed281bc28ed5a8b21b008e9032e3374fb23272",
+      "changes": [
+        {
+          "start": 922,
+          "end": 4640,
+          "current": "class CommandHelpTests(unittest.TestCase):\n    def test_interactive_alias_keeps_browser_options_and_boundaries(self):\n        from oncotracer_cli.cli import parse_arguments\n        for options in ([], [\"--backend\", \"docker\"], [\"--ffpe\", \"--backend\", \"docker\"],\n                        [\"--mode\", \"ont\", \"--threads\", \"8\"]):\n            with self.subTest(options=options):\n                alias = parse_arguments([\"interactive\", *options])\n                original = parse_arguments([\"--interactive\", *options])\n                self.assertEqual(vars(alias), vars(original))\n                self.assertFalse(alias.run)\n        for flags in ([\"--run\"], [\"--terminal\"], [\"--samplesheet\", \"samples.csv\"]):\n            with self.subTest(flags=flags), self.assertRaisesRegex(OncoTracerError, \"without starting analysis\"):\n                parse_arguments([\"interactive\", *flags])\n\n    def test_help_alias_supports_commands_and_interactive_setup(self):\n        from oncotracer_cli.cli import parse_arguments\n        for command, expected in (([], \"usage: oncotracer\"), ([\"run\"], \"--config\"),\n                                  ([\"interactive\"], \"--backend\")):\n            output = io.StringIO()\n            with contextlib.redirect_stdout(output), self.assertRaises(SystemExit) as result:\n                parse_arguments([\"help\", *command])\n            self.assertEqual(result.exception.code, 0)\n            self.assertIn(expected, output.getvalue())\n\n    def test_unknown_commands_offer_valid_commands_without_running(self):\n        from oncotracer_cli import cli\n        for token, expected in ((\"interactve\", \"oncotracer interactive\"),\n                                (\"runn\", \"oncotracer run\"),\n                                (\"nonsense\", \"oncotracer --interactive --backend docker\"),\n                                (\"--docker\", \"oncotracer --help\"),\n                                (\"--interactve\", \"oncotracer --interactive\")):\n            output = io.StringIO()\n            with self.subTest(token=token), contextlib.redirect_stderr(output), \\\n                    patch.object(cli, \"execute_run\", side_effect=AssertionError(\"analysis started\")), \\\n                    patch.object(cli, \"isolated_payload_cache\", side_effect=AssertionError(\"runtime touched\")):\n                self.assertEqual(cli.main([token]), 2)\n            self.assertIn(expected, output.getvalue())\n            self.assertIn(\"oncotracer --help\", output.getvalue())\n            self.assertNotIn(\"v2 subcommand\", output.getvalue())\n\n    def test_misspelled_options_suggest_the_option_for_that_command(self):\n        from oncotracer_cli.cli import parse_arguments\n        for values, option, command in (([\"interactive\", \"--backned\", \"docker\"], \"--backend\", \"setup\"),\n                                       ([\"run\", \"--config\", \"x.yml\", \"--treads\", \"8\"], \"--threads\", \"run\")):\n            output = io.StringIO()\n            with self.subTest(values=values), contextlib.redirect_stderr(output), self.assertRaises(SystemExit) as result:\n                parse_arguments(values)\n            self.assertEqual(result.exception.code, 2)\n            self.assertIn(\"Did you mean '\" + option + \"'\", output.getvalue())\n            self.assertIn(\"oncotracer \" + command + \" --help\", output.getvalue())\n\n    def test_missing_required_argument_preserves_error_and_adds_help(self):\n        from oncotracer_cli.cli import parse_arguments\n        output = io.StringIO()\n        with contextlib.redirect_stderr(output), self.assertRaises(SystemExit) as result:\n            parse_arguments([\"run\"])\n        self.assertEqual(result.exception.code, 2)\n        self.assertIn(\"--config\", output.getvalue())\n        self.assertIn(\"oncotracer run --help\", output.getvalue())\n\n\n",
+          "recorded": ""
+        },
+        {
+          "start": 4723,
+          "end": 4770,
+          "current": "        self.assertEqual(__version__, \"6.0.1\")\n",
+          "recorded": "        self.assertEqual(__version__, \"6.0.0\")\n"
+        },
+        {
+          "start": 6052,
+          "end": 6103,
+          "current": "            ([], \"carlosfarkas/oncotracer:6.0.1\"),\n",
+          "recorded": "            ([], \"carlosfarkas/oncotracer:6.0.0\"),\n"
+        }
+      ]
+    },
+    "tests/test_native_provenance.py": {
+      "recorded_sha256": "f1b1bdaa61b67c84e01ed3c6b14e6844cd1483e6f09c6ba269d3a0fdeb678087",
+      "current_sha256": "146c61845147a43142a17e89dc57812a62915cdb7d17dc230f36b4363a46f538",
+      "changes": [
+        {
+          "start": 12645,
+          "end": 12703,
+          "current": "        self.assertIn(\"OncoTracer 6.0.1\", version.stdout)\n",
+          "recorded": "        self.assertIn(\"OncoTracer 6.0.0\", version.stdout)\n"
+        }
+      ]
+    },
+    "tests/test_native_science_audit.py": {
+      "recorded_sha256": "4aefa197889f12d73a24207ad3abf37600098c738efd601ebf21c1bf407ab4cb",
+      "current_sha256": "17413d734d67f86effe3b62290e9fdd69a624914b03c70c166fde8bb60ee1da8",
+      "changes": [
+        {
+          "start": 774,
+          "end": 931,
+          "current": "                       source_sha256=audit.BASELINE_SOURCE if side=='baseline' else self.source,oncotracer_version='3.0.0' if side=='baseline' else '6.0.1',\n",
+          "recorded": "                       source_sha256=audit.BASELINE_SOURCE if side=='baseline' else self.source,oncotracer_version='3.0.0' if side=='baseline' else '6.0.0',\n"
+        }
+      ]
+    },
+    "tests/test_poetry_cli.py": {
+      "recorded_sha256": "1f689004d335fd1f536d0e5cfbeb30df8a2e370f4dd72f4f2b7c8849e69e3eb9",
+      "current_sha256": "ac1e58b69ea8edcc8ca2286cd90a9193014c188f21c17e44e443b0c19341e2fa",
+      "changes": [
+        {
+          "start": 448,
+          "end": 495,
+          "current": "        self.assertEqual(__version__, \"6.0.1\")\n",
+          "recorded": "        self.assertEqual(__version__, \"6.0.0\")\n"
+        }
+      ]
+    },
+    "tests/test_project_resume.py": {
+      "recorded_sha256": "484efbbe1f8fdccb9da79dcb347c9988bbeba892f9bfee2ce0a50456d5a807d9",
+      "current_sha256": "63574e7a075ad618b18b029064528eb42384e4fa04d7e92790af6122160bd2ad",
+      "changes": [
+        {
+          "start": 5006,
+          "end": 5091,
+          "current": "                                         (\"2.3.1rc2\", \"6.0.1\"), (\"4.1.0\", \"2.3.2\")]:\n",
+          "recorded": "                                         (\"2.3.1rc2\", \"6.0.0\"), (\"4.1.0\", \"2.3.2\")]:\n"
+        }
+      ]
+    },
+    "tests/test_release_registry_safety.sh": {
+      "recorded_sha256": "6519df85f99c6a0da473321938e0509a247850485681b09a0233247718018efd",
+      "current_sha256": "f09e3ba6514274352ca5c13319cbb9813d75e5f3f02c0f3cbf67b21f7f99099f",
+      "changes": [
+        {
+          "start": 537,
+          "end": 645,
+          "current": "  registry.example/oncotracer:6.0.1) prefix=FIRST ;;\n  registry.example/oncotracer:v6.0.1) prefix=SECOND ;;\n",
+          "recorded": "  registry.example/oncotracer:6.0.0) prefix=FIRST ;;\n  registry.example/oncotracer:v6.0.0) prefix=SECOND ;;\n"
+        },
+        {
+          "start": 974,
+          "end": 1068,
+          "current": "FIRST_REF=\"registry.example/oncotracer:6.0.1\"\nSECOND_REF=\"registry.example/oncotracer:v6.0.1\"\n",
+          "recorded": "FIRST_REF=\"registry.example/oncotracer:6.0.0\"\nSECOND_REF=\"registry.example/oncotracer:v6.0.0\"\n"
+        }
+      ]
+    },
+    "tests/test_release_workflow.py": {
+      "recorded_sha256": "6ab0498e43e5d77739f0f3f2fabc8a0e460109852a402577840b44506c0f5fef",
+      "current_sha256": "5d80d6d0d7fa9d0d3584a5386ec252c398a4b3322e83303ad3d9b902945b1b16",
+      "changes": [
+        {
+          "start": 2427,
+          "end": 2498,
+          "current": "            \"tag_name\": \"v6.0.1\", \"draft\": False, \"prerelease\": False,\n",
+          "recorded": "            \"tag_name\": \"v6.0.0\", \"draft\": False, \"prerelease\": False,\n"
+        },
+        {
+          "start": 3151,
+          "end": 3211,
+          "current": "  'api /repos/cfarkas/oncotracer/commits/v6.0.1 --jq .sha')\n",
+          "recorded": "  'api /repos/cfarkas/oncotracer/commits/v6.0.0 --jq .sha')\n"
+        },
+        {
+          "start": 3280,
+          "end": 3375,
+          "current": "  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/releases/tags/v6.0.1')\n",
+          "recorded": "  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/releases/tags/v6.0.0')\n"
+        },
+        {
+          "start": 4342,
+          "end": 4426,
+          "current": "                \"GITHUB_REPOSITORY\": \"cfarkas/oncotracer\", \"RELEASE_TAG\": \"v6.0.1\",\n",
+          "recorded": "                \"GITHUB_REPOSITORY\": \"cfarkas/oncotracer\", \"RELEASE_TAG\": \"v6.0.0\",\n"
+        },
+        {
+          "start": 9081,
+          "end": 9153,
+          "current": "        self.assertIn('\"$IMAGE_NAME:6.0.1\" \"$IMAGE_NAME:v6.0.1\"', text)\n",
+          "recorded": "        self.assertIn('\"$IMAGE_NAME:6.0.0\" \"$IMAGE_NAME:v6.0.0\"', text)\n"
+        },
+        {
+          "start": 10741,
+          "end": 10922,
+          "current": "        source = \"ghcr.io/cfarkas/oncotracer:v6.0.1-candidate-123-1\"\n        target = \"ghcr.io/cfarkas/oncotracer:6.0.1\"\n        second_target = \"ghcr.io/cfarkas/oncotracer:v6.0.1\"\n",
+          "recorded": "        source = \"ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-123-1\"\n        target = \"ghcr.io/cfarkas/oncotracer:6.0.0\"\n        second_target = \"ghcr.io/cfarkas/oncotracer:v6.0.0\"\n"
+        },
+        {
+          "start": 11113,
+          "end": 11166,
+          "current": "  ghcr.io/cfarkas/oncotracer:v6.0.1-candidate-123-1)\n",
+          "recorded": "  ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-123-1)\n"
+        },
+        {
+          "start": 11228,
+          "end": 11264,
+          "current": "  ghcr.io/cfarkas/oncotracer:6.0.1)\n",
+          "recorded": "  ghcr.io/cfarkas/oncotracer:6.0.0)\n"
+        },
+        {
+          "start": 11451,
+          "end": 11488,
+          "current": "  ghcr.io/cfarkas/oncotracer:v6.0.1)\n",
+          "recorded": "  ghcr.io/cfarkas/oncotracer:v6.0.0)\n"
+        },
+        {
+          "start": 12727,
+          "end": 12809,
+          "current": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.0.1-candidate-123-1' ]]; then\n",
+          "recorded": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.0.0-candidate-123-1' ]]; then\n"
+        },
+        {
+          "start": 12915,
+          "end": 12980,
+          "current": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/6.0.1' ]]; then\n",
+          "recorded": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/6.0.0' ]]; then\n"
+        },
+        {
+          "start": 13417,
+          "end": 13483,
+          "current": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.0.1' ]]; then\n",
+          "recorded": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.0.0' ]]; then\n"
+        },
+        {
+          "start": 22175,
+          "end": 22235,
+          "current": "            '\"ghcr.io/cfarkas/oncotracer:v6.0.1-candidate-'\n",
+          "recorded": "            '\"ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-'\n"
+        },
+        {
+          "start": 28720,
+          "end": 28753,
+          "current": "    printf 'OncoTracer 6.0.1\\\\n'\n",
+          "recorded": "    printf 'OncoTracer 6.0.0\\\\n'\n"
+        },
+        {
+          "start": 29784,
+          "end": 29861,
+          "current": "            (release / \"oncotracer-v6.0.1-parity-audit.tar.gz\").write_bytes(\n",
+          "recorded": "            (release / \"oncotracer-v6.0.0-parity-audit.tar.gz\").write_bytes(\n"
+        },
+        {
+          "start": 29978,
+          "end": 30068,
+          "current": "                         \"oncotracer-6.0.1-py3-none-any.whl\", \"oncotracer-6.0.1.tar.gz\"):\n",
+          "recorded": "                         \"oncotracer-6.0.0-py3-none-any.whl\", \"oncotracer-6.0.0.tar.gz\"):\n"
+        },
+        {
+          "start": 30453,
+          "end": 30534,
+          "current": "                (release / \"oncotracer-v6.0.1-parity-audit.tar.gz\").read_bytes()\n",
+          "recorded": "                (release / \"oncotracer-v6.0.0-parity-audit.tar.gz\").read_bytes()\n"
+        },
+        {
+          "start": 30652,
+          "end": 30729,
+          "current": "                \"version\": \"6.0.1\",\n                \"release_tag\": \"v6.0.1\",\n",
+          "recorded": "                \"version\": \"6.0.0\",\n                \"release_tag\": \"v6.0.0\",\n"
+        },
+        {
+          "start": 33501,
+          "end": 33562,
+          "current": "                    \"oncotracer-v6.0.1-parity-audit.tar.gz\",\n",
+          "recorded": "                    \"oncotracer-v6.0.0-parity-audit.tar.gz\",\n"
+        },
+        {
+          "start": 33626,
+          "end": 33730,
+          "current": "                    \"oncotracer-6.0.1-py3-none-any.whl\",\n                    \"oncotracer-6.0.1.tar.gz\",\n",
+          "recorded": "                    \"oncotracer-6.0.0-py3-none-any.whl\",\n                    \"oncotracer-6.0.0.tar.gz\",\n"
+        },
+        {
+          "start": 35716,
+          "end": 35797,
+          "current": "            os.link(release / \"oncotracer-v6.0.1-parity-audit.tar.gz\", hardlink)\n",
+          "recorded": "            os.link(release / \"oncotracer-v6.0.0-parity-audit.tar.gz\", hardlink)\n"
+        }
+      ]
+    },
+    "tests/test_sample_resource_browser.py": {
+      "recorded_sha256": "c39cf3fd969532a7a033ec3c05f422664c5b14726e422529652e90eb7074c3c3",
+      "current_sha256": "a835bede0517f5e9fc0f5d488355474299f175b00fab27e6abb0a4ee272c204f",
+      "changes": [
+        {
+          "start": 7046,
+          "end": 10380,
+          "current": "\n    def test_detect_tools_real_request_and_error_recovery(self):\n        from oncotracer_cli.runtime import OncoTracerError\n        ont = self.root / 'ont-inputs' / 'SYNTHETIC' / 'fastq_pass'\n        ont.mkdir(parents=True)\n        (ont / 'reads.fastq').write_text('@synthetic\\nACGT\\n+\\nIIII\\n')\n        for platform, folder in (('ont', ont.parent.parent), ('illumina', self.reads)):\n            with self.subTest(platform=platform):\n                self.page.goto(self.server.origin + '/#' + self.state.token)\n                self.page.reload()\n                self.page.wait_for_selector('main:not([inert])')\n                self.page.locator('#choose-new-analysis').click()\n                self.page.locator('#choose-' + platform).click()\n                self.page.locator('#variant-fresh').click()\n                self.page.locator('#input-folder').fill(str(folder))\n                self.page.locator('#scan').click()\n                self.page.wait_for_selector('#samples-card:not([hidden])')\n                self.page.locator('.type-select').first.select_option('cancer')\n                self.page.locator('#backend').select_option('docker')\n                self.page.locator('#variants').check()\n                self.page.evaluate(\"document.querySelectorAll('details').forEach(field=>field.open=true)\")\n                supplied = str(self.root / 'my-licensed-annovar')\n                self.page.locator('#variant_annovar_dir').fill(supplied)\n                button = self.page.locator('#variant-autodetect')\n                expect(button).to_have_text('Detect tools')\n                with self.page.expect_response(lambda response: response.url.endswith('/api/variant-resources')) as response:\n                    button.click()\n                self.assertEqual(response.value.status, 200, response.value.text())\n                self.assertTrue(response.value.json()['resources'])\n                expect(self.page.locator('#variant-resource-dialog')).to_be_visible()\n                expect(self.page.locator('#variant-detection-status')).to_contain_text('Check complete')\n                expect(self.page.locator('#variant_annovar_dir')).to_have_value(supplied)\n                self.page.locator('#variant-resource-close').click()\n                message = 'Test resource error: <b>unavailable path</b>'\n                with patch.object(self.state, 'variant_resources', side_effect=OncoTracerError(message)):\n                    button.click()\n                    expect(self.page.locator('#variant-detection-status')).to_contain_text(message)\n                    expect(button).to_be_enabled()\n                expect(self.page.locator('#variant_annovar_dir')).to_have_value(supplied)\n                expect(self.page.locator('#variant-resource-review')).to_be_hidden()\n                expect(self.page.locator('#variant-detection-results')).to_be_hidden()\n                expect(self.page.locator('#variant-detection-status b')).to_have_count(0)\n                button.click()\n                expect(self.page.locator('#variant-resource-dialog')).to_be_visible()\n                expect(self.page.locator('#variant-detection-status')).to_contain_text('Check complete')\n                self.assertEqual(self.runs, [])\n                self.assertIsNone(self.state.job)\n                self.assertFalse(self.errors, self.errors)\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "tests/test_variant_resources.py": {
+      "recorded_sha256": "95523da53c4b8c6a3d853a6e631819fee1880e1ce6f3aa4b94e4afd4189e9b89",
+      "current_sha256": "1eb32a4b3b83771c716c29438620f2e651a357f0a214b5aa7e6836c11277eac9",
+      "changes": [
+        {
+          "start": 137,
+          "end": 161,
+          "current": "import re\nimport shutil\n",
+          "recorded": ""
+        },
+        {
+          "start": 41878,
+          "end": 44809,
+          "current": "    @unittest.skipUnless(shutil.which(\"node\"), \"Node is required for the browser request contract\")\n    def test_actual_browser_resource_values_are_accepted_for_all_workflows(self):\n        from oncotracer_cli.variant_resource_ui import SCRIPT\n        keys = re.search(r\"const variantPathKeys=([^;]+);\", SCRIPT).group(0)\n        function = \"function variantResourceValues(){\" + SCRIPT.split(\"function variantResourceValues(){\", 1)[1].split(\"function variantResourceField\", 1)[0]\n        before = set(self.project.rglob(\"*\"))\n        for mode, callers in ((\"ont\", [\"clair3\", \"clairs_to\"]), (\"illumina\", [\"bcftools\", \"mutect2\"])):\n            for backend in (\"docker\", \"conda\", \"host\"):\n                for specimen in (\"fresh\", \"ffpe\"):\n                    with self.subTest(mode=mode, backend=backend, specimen=specimen):\n                        selected = {\"variant_ont_imputation\": \"quilt2\", \"variant-ffperase-runtime\": \"native\",\n                                    \"variant_clair3_model\": \"auto\", \"variant_ont_profile\": \"r1041_e82_400bps_sup_v520\",\n                                    \"variant_clairsto_platform\": \"ont_r10_dorado_sup_5khz_ssrs\",\n                                    \"variant_ffperase\": \"required\" if mode == \"illumina\" and specimen == \"ffpe\" else \"off\",\n                                    \"variant_varlociraptor\": \"off\", \"variant_annovar\": \"off\"}\n                        script = \"const mode=\" + json.dumps(mode) + \";const selected=\" + json.dumps(selected) + \";\"\n                        script += \"const document={getElementById:key=>({value:selected[key]||'',checked:['variant_download_resources','variant_accept_ffperase_license'].includes(key)})};\"\n                        script += keys + function + \"console.log(JSON.stringify(variantResourceValues()));\"\n                        result = subprocess.run([\"node\", \"-e\", script], capture_output=True, text=True, check=True)\n                        values = json.loads(result.stdout)\n                        with patch(\"subprocess.run\", side_effect=AssertionError(\"Detection executed a tool\")):\n                            found = self.detect(mode=mode, backend=backend, callers=callers, specimen_type=specimen,\n                                                docker_image=\"carlosfarkas/oncotracer:6.0.1\", values=values)\n                        self.assertEqual(found[\"backend\"], backend)\n                        self.assertTrue(found[\"resources\"])\n        self.assertEqual(before, set(self.project.rglob(\"*\")))\n\n    def test_new_imputation_fields_remain_validated(self):\n        for values in ({\"variant_monte_carlo_linkage\": \"false\"}, {\"variant_monte_carlo_linkage\": 0},\n                       {\"variant_ont_imputation\": \"guess\"}, {\"variant_quilt2_cache\": []},\n                       {\"variant_quilt2_reference_dir\": \"bad\\npath\"}):\n            with self.subTest(values=values), self.assertRaises(OncoTracerError):\n                self.detect(values=values)\n\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "PAGE": {
+      "recorded_sha256": "1610ee5890d3c9b58e86e28a16a9d5f3de8fb8dc1fe06e68306e0f42084f344c",
+      "current_sha256": "e05905d4de91cb941cbcff1f78442aa3206e43526722befded2d9fad4d44e560",
+      "changes": [
+        {
+          "start": 47919,
+          "end": 48152,
+          "current": "<div class=\"variant-section-heading\"><span class=\"variant-step\">2</span><div><h3 id=\"variant-tools-title\">Caller tools and models</h3><p class=\"hint\">Start with Detect tools. Open paths only to review or change them.</p></div></div>\n",
+          "recorded": "<div class=\"variant-section-heading\"><span class=\"variant-step\">2</span><div><h3 id=\"variant-tools-title\">Caller tools and models</h3><p class=\"hint\">Start with detect_tools. Open paths only to review or change them.</p></div></div>\n"
+        },
+        {
+          "start": 48641,
+          "end": 48862,
+          "current": "<div class=\"actions\"><button id=\"variant-autodetect\" type=\"button\" class=\"primary variant-detect-glow\">Detect tools</button><button id=\"variant-resource-review\" type=\"button\" hidden>Review resource details</button></div>\n",
+          "recorded": "<div class=\"actions\"><button id=\"variant-autodetect\" type=\"button\" class=\"primary variant-detect-glow\">detect_tools</button><button id=\"variant-resource-review\" type=\"button\" hidden>Review resource details</button></div>\n"
+        },
+        {
+          "start": 166260,
+          "end": 166447,
+          "current": "  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use Detect tools again to refresh the resource list.';}\n",
+          "recorded": "  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use detect_tools again to refresh the resource list.';}\n"
+        },
+        {
+          "start": 176533,
+          "end": 176736,
+          "current": "  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use Detect tools again. Resource detection itself never installs software.','hint'));\n",
+          "recorded": "  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use detect_tools again. Resource detection itself never installs software.','hint'));\n"
+        },
+        {
+          "start": 179851,
+          "end": 180124,
+          "current": "  }catch(error){variantResourceLastResult=null;syncVariantInstallChoices();document.getElementById('variant-detection-results').hidden=true;status.textContent='Resource check could not finish: '+(error.message||String(error))+' Your entered paths were kept.';throw error;}\n",
+          "recorded": "  }catch(error){status.textContent='Resource check could not finish. Your entered paths were kept.';throw error;}\n"
+        }
+      ]
+    }
+  }
+}

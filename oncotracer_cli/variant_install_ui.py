@@ -3,7 +3,7 @@
 PANEL = '''<div class="variant-detection">
 <div class="variant-block-heading"><div><strong>Required tools</strong><p class="hint">Detect local tools, or install the missing caller environments.</p></div></div>
 <label for="variant-tools-folder">Tools folder to search (optional)</label><div class="variant-path-row"><input id="variant-tools-folder" placeholder="Choose a folder containing tools or Conda environments"><button id="variant-tools-browse" type="button">Choose tools folder</button></div>
-<div class="actions"><button id="variant-autodetect" type="button" class="primary variant-detect-glow">detect_tools</button><button id="variant-resource-review" type="button" hidden>Review resource details</button></div>
+<div class="actions"><button id="variant-autodetect" type="button" class="primary variant-detect-glow">Detect tools</button><button id="variant-resource-review" type="button" hidden>Review resource details</button></div>
 <p id="variant-detection-status" class="hint" role="status" aria-live="polite">Check common installation folders on the computer running OncoTracer.</p>
 <div id="variant-install-choices" class="variant-install-choices" hidden><p class="hint">Missing tools detected. Choose how to install them.</p><div class="actions"><button id="variant-install-conda" data-variant-install="conda" type="button" class="primary">Install with Conda</button><button id="variant-install-docker" data-variant-install="docker" type="button" class="primary">Install with Docker</button></div></div>
 <p id="variant-install-overview" class="hint" role="status" aria-live="polite" hidden></p><button id="variant-install-review" type="button" hidden>View installation progress</button></div>'''

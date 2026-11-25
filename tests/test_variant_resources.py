@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -644,6 +646,40 @@ class VariantResourceTests(unittest.TestCase):
                 self.assertTrue(all("v2.9.10" in link["url"] for link in guide["links"]))
         docker = installation_guides(["strelka2_runtime", "variant_tools"], backend="docker", mode="illumina")
         self.assertEqual([g["id"] for g in docker], ["docker_image"])
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for the browser request contract")
+    def test_actual_browser_resource_values_are_accepted_for_all_workflows(self):
+        from oncotracer_cli.variant_resource_ui import SCRIPT
+        keys = re.search(r"const variantPathKeys=([^;]+);", SCRIPT).group(0)
+        function = "function variantResourceValues(){" + SCRIPT.split("function variantResourceValues(){", 1)[1].split("function variantResourceField", 1)[0]
+        before = set(self.project.rglob("*"))
+        for mode, callers in (("ont", ["clair3", "clairs_to"]), ("illumina", ["bcftools", "mutect2"])):
+            for backend in ("docker", "conda", "host"):
+                for specimen in ("fresh", "ffpe"):
+                    with self.subTest(mode=mode, backend=backend, specimen=specimen):
+                        selected = {"variant_ont_imputation": "quilt2", "variant-ffperase-runtime": "native",
+                                    "variant_clair3_model": "auto", "variant_ont_profile": "r1041_e82_400bps_sup_v520",
+                                    "variant_clairsto_platform": "ont_r10_dorado_sup_5khz_ssrs",
+                                    "variant_ffperase": "required" if mode == "illumina" and specimen == "ffpe" else "off",
+                                    "variant_varlociraptor": "off", "variant_annovar": "off"}
+                        script = "const mode=" + json.dumps(mode) + ";const selected=" + json.dumps(selected) + ";"
+                        script += "const document={getElementById:key=>({value:selected[key]||'',checked:['variant_download_resources','variant_accept_ffperase_license'].includes(key)})};"
+                        script += keys + function + "console.log(JSON.stringify(variantResourceValues()));"
+                        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+                        values = json.loads(result.stdout)
+                        with patch("subprocess.run", side_effect=AssertionError("Detection executed a tool")):
+                            found = self.detect(mode=mode, backend=backend, callers=callers, specimen_type=specimen,
+                                                docker_image="carlosfarkas/oncotracer:6.0.1", values=values)
+                        self.assertEqual(found["backend"], backend)
+                        self.assertTrue(found["resources"])
+        self.assertEqual(before, set(self.project.rglob("*")))
+
+    def test_new_imputation_fields_remain_validated(self):
+        for values in ({"variant_monte_carlo_linkage": "false"}, {"variant_monte_carlo_linkage": 0},
+                       {"variant_ont_imputation": "guess"}, {"variant_quilt2_cache": []},
+                       {"variant_quilt2_reference_dir": "bad\npath"}):
+            with self.subTest(values=values), self.assertRaises(OncoTracerError):
+                self.detect(values=values)
 
     def test_invalid_payloads_fail_predictably(self):
         for changes in ({"mode": "unknown"}, {"backend": "shell"}, {"callers": ["clair3"]},

@@ -101,7 +101,7 @@ def _snapshot(root: Path) -> dict[str, tuple[str, int, bytes]]:
 
 class InstallerSourceIdentityTests(unittest.TestCase):
     def test_known_prior_installation_sources_remain_recognized(self):
-        for version in ("2.1.0", "2.3.0", "2.3.1rc2", "2.3.1", "2.3.2", "3.0.0", "4.0.0", "4.1.0", "5.0.0", __version__):
+        for version in ("2.1.0", "2.3.0", "2.3.1rc2", "2.3.1", "2.3.2", "3.0.0", "4.0.0", "4.1.0", "5.0.0", "6.0.0", __version__):
             self.assertTrue(install_safety._valid_source({**SOURCE, "oncotracer_version": version}))
         for version in ("1.1.0", "2.3.99", "7.0.0", None):
             self.assertFalse(install_safety._valid_source({**SOURCE, "oncotracer_version": version}))
@@ -868,7 +868,7 @@ else:
         self.assertEqual(_snapshot(base), before)
 
     def test_patch_upgrade_recognizes_prior_owned_tools_but_checks_definitions(self) -> None:
-        for version in ("2.1.0", "2.2.0"):
+        for version in ("2.1.0", "2.2.0", "6.0.0"):
             base = self.scratch / ("prior-version-runtime-" + version)
             prior = {**SOURCE, "oncotracer_version":version}
             with mock.patch.object(install_safety, "_source_identity", return_value=prior):
