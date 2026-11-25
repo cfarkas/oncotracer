@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
-Analyze Illumina and Oxford Nanopore (ONT) copy-number changes, small variants and ONT methylation. Version 6 prepares a project from one sample table, downloads its references and runs the tools in Docker. For research use.
+Analyze Illumina and Oxford Nanopore (ONT) copy-number changes, small variants and ONT methylation. Version 6 prepares a project through interactive browser setup or one sample table, downloads its references and runs the tools in Docker. For research use.
 
 ## Quick start
 
@@ -15,6 +15,18 @@ python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v
 ```
 
 Use the release wheel above; `pip install oncotracer` follows the separate PyPI release.
+
+### Interactive setup (recommended)
+
+Start the browser setup:
+
+```bash
+oncotracer --interactive --backend docker
+```
+
+Choose Illumina or ONT, select your inputs and project folder, then review the configuration and click **Run analysis**. Keep the terminal open while using the browser. [Browser walkthrough](docs/browser_demo.md) · [Connecting over SSH](docs/headless.md).
+
+### Run from a sample table
 
 Create `samples.csv`. Paths can be relative to this table:
 
