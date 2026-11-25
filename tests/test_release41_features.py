@@ -47,6 +47,20 @@ class RoutingTests(unittest.TestCase):
                 metadata.write_text('sample\ttissue\tmodbam\nA\tmarrow\tA.bam\n')
                 with self.assertRaisesRegex(OncoTracerError,'exactly one'):routing.resolve({'methylation_sample_metadata':str(metadata), 'methylation_caller':'modkit'},mode='ont')
 
+    def test_explicitly_disabled_supported_tissue_needs_no_signal_or_model(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); metadata=root/'samples.tsv'
+            (root/'A.bam').write_bytes(b'fixture')
+            metadata.write_text('sample\ttissue\tmethylation\tmodbam\nA\tmarrow\ttrue\tA.bam\nB\tCNS\tfalse\t\n')
+            samples=[SimpleNamespace(sample=s) for s in ('A','B')]
+            with patch('oncotracer_cli.engine.parse_ont_samples',return_value=samples), patch('oncotracer_cli.methylation.resolve_methylation_request',return_value=SimpleNamespace(gpu=False)) as resolve:
+                result=routing.resolve({'methylation_sample_metadata':str(metadata),'methylation_caller':'modkit'},mode='ont')
+            self.assertEqual([name for name,_ in result.requests],['A'])
+            self.assertEqual(resolve.call_count,1)
+            self.assertFalse(result.assignments[1]['methylation_enabled'])
+            self.assertEqual(result.assignments[1]['status'],'not_applicable')
+            self.assertIn('disabled by user',result.assignments[1]['reason'])
+
     def test_unknown_tissue_is_not_a_failed_classifier(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);m=root/'metadata';m.write_text('fixture')
@@ -144,7 +158,7 @@ class CohortFigureTests(unittest.TestCase):
             self.assertTrue((root/'09_cohort_figure/04_cohort_figure.pdf').read_bytes().startswith(b'%PDF'))
             self.assertEqual(data[1]['methylation_model'],'')
             svg=(root/'09_cohort_figure/04_cohort_figure.svg').read_text()
-            self.assertIn('0.92454',svg);self.assertIn('Unassigned',svg)
+            self.assertIn('0.92454',svg);self.assertIn('Not applicable',svg)
             self.assertNotIn('TISSUE:',svg)
 
 class MethylationSortMemoryTests(unittest.TestCase):

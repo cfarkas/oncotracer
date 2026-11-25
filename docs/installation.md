@@ -21,7 +21,7 @@ No Git checkout is needed. `pip install oncotracer` follows the separate PyPI
 release; the URL above selects v6 explicitly. Keep this environment and activate
 it in subsequent terminals.
 
-Create [a sample table](launch.md), then run:
+Follow [the browser first-run guide](first_run.md), including what you provide and what OncoTracer prepares. For scripted runs, create [a sample table](launch.md), then run:
 
 ```bash
 oncotracer launch --samples samples.csv --project my-run --specimen fresh

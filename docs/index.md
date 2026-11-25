@@ -7,7 +7,7 @@ For research use.
 
 ## Quick start
 
-Follow the [v6 installation](installation.md), create [a sample table](launch.md),
+Follow [your first run](first_run.md) for the recommended browser setup and a clear list of required inputs. For scripted runs, create [a sample table](launch.md),
 then run:
 
 ```bash
@@ -18,9 +18,10 @@ Docker supplies the scientific tools. Launch prepares references and saves the
 complete configuration. Use `--dry-run` to inspect inputs and resources first.
 For a browser, run `oncotracer --interactive --backend docker`:
 
-1. Choose **Illumina or ONT**, then **Fresh or FFPE**.
-2. Select your inputs, assign samples to Cancer or Normal, and choose a project folder.
-3. Click **Save configuration and check**, review the checks, then **Run analysis**.
+1. Review the dependency check and approve any needed installation.
+2. Choose **Illumina or ONT**, then **Fresh or FFPE**.
+3. Select your inputs, assign samples to Cancer or Normal, and choose a project folder.
+4. Click **Save configuration and check**, review the checks, then **Run analysis**.
 
 Opening setup does not start an analysis. Keep the launching terminal open while
 using the browser, and use the complete URL it prints if the browser does not open.
@@ -33,8 +34,8 @@ using the browser, and use the complete URL it prints if the browser does not op
 | [QuickStart 2 — HCC1143](public_cohort.md) | Follow a video to set up three paired-end tumor libraries together. |
 | [QuickStarts from the terminal](quickstart_terminal.md) | Run the same public examples from scripted commands. |
 
-The videos use the current interface with synthetic inventories and simulated
-checks. Each tutorial supplies real public downloads for your own analysis.
+The videos use synthetic inventories and simulated checks; older recordings
+predate the new dependency check and per-sample methylation controls. Each tutorial supplies real public downloads for your own analysis.
 
 ## Try the interface before installing
 

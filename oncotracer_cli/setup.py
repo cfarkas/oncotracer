@@ -91,6 +91,7 @@ COMMENTS = {
     "ont_sample_names": "Names in the same order as ont_barcodes. Tumor samples are analyzed independently.",
     "methylation": "Request methylation analysis in addition to the default copy-number workflow.",
     "methylation_only": "true skips copy-number analysis; false runs both requested branches.",
+    "methylation_excluded_samples": "Comma-separated sample IDs that skip methylation only; other selected analyses remain enabled.",
     "methylation_classifier": "marlin: leukemia research; sturgeon: CNS-tumor research.",
     "methylation_gpu": "false keeps methylation on CPU. Existing BAM calls never require GPU basecalling.",
     "methylation_modbam": "Existing modified-base BAM file or directory. Reuses MM/ML calls; aligns to hg38 on CPU.",
@@ -879,6 +880,16 @@ def _command_setup(args: argparse.Namespace) -> int:
         values['docker_image'] = args.image
 
     if analysis != "cna":
+        from .methylation_selection import excluded_samples
+        selected_names = [sample.sample for sample in parse_ont_samples({**values, "mode": mode})]
+        excluded = getattr(args, "methylation_exclude", None)
+        if interactive and excluded is None:
+            print("Methylation supports CNS and blood/marrow classifiers. Other samples can keep CNA and variants without methylation.")
+            print("Selected samples: " + ", ".join(selected_names))
+            excluded = input("Skip methylation for sample IDs (comma-separated; Enter keeps all): ").strip()
+        if excluded:
+            values["methylation_excluded_samples"] = ",".join(excluded_samples(
+                {"methylation_excluded_samples": excluded}, selected_names))
         classifier = _ask(
             args.classifier,
             "Methylation classifier (--classifier; marlin=leukemia, sturgeon=CNS)",
@@ -1412,6 +1423,7 @@ def add_setup_commands(subparsers) -> None:
     variant.add_argument('--variant-varlociraptor-events', help='comma-separated uppercase scenario events; default PRESENT')
     variant.add_argument('--variant-varlociraptor-sample', help='observed sample name in custom scenario; default sample')
     meth = parser.add_argument_group("ONT methylation")
+    meth.add_argument("--methylation-exclude", metavar="SAMPLE1,SAMPLE2", help="Skip methylation for these sample IDs; retain their other selected analyses")
     meth.add_argument("--methylation-caller", choices=("rockfish", "modkit"), help="CpG caller; default rockfish (requires raw POD5)")
     meth.add_argument(
         "--classifier",

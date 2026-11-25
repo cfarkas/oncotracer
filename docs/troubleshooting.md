@@ -1,15 +1,29 @@
 # Troubleshooting
 
+## Setup or Detect tools reports an error
+
+Activate the Python environment where you installed OncoTracer and follow
+[the launcher upgrade commands](installation.md#upgrade-the-launcher). Save your
+work and restart the browser with `oncotracer interactive --backend docker`.
+Updating an image alone does not replace the running application. Version 6.2
+includes the supported-field fix and clearer command suggestions.
+
+The first card shows the host, Docker and image checks. Review an installation
+plan before approving it. If installation fails, read its log and retry after
+fixing the reported cause. If Docker access fails, ensure `docker info` works
+for your user; the browser does not change system permissions. See
+[your first run](first_run.md) for inputs and automatic preparation.
+
 ## Start with the command and configuration
 
-Run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing paths and settings without starting analysis. `oncotracer doctor --backend conda` checks the installed analysis tools.
+Run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing paths and settings without starting analysis. `oncotracer doctor --backend docker` checks the Docker runtime; use `--backend conda` for a Conda installation. The browser startup card offers installation and verification of missing runtimes.
 
 | Message or symptom | What to do |
 | --- | --- |
 | `setup` or `check` is not recognized | Activate the environment created during [installation](installation.md); use `command -v oncotracer` to check which command your terminal is using |
 | A path does not exist | Use the actual absolute path; `/data/...` and `/work/...` in examples must be replaced |
 | Updating an existing project | Save and check again; setup replaces the configuration by default and retains previous settings under `config/backups/` |
-| GATK is found but the saved configuration says it is unavailable | **Save configuration and check** detects tools before saving their paths. Explicit paths are preserved; clear an incorrect caller prefix or select a candidate with **detect_tools**. Multiple complete environments require your choice |
+| GATK is found but the saved configuration says it is unavailable | **Save configuration and check** detects tools before saving their paths. Explicit paths are preserved; clear an incorrect caller prefix or select a candidate with **Detect tools**. Multiple complete environments require your choice |
 | Select an existing project without adding a subfolder | Choose **Use existing project · overwrite settings**, then **Choose existing project**. Save uses that exact folder and backs up its previous settings in `config/backups/` |
 | **Yes** is disabled after stopping an existing run | Restart setup with the updated version. Dedicated OncoTracer projects can be deleted after Stop and confirmation. Unrelated folders and projects containing original inputs or shared resources remain protected; the dialog explains the reason |
 | `auto` will not overwrite a file | To resume, repeat `run`; for a different analysis choose a new `--config-dir` and `--outdir` |
@@ -18,7 +32,9 @@ Run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing path
 | More than one R1/R2 match | Give each library one unambiguous pair; keep different samples separate |
 | Both POD5 and BAM inputs are configured | Keep only the input type you want to use |
 | CPU methylation basecalling is very slow | Select `--methylation-caller modkit --modbam PATH` to reuse completed modification calls, or supply matching moves and raw POD5 to Rockfish; raw signal can take days on CPU |
-| No FASTQ-selected reads with MM/ML tags | Match the FASTQs to BAMs made with modified-base calling, or use raw POD5 |
+| `methylation_unavailable`: matching reads have no MM/ML calls | Use matching raw POD5 with Rockfish, or turn methylation off for this sample. CNA/variants can continue; missing calls are not zero methylation |
+| No matching primary BAM reads | Check the sample/read-ID mapping; do not borrow another sample’s BAM |
+| Only FASTQs or ordinary BAMs remain; no POD5 | Choose **Continue without methylation**, or uncheck that sample under **Methylation for each sample** |
 | `no_classifier_probes` | Check usable human alignment and hg38 probe coordinates. CpG calls elsewhere cannot support a MARLIN prediction |
 
 For automatic methylation preparation, use [launch with Docker](launch.md). Advanced Conda projects still need explicit Dorado, Modkit and classifier resources; see the [resource guide](configuration/methylation_reference.md).

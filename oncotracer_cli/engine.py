@@ -3540,6 +3540,8 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
             "methylation_completed_samples", []
         ),
         "methylation_no_cpg_samples": summary.get("methylation_no_cpg_samples", []),
+        "methylation_unavailable_samples": summary.get("methylation_unavailable_samples", []),
+        "methylation_excluded_samples": summary.get("methylation_excluded_samples", []),
         "created_at": utc_now(),
         "files": files,
     }
@@ -3605,6 +3607,8 @@ def _merge_methylation_summary(
             ),
             "methylation_completed_samples": status.get("completed_samples", []),
             "methylation_failed_samples": status.get("failed_samples", []),
+            "methylation_unavailable_samples": status.get("unavailable_samples", []),
+            "methylation_excluded_samples": status.get("excluded_samples", []),
             "methylation_no_cpg_samples": status.get("no_cpg_samples", []),
             "methylation_no_classifier_probe_samples": status.get(
                 "no_classifier_probe_samples", []

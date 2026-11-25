@@ -10,24 +10,30 @@ Finished an ONT copy-number run? Follow the [post-ONT CpG video guide](../post_o
 
 ## What you need
 
-You need matching FASTQs, methylation input, and an installed classifier:
-
-| Input | Why it is needed |
-| --- | --- |
-| FASTQs in [named libraries](ont.md) or legacy barcodes | Select each sample’s read IDs |
-| Modified-base BAMs **or** raw POD5 files | Supply methylation information |
-| Dorado, Modkit, and samtools | Align reads and extract methylation |
-| MARLIN or Sturgeon tools and model files | Compare the methylation pattern with known classes |
+Provide matching FASTQs and raw POD5 or modified-base BAMs. Docker prepares the tools and classifier resources; [the first-run guide](../first_run.md) separates your inputs from automatic preparation.
 
 **Modified-base BAMs** contain `MM`/`ML` tags; reusing them avoids basecalling. Ordinary BAMs or FASTQs alone are insufficient. Raw POD5 needs compatible Dorado basecalling and modification models.
 
 Use completed files; exclude duplicates and alternate basecalls. Keep one intended library per named folder. Select legacy barcodes explicitly; include `unclassified` only with a justified assignment, never pooled across patients.
 
+## If methylation was not recorded
+
+Matching raw POD5 can still support Rockfish calling. If only FASTQs or ordinary
+BAMs remain, turn methylation off; those files cannot reconstruct the lost signal.
+Matching reads without `MM`/`ML` calls are reported as `methylation_unavailable`,
+with no classifier prediction. This differs from an input with incorrect read
+IDs and from measured CpGs with no usable classifier probes. Other analyses
+and usable samples continue.
+
+For scripted launch, add a `methylation` column with `false` for excluded rows.
+For advanced saved YAMLs, set `methylation_excluded_samples: sampleB,sampleC`.
+Terminal setup accepts `--methylation-exclude sampleB,sampleC`. Tissue-routing TSVs
+also accept a `methylation` column; retain a row for every selected sample and
+leave excluded signal paths blank.
+
 ## 1. Prepare the tools once
 
 With Docker, run `oncotracer --interactive --backend docker` and leave managed resources selected. Setup prepares pinned downloads and reuses your cache. For advanced Conda/host installations, tools and classifier assets remain separate; see [local resources](methylation_reference.md#obtain-the-optional-resources).
-
-For external installations, locate executables, models and probe BEDs; MARLIN also needs feature-order `.RData` and class-annotation `.xlsx` files.
 
 ## 2. Link inputs in the browser
 
@@ -45,8 +51,11 @@ Choose the linked POD5 or modified-base BAM input. For methylation-only analysis
 drag included samples into the MARLIN or Sturgeon classifier group according to
 documented clinical context, then select **Classifier group to save and run**.
 Other groups and unassigned samples are excluded, not queued; save each classifier
-to a separate project. **CNA and methylation** keeps one chosen classifier for all
-selected samples.
+to a separate project. **CNA and methylation** uses one chosen classifier for the samples enabled under
+**Methylation for each sample**. Uncheck other cancers or samples without signal;
+they remain in CNA and selected variants. **Continue without methylation** turns
+off the methylation branch for the whole project. For mixed CNS/blood routing,
+use [sample-table launch](../launch.md#ont-with-methylation).
 
 Docker prepares these paths automatically. For advanced external installations,
 browse to the tools/model files or reuse a resource YAML. Modkit
@@ -85,18 +94,6 @@ oncotracer setup --methylation-caller modkit --non-interactive --run \
   --modbam /data/new-run/bam_pass --cpu --threads 8
 ```
 
-| Flag | Meaning |
-| --- | --- |
-| `--analysis methylation` | Run methylation only; use `both` to also request copy-number analysis |
-| `--reads-folder` | Parent of the selected barcode FASTQ folder |
-| `--barcodes` / `--sample-names` | Which barcode to use and the name for its results |
-| `--classifier marlin` | Use the leukemia classifier |
-| `--modbam` | Existing BAM file or directory, aligned or unaligned; calls are reused and reads aligned to hg38 on CPU |
-| `--cpu` | Keep methylation tools on CPU, including MARLIN |
-| `--threads 8` | Request eight CPU worker threads |
-
-Confirm the applicable Sturgeon license when prompted; setup does not grant a license.
-
 ### Terminal / headless: CNS using existing BAMs
 
 ```bash
@@ -108,9 +105,7 @@ oncotracer setup --methylation-caller modkit --terminal --run --project /work/cn
 
 ## If you only have raw POD5
 
-These complete terminal alternatives ask for the classifier resources plus
-matching Dorado basecalling/5mCG/5hmCG models, then check and run. FASTQs still
-define sample membership. Use a new project for each alternative.
+These advanced Modkit alternatives ask for matching Dorado/modification models and classifier resources. FASTQs define sample membership. Use a separate project for each alternative.
 
 ### Terminal / headless: leukemia using POD5
 
@@ -155,6 +150,8 @@ Within your project, open `results/07_methylation/methylation_status.json` first
 | `complete` | The requested classifier produced output | Review scores and data quality; completion alone does not make the call reliable |
 | `no_cpg_modifications` | No usable modified-CpG calls were found | Check the modified-base calls, human alignment, and read yield |
 | `no_classifier_probes` | CpG calls exist, but none overlap the supplied MARLIN probes | Check hg38 coordinates and usable coverage; no leukemia prediction was made |
+| `methylation_unavailable` | Matching reads lack recorded MM/ML calls | Supply POD5 or turn methylation off; no prediction is made |
+| `not_applicable` | Methylation was excluded or tissue is unsupported | Other selected analyses remain enabled |
 | `failed` | A tool, resource, or input check failed | Read the error and the logs in `07_methylation/logs/` |
 
 For MARLIN, inspect `covered_classifier_probes`. A missing prediction does not establish that a sample is normal.

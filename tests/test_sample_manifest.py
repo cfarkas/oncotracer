@@ -35,6 +35,21 @@ class SampleManifestTests(unittest.TestCase):
         self.assertEqual([s.status for s in native], ['tumor', 'normal'])
         self.assertEqual(native[0].fastq_dir, self.root/'A/fastq_pass')
 
+    def test_disabled_other_cancer_keeps_fastqs_without_signal_or_supported_tissue(self):
+        import shutil
+        shutil.rmtree(self.root/'B/pod5_pass')
+        self.write([['Marrow','A','tumor','marrow','true'], ['Lung','B','tumor','lung','false']],
+                   ('sample','library','status','tissue','methylation'))
+        rows = read_manifest(self.table, methylation=True)
+        self.assertEqual([r.sample for r in rows], ['Marrow','Lung'])
+        self.assertTrue(rows[0].methylation_enabled)
+        self.assertFalse(rows[1].methylation_enabled)
+        self.assertIsNone(rows[1].pod5)
+        self.assertEqual([s.sample for s in parse_ont_samples({'ont_samplesheet':str(self.table)})], ['Marrow','Lung'])
+        self.table.write_text(self.table.read_text().replace('false','maybe'))
+        with self.assertRaisesRegex(OncoTracerError, 'must be true or false'):
+            read_manifest(self.table, methylation=True)
+
     def test_duplicate_names_are_rejected(self):
         self.write([['A', 'A', 'tumor', 'CNS'], ['A', 'B', 'normal', 'CNS']])
         with self.assertRaisesRegex(OncoTracerError, 'Duplicate sample'):read_manifest(self.table)

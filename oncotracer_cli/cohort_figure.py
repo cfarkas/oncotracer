@@ -142,7 +142,7 @@ def render(data, matrix, windows, destination, title, technology):
         class_ax, score_ax=axes[5:]; class_ax.set_xlim(0,1); score_ax.set_xlim(0,1.42)
         score_ax.set_xticks([0,.5,1]); score_ax.set_xlabel('Model score',fontsize=11)
         for i,row in enumerate(data):
-            status_labels={'not_applicable':'Unassigned','no_cpg':'No CpG calls','no_classifier_probes':'No model probes','failed':'Failed'}
+            status_labels={'not_applicable':'Not applicable','methylation_unavailable':'No recorded calls','no_cpg':'No CpG calls','no_classifier_probes':'No model probes','failed':'Failed'}
             status=row.get('methylation_status','Not assayed')
             label=row.get('methylation_class') or status_labels.get(status,status)
             if row.get('methylation_model'): label=row['methylation_model'].upper()+': '+label

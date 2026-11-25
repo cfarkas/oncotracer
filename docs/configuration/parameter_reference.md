@@ -290,7 +290,9 @@ CLI values override methylation, classifier, input, and GPU YAML values. Choose 
 | Field | Typical/default | Meaning |
 | --- | --- | --- |
 | `methylation` | `false` | Enable optional ONT methylation when not using `--methylation` |
-| `methylation_classifier` | required when enabled | Exactly `sturgeon` or `marlin` |
+| `methylation_classifier` | required when enabled | `sturgeon`, `marlin`, or `tissue` for explicit per-sample routing |
+| `methylation_excluded_samples` | empty | Comma-separated sample IDs to skip only methylation; retain their CNA/variant inputs |
+| `methylation_sample_metadata` | unset | Tissue-routing TSV: `sample`, `tissue`, `pod5` or `modbam`; optional `methylation=false` skips a row |
 | `methylation_pod5_dir` | one input required | Explicit directory containing non-empty `.pod5` files |
 | `methylation_caller` | `rockfish` | Use `modkit` explicitly for existing MM/ML calls |
 | `methylation_rockfish_python` / `methylation_rockfish_source` / `methylation_rockfish_model` | required for Rockfish | Paths emitted by `prepare-rockfish` |

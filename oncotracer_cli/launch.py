@@ -75,6 +75,8 @@ def project_plan(args):
     source = Path(args.samples).expanduser().resolve()
     methylation = bool(args.methylation or args.analysis=='methylation')
     samples = read_manifest(source, methylation=methylation, caller=args.methylation_caller)
+    if methylation and not any(s.methylation_enabled for s in samples):
+        raise OncoTracerError('No samples have methylation enabled. Omit --methylation and choose --analysis cna or full to run the other analyses.')
     mode = samples[0].mode
     if mode=='ont' and args.specimen=='ffpe':
         raise OncoTracerError('The managed ONT profile supports fresh R10.4.1 input. Use the advanced setup for a separately validated ONT FFPE protocol.')
@@ -118,7 +120,7 @@ def project_plan(args):
     allocation=allocate(threads,len(samples),parallel=args.parallel_samples,memory=args.memory,
                         minimum_gb=32 if mode=='illumina' and variants else 8,hardware=hardware)
     from .methylation_routing import classifier_for_tissue
-    classifiers=sorted({classifier_for_tissue(s.tissue) for s in samples}) if methylation else []
+    classifiers=sorted({classifier_for_tissue(s.tissue) for s in samples if s.methylation_enabled}) if methylation else []
     return dict(project=project,cache=cache,samples=samples,request=request,resume=False,
                 config=project/'config/run.yml',allocation=allocation,classifiers=classifiers,ont_profile=ont_profile)
 
@@ -173,8 +175,9 @@ def write_project(args, plan, resources):
                           variant_resource_dir=str(cache/'variants'))
     if methylation:
         key='pod5' if args.methylation_caller=='rockfish' else 'modbam'
-        files['methylation.tsv']=_table(['sample','tissue',key],[
-            dict(sample=s.sample,tissue=s.tissue,**{key:str(getattr(s,key))}) for s in samples],delimiter='\t')
+        files['methylation.tsv']=_table(['sample','tissue','methylation',key],[
+            dict(sample=s.sample,tissue=s.tissue,methylation=str(s.methylation_enabled).lower(),
+                 **{key:str(getattr(s,key)) if getattr(s,key) else ''}) for s in samples],delimiter='\t')
         values.update(resources)
         values.update(methylation=True,methylation_only=args.analysis=='methylation',methylation_caller=args.methylation_caller,
                       methylation_classifier='tissue',methylation_modbam_alignment='realign',

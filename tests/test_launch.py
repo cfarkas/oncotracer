@@ -90,6 +90,20 @@ class LaunchTests(unittest.TestCase):
         self.assertTrue(values['run_variants']);self.assertFalse(values['variant_merge_vcfs'])
         self.assertIn('CASE\tblood\t',(self.root/'project/config/methylation.tsv').read_text())
 
+    def test_disabled_cns_sample_does_not_request_sturgeon_but_keeps_cna_and_variants(self):
+        import csv, shutil
+        shutil.rmtree(self.inputs/'two/pod5_pass')
+        self.table.write_text('sample,library,status,tissue,methylation\nCASE,one,tumor,blood,true\nCONTROL,two,normal,CNS,false\n')
+        args = self.args('--methylation', '--cpu'); plan = project_plan(args)
+        self.assertEqual(plan['classifiers'], ['marlin'])
+        config = load_flat_yaml(write_project(args, plan, {}))
+        self.assertTrue(config['run_variants'])
+        self.assertEqual(len(read_manifest(Path(config['ont_samplesheet']))), 2)
+        with (self.root/'project/config/methylation.tsv').open() as handle:
+            rows = list(csv.DictReader(handle, delimiter='\t'))
+        self.assertEqual(rows[1], {'sample':'CONTROL','tissue':'CNS','methylation':'false','pod5':''})
+        self.assertNotIn('sturgeon_license_acknowledged', config)
+
     def test_license_error_occurs_before_docker_or_downloads(self):
         with patch('oncotracer_cli.launch._docker_image',side_effect=AssertionError('Docker touched')):
             with self.assertRaisesRegex(OncoTracerError,'Sturgeon'):command_launch(self.args('--methylation'))

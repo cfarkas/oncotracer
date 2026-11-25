@@ -80,6 +80,7 @@ class MethylationRequest:
     rockfish_source: Path | None = None
     rockfish_model: Path | None = None
     rockfish_resources_deferred: bool = False
+    excluded_samples: tuple[str, ...] = ()
 
     @property
     def dorado_device(self) -> str:
@@ -319,7 +320,11 @@ def named_signal_groups(
     names = ("pod5_pass",) if kind == "pod5" else ("modified_bam", "bam_pass")
     collect = _pod5_files if kind == "pod5" else _modbam_files
     groups = []
+    from .methylation_selection import excluded_samples
+    excluded = excluded_samples(config)
     for sample in parse_ont_samples(config):
+        if sample.sample in excluded:
+            continue
         specimen = getattr(sample, "specimen_root", None)
         if specimen is None:
             raise OncoTracerError("Named methylation inputs require a named specimen folder for every selected sample.")
@@ -431,6 +436,8 @@ def resolve_methylation_request(
         raise OncoTracerError(
             "methylation requires exactly one classifier: --sturgeon or --marlin"
         )
+    from .methylation_selection import excluded_samples
+    excluded = excluded_samples(config)
     pod5_value = pod5_override or (
         Path(str(config["methylation_pod5_dir"]))
         if config.get("methylation_pod5_dir")
@@ -667,6 +674,7 @@ def resolve_methylation_request(
         modbam_alignment=alignment,
         modbam_files=modbam_files,
         sample_signals=sample_signals,
+        excluded_samples=excluded,
         modbam_inventory_sha256=(
             _pod5_inventory_sha256(
                 modbam_input if modbam_input.is_dir() else modbam_input.parent,
@@ -697,6 +705,7 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
         "pod5_file_count": len(request.pod5_files),
         "pod5_inventory_sha256": request.pod5_inventory_sha256,
         "sample_signals": _signal_plan(request),
+        "excluded_samples": list(request.excluded_samples),
         "gpu_requested": request.gpu,
         "dorado_device": request.dorado_device,
         "modkit_acceleration": "cpu_threads" if getattr(request, "caller", "") == "modkit" else None,
@@ -776,9 +785,10 @@ def _status_payload(
     pending = [
         str(record["sample"]) for record in records if record["status"] == "pending"
     ]
+    unavailable = [str(r["sample"]) for r in records if r["status"] == "methylation_unavailable"]
     if pending:
         overall = "in_progress"
-    elif completed and (failed or no_cpg or no_probes):
+    elif completed and (failed or no_cpg or no_probes or unavailable):
         overall = "partial_failure"
     elif failed:
         overall = "failed"
@@ -786,6 +796,8 @@ def _status_payload(
         overall = "no_cpg_modifications"
     elif no_probes:
         overall = "no_classifier_probes"
+    elif unavailable:
+        overall = "methylation_unavailable"
     else:
         overall = "complete"
     return {
@@ -804,6 +816,8 @@ def _status_payload(
         "no_cpg_samples": no_cpg,
         "no_classifier_probe_samples": no_probes,
         "pending_samples": pending,
+        "unavailable_samples": unavailable,
+        "excluded_samples": [str(r["sample"]) for r in records if r.get("methylation_enabled") is False],
         "samples": list(records),
         "updated_at": utc_now(),
     }
@@ -845,6 +859,7 @@ def _provenance_payload(
         "pod5_file_count": len(request.pod5_files),
         "pod5_inventory_sha256": request.pod5_inventory_sha256,
         "sample_signals": _signal_plan(request),
+        "excluded_samples": list(request.excluded_samples),
         "gpu_requested": request.gpu,
         "dorado_device": request.dorado_device,
         "modkit_acceleration": "cpu_threads" if request.caller == "modkit" else None,
@@ -898,9 +913,9 @@ def write_global_methylation_failure(
         "bedmethyl": None,
         "classification": None,
     }
-    status = _write_status(
-        methylation_out / "methylation_status.json", request, [record]
-    )
+    from .methylation_selection import excluded_record
+    records = [record, *(excluded_record(name) for name in request.excluded_samples)]
+    status = _write_status(methylation_out / "methylation_status.json", request, records)
     atomic_write_json(
         methylation_out / "methylation_provenance.json",
         _provenance_payload(request, "failed", failure=error),
@@ -1127,6 +1142,18 @@ def _marlin_probe_coverage(bedmethyl: Path, probes: Path) -> int:
     return len(matched)
 
 
+def _matching_primary_count(request, read_ids, output, runner, name):
+    """Separate unrecorded modifications from a wrong sample/read-ID mapping."""
+    total = 0
+    for source_index, source in enumerate(request.modbam_files):
+        count = output / f"{name}.input_primary_{source_index}.txt"
+        with count.open("w") as handle:
+            runner.run(f"methylation-input-primary-count-{name}-{source_index}",
+                       [request.samtools, "view", "-c", "-N", read_ids, "-F", "2304", source], stdout=handle)
+        total += int(count.read_text().strip())
+    return total
+
+
 def _select_modbam_input(
     request: MethylationRequest,
     union_ids: Path,
@@ -1193,10 +1220,16 @@ def _select_modbam_input(
                 "No FASTQ-selected primary reads with mv/ts tags in methylation_moves_bam. "
                 "Supply the matching move-tagged BAM or omit it to generate moves from POD5."
             )
+        matching = output / "input_matching_primary_count.txt"
+        with matching.open("w", encoding="utf-8") as handle:
+            runner.run("methylation-input-primary-count",
+                       [request.samtools, "view", "-c", "-N", union_ids, "-F", "2304", merged], stdout=handle)
+        if int(matching.read_text().strip()) > 0:
+            from .methylation_selection import MissingMethylationCalls, MISSING_CALLS_HELP
+            raise MissingMethylationCalls(MISSING_CALLS_HELP)
         raise OncoTracerError(
             "No FASTQ-selected reads with MM/ML modification tags in --modbam. "
-            "Use matching completed MinKNOW BAMs made with modified-base calling, "
-            "or use --pod5-dir to call modifications from raw signal. FASTQ alone cannot supply methylation."
+            "No matching primary reads were found: check the FASTQ/BAM sample mapping."
         )
     # Multiple basecalling exports can contain the same primary read. Do not
     # inflate methylation coverage by accepting duplicate batches.
@@ -1218,9 +1251,10 @@ def _select_modbam_input(
 
 def _select_named_modbam_input(
     request: MethylationRequest, read_ids: Mapping[str, Path], output: Path,
-    runner: CommandRunner, threads: int,
-) -> Path:
+    runner: CommandRunner, threads: int, unavailable: dict[str, str] | None = None,
+) -> Path | None:
     """Intersect each named library's BAMs with its own FASTQs before merging."""
+    from .methylation_selection import MissingMethylationCalls
     selected = output / ".selected_input.bam"
     selected.unlink(missing_ok=True)
     pieces = []
@@ -1231,9 +1265,16 @@ def _select_named_modbam_input(
             scoped = replace(request, modbam_files=group.files, sample_signals=())
             try:
                 piece = _select_modbam_input(scoped, read_ids[group.sample], directory, runner, threads)
+            except MissingMethylationCalls as error:
+                if unavailable is None:
+                    raise MissingMethylationCalls(f"Named methylation input for {group.sample}: {error}") from error
+                unavailable[group.sample] = str(error)
+                continue
             except OncoTracerError as error:
                 raise OncoTracerError(f"Named methylation input for {group.sample}: {error}") from error
             pieces.append(piece)
+        if not pieces:
+            return None
         runner.run("methylation-input-merge", [request.samtools, "merge", "-@", str(threads),
                                               "-u", "-o", selected, *pieces])
         return _nonempty(selected, "merged named-library modified-base BAM")
@@ -1464,8 +1505,12 @@ def run_methylation(
         return run(root, request, samples, reference, outdir, runner, ledger, threads=threads, force=force)
     if request.rockfish_resources_deferred:
         raise OncoTracerError("Rockfish image resources must be resolved inside the container before execution")
+    from .methylation_selection import excluded_samples, excluded_record
+    excluded = excluded_samples({"methylation_excluded_samples": request.excluded_samples},
+                                [str(getattr(sample, "sample")) for sample in samples])
+    active_samples = [sample for sample in samples if str(getattr(sample, "sample")) not in excluded]
     if request.sample_signals and {group.sample for group in request.sample_signals} != {
-        str(getattr(sample, "sample")) for sample in samples
+        str(getattr(sample, "sample")) for sample in active_samples
     }:
         raise OncoTracerError("Named methylation signal selection does not match the configured samples.")
     if request.sample_signals:
@@ -1511,8 +1556,12 @@ def run_methylation(
         }
         for sample in samples
     ]
+    for record in records:
+        if record["sample"] in excluded:
+            record.update(excluded_record(record["sample"]))
+            atomic_write_json(sample_status_out / (record["sample"] + ".json"), record)
     _write_status(status_path, request, records)
-    read_id_paths = _prepare_read_ids(samples, ids_out)
+    read_id_paths = _prepare_read_ids(active_samples, ids_out)
     union_ids = _nonempty(ids_out / "all_selected.read_ids.txt", "selected read IDs")
     read_id_counts = {name: _line_count(path) for name, path in read_id_paths.items()}
     fasta = require_file(reference["fasta"], "hg38 FASTA for methylation")
@@ -1608,14 +1657,39 @@ def run_methylation(
     if request.sample_signals:
         signature_command.extend(["named-pass-signal-selection-v1", json.dumps(_signal_plan(request), sort_keys=True)])
     signature = ledger.signature(basecall_stage, signature_command, basecall_inputs)
-    if force or not ledger.reusable(basecall_stage, signature, [all_bam, all_bai]):
-        for owned in (all_bam, all_bai, unsorted):
+    availability_path = modbam_out / "input_availability.json"
+    basecall_outputs = [all_bam, all_bai, availability_path]
+    if force or not ledger.reusable(basecall_stage, signature, basecall_outputs):
+        for owned in (all_bam, all_bai, unsorted, availability_path):
             owned.unlink(missing_ok=True)
+        unavailable, unmatched = {}, set()
         if request.modbam_input:
-            if request.sample_signals:
-                _select_named_modbam_input(request, read_id_paths, modbam_out, runner, max(1, threads))
-            else:
-                _select_modbam_input(request, union_ids, modbam_out, runner, max(1, threads))
+            from .methylation_selection import MissingMethylationCalls, unavailable_record
+            try:
+                if request.sample_signals:
+                    selected_input = _select_named_modbam_input(request, read_id_paths, modbam_out, runner, max(1, threads), unavailable)
+                else:
+                    selected_input = _select_modbam_input(request, union_ids, modbam_out, runner, max(1, threads))
+            except MissingMethylationCalls as error:
+                for sample in active_samples:
+                    name = str(getattr(sample, "sample"))
+                    if len(active_samples) == 1 or _matching_primary_count(request, read_id_paths[name], logs_out, runner, name):
+                        unavailable[name] = str(error)
+                    else:
+                        unmatched.add(name)
+                selected_input = None
+            if selected_input is None:
+                atomic_write_json(availability_path, unavailable)
+                for record in records:
+                    if record["sample"] in unavailable:
+                        record.update(unavailable_record(record["sample"], unavailable[record["sample"]]))
+                    elif record["sample"] in unmatched:
+                        record.update(status="failed", stage="input_read_ids", error="No matching primary reads: check the FASTQ/BAM sample mapping")
+                    atomic_write_json(sample_status_out / (record["sample"] + ".json"), record)
+                status = _write_status(status_path, request, records)
+                atomic_write_json(methylation_out / "methylation_provenance.json", _provenance_payload(request, status["overall_status"]))
+                return status
+        atomic_write_json(availability_path, unavailable)
         if request.modbam_input and request.modbam_alignment == "preserve":
             header = modbam_out / "preserved_input.header.sam"
             with header.open("w") as output:
@@ -1680,11 +1754,19 @@ def run_methylation(
                 )
             (modbam_out / ".selected_input.bam").unlink(missing_ok=True)
         unsorted.unlink(missing_ok=True)
-        ledger.complete(basecall_stage, signature, [all_bam, all_bai])
+        ledger.complete(basecall_stage, signature, basecall_outputs)
 
+    unavailable = json.loads(availability_path.read_text())
     for index, sample in enumerate(samples):
         name = str(getattr(sample, "sample"))
         record = records[index]
+        if name in excluded:
+            continue
+        if name in unavailable:
+            from .methylation_selection import unavailable_record
+            record.update(unavailable_record(name, unavailable[name]))
+            atomic_write_json(sample_status_out / (name + ".json"), record)
+            continue
         record["read_id_count"] = read_id_counts[name]
         raw_bam = modbam_out / f"{name}.mod.sorted.bam"
         combined_bam = modbam_out / f"{name}.5mC_5hmC_combined.sorted.bam"
@@ -1799,6 +1881,11 @@ def run_methylation(
             modbam_records = int(count_text)
             record["modbam_records"] = modbam_records
             if modbam_records == 0:
+                if request.caller == "modkit" and request.modbam_input:
+                    primary_matches = _matching_primary_count(request, read_id_paths[name], logs_out, runner, name)
+                    if primary_matches:
+                        from .methylation_selection import MissingMethylationCalls, MISSING_CALLS_HELP
+                        raise MissingMethylationCalls(MISSING_CALLS_HELP)
                 raise OncoTracerError(
                     f"sample {name} has no FASTQ-selected reads in the methylation input; check the FASTQ and POD5/BAM sample mapping"
                 )
@@ -1969,13 +2056,11 @@ def run_methylation(
             atomic_write_json(record_path, record)
             ledger.complete(sample_stage, sample_signature, [record_path])
         except (OSError, OncoTracerError, ValueError) as error:
-            record.update(
-                {
-                    "status": "failed",
-                    "stage": "methylation_or_classification",
-                    "error": _safe_error(error),
-                }
-            )
+            from .methylation_selection import MissingMethylationCalls, unavailable_record
+            if isinstance(error, MissingMethylationCalls):
+                record.update(unavailable_record(name, error))
+            else:
+                record.update(status="failed", stage="methylation_or_classification", error=_safe_error(error))
         _write_status(status_path, request, records)
 
     status = _write_status(status_path, request, records)

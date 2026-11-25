@@ -406,7 +406,9 @@ def write_results_index(outdir: Path) -> Path:
     if summary.get("methylation_status"):
         counts += (f" Methylation status: {summary['methylation_status']} · Completed samples: "
                    f"{len(summary.get('methylation_completed_samples', []))} · Failed samples: "
-                   f"{len(summary.get('methylation_failed_samples', []))}.")
+                   f"{len(summary.get('methylation_failed_samples', []))} · Calls unavailable: "
+                   f"{len(summary.get('methylation_unavailable_samples', []))} · Excluded by user: "
+                   f"{len(summary.get('methylation_excluded_samples', []))}.")
     variant_status = summary.get("variant_status") or variant_data.get("overall_status")
     if variant_status:
         partial_samples = {row.get("sample") for row in variant_data.get("samples", [])

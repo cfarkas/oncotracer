@@ -19,6 +19,7 @@ class ManifestSample:
     fastq_dir: Path | None = None
     library: Path | None = None
     tissue: str = ""
+    methylation_enabled: bool = True
     pod5: Path | None = None
     modbam: Path | None = None
     annotations: dict[str, str] = field(default_factory=dict)
@@ -63,10 +64,12 @@ def read_manifest(path, *, mode=None, methylation=False, caller="rockfish"):
         status = row["status"].strip().lower()
         if status not in {"tumor", "normal"}:
             raise OncoTracerError(f"Sample {sample}: status must be tumor or normal")
-        values = dict(sample=sample, status=status, mode=inferred, tissue=row.get("tissue", "").strip())
+        from .methylation_selection import row_enabled
+        values = dict(sample=sample, status=status, mode=inferred, tissue=row.get("tissue", "").strip(),
+                      methylation_enabled=row_enabled(row.get("methylation", "").strip(), sample))
         if row.get("analysis_role", "").strip() not in {"", status}:
             raise OncoTracerError(f"Sample {sample}: analysis_role conflicts with status")
-        input_fields = {"sample", "status", "analysis_role", "library", "fastq_dir", "fastq_1", "fastq_2", "tissue", "pod5", "modbam"}
+        input_fields = {"sample", "status", "analysis_role", "library", "fastq_dir", "fastq_1", "fastq_2", "tissue", "pod5", "modbam", "methylation"}
         values["annotations"] = {key: value for key, value in row.items() if key not in input_fields}
         if inferred == "illumina":
             if methylation:
@@ -102,9 +105,9 @@ def read_manifest(path, *, mode=None, methylation=False, caller="rockfish"):
                     raise OncoTracerError(f"Sample {sample}: fastq_dir contains multiple barcodes; give each library its own row")
             if not files:
                 raise OncoTracerError(f"Sample {sample}: no passed FASTQs found")
-            if methylation:
+            if methylation and values["methylation_enabled"]:
                 if classifier_for_tissue(values["tissue"]) is None:
-                    raise OncoTracerError(f"Sample {sample}: supply a supported tissue (blood, marrow or CNS); no diagnosis is inferred")
+                    raise OncoTracerError(f"Sample {sample}: supply a supported tissue (blood, marrow or CNS), or set methylation=false for this row to keep only the other selected analyses; no diagnosis is inferred")
                 key = "pod5" if caller == "rockfish" else "modbam"
                 supplied = row.get(key, "").strip()
                 if supplied:

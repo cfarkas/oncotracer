@@ -62,6 +62,74 @@ class NamedMethylationTests(unittest.TestCase):
         fai.write_text("chr1\t4\t6\t4\t5\n")
         return {"fasta": fasta, "fai": fai}
 
+    def test_excluded_library_needs_no_signal_and_keeps_other_analysis_inputs(self):
+        self.config['methylation_excluded_samples'] = 'reviewed_B'
+        shutil.rmtree(self.cohort / 'ONCO-002/pod5_pass')
+        request = self.request()
+        self.assertEqual([g.sample for g in request.sample_signals], ['reviewed_A'])
+        samples = parse_ont_samples(self.config)
+        self.assertEqual([s.sample for s in samples], ['reviewed_A', 'reviewed_B'])
+        output = self.root / 'output'; runner = NamedRunner('')
+        status = run_methylation(ROOT, request, samples, self.reference(), output, runner,
+                                 StageLedger(output / '.oncotracer-native/state.json'), threads=2, force=False)
+        self.assertEqual(status['excluded_samples'], ['reviewed_B'])
+        self.assertEqual(status['samples'][1]['status'], 'not_applicable')
+        self.assertIsNone(status['samples'][1]['classification'])
+        self.assertEqual((output / '07_methylation/read_ids/all_selected.read_ids.txt').read_text(), 'read-ONCO-001\n')
+        self.assertFalse(any(stage.endswith('reviewed_B') for stage, _ in runner.calls))
+        self.assertEqual(methylation_plan(request)['excluded_samples'], ['reviewed_B'])
+
+    def test_exclusion_typos_or_all_samples_off_are_rejected_before_calling(self):
+        for value, message in [('UNKNOWN', 'Unknown'), ('reviewed_A,reviewed_B', 'Every sample'),
+                               ('reviewed_B,reviewed_B', 'repeated'), (True, 'must be'), ('reviewed_B,', 'empty')]:
+            with self.subTest(value=value):
+                self.config['methylation_excluded_samples'] = value
+                with self.assertRaisesRegex(OncoTracerError, message):
+                    self.request()
+
+    def test_missing_calls_in_one_library_do_not_stop_another_and_resume_keeps_status(self):
+        from unittest.mock import patch
+        from oncotracer_cli.methylation_selection import MissingMethylationCalls, MISSING_CALLS_HELP
+        request = self.request('modbam'); samples = parse_ont_samples(self.config)
+        output = self.root / 'output'; ledger = StageLedger(output / '.oncotracer-native/state.json')
+        def select(scoped, ids, directory, runner, threads):
+            if ids.name.startswith('reviewed_B.'):
+                raise MissingMethylationCalls(MISSING_CALLS_HELP)
+            piece = directory / '.selected_input.bam'; piece.write_bytes(b'tagged A'); return piece
+        reference = self.reference()
+        for attempt in range(2):
+            runner = NamedRunner('')
+            with patch('oncotracer_cli.methylation._select_modbam_input', side_effect=select) as selected:
+                status = run_methylation(ROOT, request, samples, reference, output, runner, ledger,
+                                         threads=2, force=False)
+            self.assertEqual(status['unavailable_samples'], ['reviewed_B'])
+            self.assertEqual(status['samples'][0]['status'], 'no_cpg_modifications')
+            self.assertEqual(status['samples'][1]['status'], 'methylation_unavailable')
+            self.assertIsNone(status['samples'][1]['cpg_rows'])
+            self.assertIsNone(status['samples'][1]['classification'])
+            self.assertFalse(any(stage.endswith('reviewed_B') for stage, _ in runner.calls))
+            if attempt:self.assertFalse(selected.called)
+
+    def test_untagged_shared_bam_does_not_hide_a_sample_mapping_error(self):
+        from unittest.mock import patch
+        from oncotracer_cli.methylation_selection import MissingMethylationCalls, MISSING_CALLS_HELP
+        from dataclasses import replace
+        request = replace(self.request('modbam'), sample_signals=())
+        samples = parse_ont_samples(self.config); output = self.root/'output'
+        class Runner(NamedRunner):
+            def run(self, stage, command, **kwargs):
+                if stage.startswith('methylation-input-primary-count-'):
+                    self.calls.append((stage,list(map(str,command))))
+                    kwargs['stdout'].write('1\n' if 'reviewed_A' in stage else '0\n')
+                else:super().run(stage,command,**kwargs)
+        with patch('oncotracer_cli.methylation._select_modbam_input',side_effect=MissingMethylationCalls(MISSING_CALLS_HELP)):
+            status=run_methylation(ROOT,request,samples,self.reference(),output,Runner(''),
+                                   StageLedger(output/'.oncotracer-native/state.json'),threads=2,force=False)
+        self.assertEqual(status['unavailable_samples'],['reviewed_A'])
+        self.assertEqual(status['failed_samples'],['reviewed_B'])
+        self.assertEqual(status['samples'][1]['stage'],'input_read_ids')
+        self.assertIn('sample mapping',status['samples'][1]['error'])
+
     def test_modified_bams_only_come_from_selected_named_libraries(self):
         request = self.request("modbam")
         self.assertEqual(request.modbam_files, tuple(self.cohort / name / "modified_bam/matching.bam"

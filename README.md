@@ -26,7 +26,7 @@ oncotracer --interactive --backend docker
 
 `oncotracer interactive --backend docker` opens the same setup. For terminal questions, use `oncotracer setup --terminal --backend docker`. Use `oncotracer help` or `oncotracer help run` to see available commands and options.
 
-Setup checks tools and image updates first. Review any installation plan and click **Install and verify**. Choose your platform, inputs and project folder, then review and select **Run analysis**. Keep the terminal open. [Browser walkthrough](docs/browser_demo.md) · [Connecting over SSH](docs/headless.md).
+Setup checks tools and image updates first. Review any installation plan and click **Install and verify**. Choose your platform, inputs and project folder, then review and select **Run analysis**. Keep the terminal open. [First run: your inputs and automatic setup](docs/first_run.md) · [SSH](docs/headless.md).
 
 ### Run from a sample table
 
@@ -50,7 +50,7 @@ The first run pulls the image and prepares verified references. Later runs reuse
 
 ### ONT and FFPE
 
-For ONT, use `sample,library,status,tissue` columns. Each library folder contains its own `fastq_pass` and `pod5_pass`. Use tissue from specimen records: `blood`, `bone marrow` or `CNS`. [Sample tables and options](docs/launch.md) include Modkit inputs and multiple Illumina lanes.
+For ONT, use `sample,library,status,tissue` columns. Libraries need `fastq_pass`; methylation also needs signal. Use tissue from records: `blood`, `bone marrow` or `CNS`. Set `methylation=false` per row to skip it for other cancers or missing signal. [Sample tables and options](docs/launch.md) include Modkit inputs and multiple Illumina lanes.
 
 ```bash
 oncotracer launch --samples ont.csv --project ont-run --specimen fresh --methylation
@@ -71,14 +71,14 @@ Keep the recorded version for existing v5 results; use a new output directory fo
 
 ## Set up your analysis
 
-Prefer a browser? Run `oncotracer --interactive --backend docker`.
+[What you provide and what OncoTracer prepares](docs/first_run.md#what-you-provide-and-what-oncotracer-prepares).
 
 1. Review the automatic tool check and approve any required installation.
 2. Choose **Illumina or ONT**, then **Fresh or FFPE**.
 3. Select inputs, assign sample roles and choose the analysis/project folder.
 4. Save, review the checks and select **Run analysis**.
 
-Docker prepares methylation resources automatically. [Browser walkthrough](docs/browser_demo.md) · [Nextflow entry](docs/nextflow_entry.md) · [SSH setup](docs/headless.md).
+[Browser walkthrough](docs/browser_demo.md) · [Nextflow entry](docs/nextflow_entry.md) · [SSH setup](docs/headless.md).
 
 ## Interactive demo
 

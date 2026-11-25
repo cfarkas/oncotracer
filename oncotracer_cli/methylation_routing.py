@@ -51,12 +51,20 @@ def resolve(config, *, mode, gpu_override=None):
         if not {"sample", "tissue", input_column}.issubset(reader.fieldnames or []):
             raise OncoTracerError(f"Methylation metadata requires sample, tissue and {input_column} columns for {caller}")
         records = list(reader)
+        if len(reader.fieldnames) != len(set(reader.fieldnames)) or any(None in r or any(v is None for v in r.values()) for r in records):
+            raise OncoTracerError("Methylation metadata has duplicate columns or a wrong column count")
     samples = parse_ont_samples(config)
     names = {sample.sample for sample in samples}
+    from .methylation_selection import excluded_samples, row_enabled, excluded_record
+    excluded = excluded_samples(config, names)
     if len(records) != len({r["sample"] for r in records}) or {r["sample"] for r in records} != names:
         raise OncoTracerError("Methylation metadata must contain exactly one row for every selected ONT sample")
     requests, assignments, seen_bams = [], [], set()
     for row in records:
+        enabled = row_enabled(row.get("methylation", "").strip(), row["sample"])
+        if not enabled or row["sample"] in excluded:
+            assignments.append({**excluded_record(row["sample"]), "tissue": row["tissue"], "classifier": None})
+            continue
         classifier = classifier_for_tissue(row["tissue"])
         assignment = dict(sample=row["sample"], tissue=row["tissue"], classifier=classifier,
                           status="pending" if classifier else "not_applicable",
@@ -77,6 +85,7 @@ def resolve(config, *, mode, gpu_override=None):
         seen_bams.add(identity)
         child = {**config, "methylation": True, "methylation_classifier": classifier,
                  "ont_named_samples": False}
+        child.pop("methylation_excluded_samples", None)
         for key in ["methylation_pod5_dir", "methylation_modbam", "methylation_moves_bam"]:
             child.pop(key, None)
         if caller == "rockfish":

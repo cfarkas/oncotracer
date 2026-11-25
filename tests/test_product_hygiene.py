@@ -79,6 +79,10 @@ REQUIRED_NATIVE_EXCLUSIONS = {
     "examples/prjna754199/run_example.sh",
 }
 INTENTIONAL_PYTHON_NEXTFLOW_AUDIT_LINES = {
+    # Read-only executable inventory for startup; never a Nextflow invocation.
+    "oncotracer_cli/startup_dependencies.py": {
+        "'configureStrelkaSomaticWorkflow.py', 'readCounter', 'gistic2', 'nextflow',",
+    },
     "oncotracer_cli/engine.py": {
         'if "nextflow" in trace_text.lower():',
     },
@@ -537,6 +541,13 @@ class ProductHygieneTests(unittest.TestCase):
             any("Python payload does not parse" in item for item in syntax_violations),
             syntax_violations,
         )
+
+    def test_startup_inventory_exception_does_not_allow_nextflow_execution(self):
+        inventory = "TOOLS = ('configureStrelkaSomaticWorkflow.py', 'readCounter', 'gistic2', 'nextflow',)"
+        # Only the actual audited inventory line is excepted, not a one-line rewrite or command.
+        self.assertTrue(python_nextflow_command_violations('oncotracer_cli/startup_dependencies.py', inventory))
+        for code in ("subprocess.run(['nextflow', 'run', 'main.nf'])", "subprocess.run(['nextflow', '-version'])"):
+            self.assertTrue(python_nextflow_command_violations('oncotracer_cli/startup_dependencies.py', code))
 
     def test_python_nextflow_audit_allowlist_is_exact(self) -> None:
         audit = (

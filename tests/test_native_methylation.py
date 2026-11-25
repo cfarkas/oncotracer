@@ -240,6 +240,35 @@ class NativeMethylationTests(unittest.TestCase):
                 ):
                     execute_run(config, args)
 
+    def test_unrecorded_calls_are_unavailable_without_classification_or_false_zero(self):
+        class UntaggedRunner(FakeRunner):
+            def run(self, stage, command, **kwargs):
+                if stage == 'methylation-input-count':
+                    self.calls.append((stage,list(map(str,command))))
+                    kwargs['stdout'].write('0\n')
+                elif stage == 'methylation-input-primary-count':
+                    self.calls.append((stage,list(map(str,command))))
+                    kwargs['stdout'].write('2\n')
+                else:super().run(stage,command,**kwargs)
+        with tempfile.TemporaryDirectory() as directory:
+            fixture=Fixture(Path(directory));config=fixture.config()
+            config.pop('methylation_pod5_dir')
+            config['methylation_modbam']=str(fixture._asset('input.bam','unmodified fixture'))
+            request=resolve_methylation_request(config,mode='ont')
+            out=fixture.root/'output';runner=UntaggedRunner('')
+            fasta=fixture._asset('hg38.fa','>chr1\nACGT\n');fai=fixture._asset('hg38.fa.fai','chr1\t4\t6\t4\t5\n')
+            from oncotracer_cli.engine import parse_ont_samples
+            status=run_methylation(ROOT,request,parse_ont_samples(config),{'fasta':fasta,'fai':fai},out,
+                                   runner,StageLedger(out/'.oncotracer-native/stages.json'),threads=2,force=False)
+            self.assertEqual(status['overall_status'],'methylation_unavailable')
+            self.assertTrue(status['unavailable_samples'])
+            self.assertFalse(status['failed_samples'])
+            for record in status['samples']:
+                self.assertIsNone(record['classification'])
+                self.assertIsNone(record['cpg_rows'])
+                self.assertIn('POD5',record['reason'])
+            self.assertFalse(any('predict' in stage or 'pileup' in stage or stage=='methylation-modbam-align' for stage,_ in runner.calls))
+
     @unittest.skipUnless(
         shutil.which("samtools") and shutil.which("awk"),
         "optional real samtools is not installed",

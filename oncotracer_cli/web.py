@@ -324,6 +324,17 @@ class WebState:
             if self.cpg_context:
                 self.cpg_context.validate_selections(entries)
             methylation_group = None
+            methylation_excluded = []
+            if "methylation_excluded_samples" in data:
+                excluded = data["methylation_excluded_samples"]
+                if discovered.mode != "ont" or data.get("analysis") != "both":
+                    raise OncoTracerError("Per-sample methylation exclusions require ONT CNA and methylation analysis.")
+                if (not isinstance(excluded, list) or any(type(i) is not int or i not in indices for i in excluded)
+                        or len(set(excluded)) != len(excluded)):
+                    raise OncoTracerError("Invalid or repeated methylation exclusion; review the sample checkboxes.")
+                if set(excluded) == indices:
+                    raise OncoTracerError("Methylation is off for every sample. Choose Continue without methylation to keep CNA and selected variants.")
+                methylation_excluded = [r["sample"] for r in entries if r["scan_index"] in excluded]
             if "methylation_assignments" in data:
                 if discovered.mode != "ont" or data.get("analysis") != "methylation":
                     raise OncoTracerError("Classifier sample groups require ONT methylation-only analysis.")
@@ -419,6 +430,8 @@ class WebState:
                     else:
                         setattr(args, key, _text(data, key))
             values = {}
+            if methylation_excluded:
+                args.methylation_exclude = ",".join(methylation_excluded)
             if discovered.mode == "illumina":
                 args._wizard_rows = [[row["sample"], encode_fastq_field(row["source"].fastq_1),
                                       encode_fastq_field(row["source"].fastq_2), row["analysis_role"]] for row in entries]
@@ -481,6 +494,8 @@ class WebState:
                 args.classifier = _choice(data, "classifier", ("marlin", "sturgeon"))
                 args.methylation_caller = _choice(data, "methylation_caller", ("rockfish", "modkit"), "rockfish")
                 source = _choice(data, "methylation_source", ("modbam", "pod5"))
+                if not data.get("methylation_path"):
+                    raise OncoTracerError("No methylation input was selected. Supply matching raw POD5 or a BAM with MM/ML calls, or choose Continue without methylation to keep CNA and selected variants.")
                 setattr(args, "modbam" if source == "modbam" else "pod5_dir", _text(data, "methylation_path"))
                 args.resources = _text(data, "resources") if data.get("resources") else None
                 args.resource_cache = _text(data, "resource_cache") if data.get("resource_cache") else None
@@ -551,6 +566,7 @@ class WebState:
                            "specimen_type": saved.get("variant_specimen_type"),
                            "variant_callers": saved.get("variant_callers") if saved.get("run_variants") else None},
                 "methylation_group": copy.deepcopy(methylation_group),
+                "methylation_excluded_samples": list(methylation_excluded),
                 "samples": [{"name": row["sample"], "sample_type": row["sample_type"],
                              "analysis_role": row["analysis_role"],
                              "detected_name": row["source"].sample,
@@ -569,6 +585,8 @@ class WebState:
                         "project_identity": (project_stat.st_dev, project_stat.st_ino)}
             if analysis != "cna":
                 reviewed_summary["config"]["methylation_classifier"] = args.classifier
+            if methylation_excluded:
+                report.setdefault("warnings", []).append("Methylation is off for " + ", ".join(methylation_excluded) + ". These samples remain in CNA and selected variant analyses.")
             if methylation_group:
                 report.setdefault("warnings", []).append(
                     f"Only the {methylation_group['classifier'].upper()} group ({methylation_group['included']} samples) is saved. "

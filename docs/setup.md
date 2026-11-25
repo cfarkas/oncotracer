@@ -1,30 +1,27 @@
 # Set up your own data
 
-[Install](installation.md), then use [one sample table](launch.md) or the browser below.
+[Start with the first-run guide](first_run.md) for required inputs, automatic preparation and missing methylation. Use [one sample table](launch.md) for scripted runs.
 
 ## 1. Configure interactively (recommended)
 
 ```bash
-oncotracer --interactive --backend conda
-nextflow run main.nf --interactive --backend conda
+oncotracer interactive --backend docker
 ```
 
 Keep the terminal open. Use its complete URL. See [concurrent projects](nextflow_entry.md#concurrent-projects).
-**Browse computer** selects inputs.
-Empty input folders display **No sequencing files found. Check your paths.**
 
-1. **Choose Illumina or ONT, then Fresh or FFPE** from your specimen records.
+1. **Review the automatic dependency check** and approve any needed installation.
+2. **Choose Illumina or ONT, then Fresh or FFPE** from your specimen records.
    Illumina accepts sample folders with paired lanes. ONT accepts [named libraries](configuration/ont.md),
    each with `fastq_pass`; legacy barcodes and single ligation libraries remain supported.
-2. **Assign samples** to Normal or Cancer using cards or dropdowns. Rename them
-   if needed. Unassigned samples are excluded. CNA controls are analyzed independently,
-   without pooling or subtraction; custom tags require a study/control role.
-3. **Review settings.** Choose resources and a caller. QDNAseq defaults to **100 kb**;
+3. **Assign samples** to Normal or Cancer using cards or dropdowns. Rename them
+   if needed. Unassigned samples are excluded. Controls are analyzed independently; custom tags require a role.
+4. **Review settings.** Choose resources and a caller. QDNAseq defaults to **100 kb**;
    ONT ichorCNA uses **500 kb**. Both support ONT normal/control labels.
    GISTIC needs at least two assigned samples.
-4. **Select tools and a new or existing project folder.** Choose your installed Conda or Docker
+5. **Select a new or existing project folder.** Choose your installed Conda or Docker
    backend. Keep automatic reference download.
-5. Click **Save configuration and check**, resolve any check errors, then
+6. Click **Save configuration and check**, resolve any check errors, then
    **Run analysis**. Follow progress and open results here.
 
 Settings use `PROJECT/config/run.yml`; Illumina also gets `config/samplesheet.csv`.
@@ -36,17 +33,14 @@ Save/check detects tools and records their paths. Results and references stay.
 **Terminal alternative:**
 
 ```bash
-oncotracer setup --terminal --backend conda --run
+oncotracer setup --terminal --backend docker --run
 ```
-
-In terminal setup, add `--variant-specimen-type fresh` or `ffpe` to record preservation,
-including for CNA-only projects.
 
 ### Optional analyses
 
 Enable [variants](variants.md) to choose compatible callers for the selected preservation.
 ONT [methylation](configuration/methylation.md) requires modBAMs or raw POD5 and
-classifier resources; FASTQs alone lack methylation calls. Docker prepares the
+classifier resources; FASTQs alone lack methylation calls. In **CNA and methylation**, uncheck individual samples under **Methylation for each sample**, or choose **Continue without methylation** for the project. Other selected analyses remain enabled. Docker prepares the
 managed resources automatically; see [launch](launch.md). Reports and [paper panels](paper_report.md) are optional.
 
 <details markdown="1">

@@ -233,6 +233,36 @@ class SampleJobBrowserTests(unittest.TestCase):
                 self.assertIsNone(self.state.job)
                 self.assertFalse(self.errors, self.errors)
 
+    def test_methylation_sample_checkboxes_and_fastq_only_escape_keep_samples(self):
+        ont=self.root/'ont-inputs'
+        for name in ('MARROW','OTHER'):
+            fastq=ont/name/'fastq_pass';fastq.mkdir(parents=True)
+            (fastq/'reads.fastq').write_text('@'+name+'\nACGT\n+\nIIII\n')
+        self.page.locator('#choose-new-analysis').click()
+        self.page.locator('#choose-ont').click()
+        self.page.locator('#variant-fresh').click()
+        self.page.locator('#input-folder').fill(str(ont))
+        self.page.locator('#scan').click()
+        self.page.wait_for_selector('#samples-card:not([hidden])')
+        for index in range(self.page.locator('#samples .type-select').count()):
+            self.page.locator(f'#samples .sample[data-id="{index}"] .type-select').select_option('cancer')
+        self.page.locator('#analysis').select_option('both')
+        self.page.locator('#classifier').select_option('marlin')
+        expect(self.page.locator('#methylation-availability-note')).to_contain_text('No methylation input')
+        expect(self.page.locator('.methylation-enabled')).to_have_count(2)
+        self.page.get_by_role('checkbox',name='Methylation for OTHER',exact=True).uncheck()
+        expect(self.page.locator('#methylation-selection-note')).to_contain_text('1 of 2')
+        self.assertEqual(self.page.evaluate('methylationAssignmentPayload()'),{'methylation_excluded_samples':[1]})
+        selected=self.page.evaluate('selectedRows().map(row=>row.querySelector(".sample-name").value)')
+        variants=self.page.locator('#variants').is_checked()
+        self.page.locator('#skip-methylation').click()
+        expect(self.page.locator('#analysis')).to_have_value('cna')
+        self.assertEqual(self.page.evaluate('selectedRows().map(row=>row.querySelector(".sample-name").value)'),selected)
+        self.assertEqual(self.page.locator('#variants').is_checked(),variants)
+        self.assertEqual(self.page.evaluate('methylationAssignmentPayload()'),{})
+        self.assertEqual(self.runs,[])
+        self.assertFalse(self.errors,self.errors)
+
     def test_docker_methylation_shows_managed_resources_and_license(self):
         ont=self.root/'ont-inputs';library=ont/'SYNTHETIC'
         (library/'fastq_pass').mkdir(parents=True)

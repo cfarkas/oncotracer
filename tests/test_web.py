@@ -582,6 +582,34 @@ const window={},document={addEventListener(){}},location={href:'https://example.
         result = subprocess.run([shutil.which('node'), '-e', script], text=True, capture_output=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_combined_analysis_excludes_only_methylation_and_retains_both_samples(self):
+        from tests.test_native_methylation import Fixture
+        from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
+        for name in ('barcode01','barcode02'):self.fastq(f"reads/{name}/reads.fastq.gz")
+        resource_dir=self.root/'resources';resource_dir.mkdir()
+        fixture=Fixture(resource_dir, 'marlin')
+        allowed=set(EXECUTABLES)|set(RESOURCE_FLAGS)|set(RESOURCE_FILES['marlin'])
+        paths={k:v for k,v in fixture.config().items() if k in allowed}
+        prepared=self.prepare(mode='ont', analysis='both', classifier='marlin',
+            samples=[{'id':0,'name':'marrow','type':'cancer'},{'id':1,'name':'lung','type':'cancer'}],
+            methylation_excluded_samples=[1], methylation_caller='modkit', methylation_source='pod5',
+            methylation_path=str(fixture.pod5), resource_paths=paths)
+        self.assertTrue(prepared['valid'], prepared['check'])
+        config=load_flat_yaml(Path(prepared['config_path']))
+        self.assertEqual(config['methylation_excluded_samples'],'lung')
+        self.assertFalse(config['methylation_only'])
+        self.assertEqual([s.sample for s in parse_ont_samples(config)],['marrow','lung'])
+        self.assertEqual(prepared['reviewed_summary']['methylation_excluded_samples'],['lung'])
+        self.assertEqual([r['name'] for r in prepared['reviewed_summary']['samples']],['marrow','lung'])
+        self.assertTrue(any('remain in CNA' in warning for warning in prepared['check']['warnings']))
+
+    def test_invalid_methylation_checkboxes_fail_before_project_creation(self):
+        for name in ('barcode01','barcode02'):self.fastq(f"reads/{name}/reads.fastq.gz")
+        for excluded in ([0,1],[7],[True],[1,1],'1'):
+            with self.subTest(excluded=excluded),self.assertRaisesRegex(OncoTracerError,'Methylation is off|Invalid'):
+                self.prepare(mode='ont', analysis='both', methylation_excluded_samples=excluded)
+            self.assertFalse((self.root/'project').exists())
+
     def test_methylation_groups_save_only_the_explicit_classifier_project(self):
         from tests.test_native_methylation import Fixture
         from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
@@ -661,13 +689,15 @@ const assert=require('node:assert/strict');
 let mode='ont',analysis='methylation',classifier='marlin';
 const $=id=>({value:id==='analysis'?analysis:classifier});
 let ids=[0,1,2];const selectedRows=()=>ids.map(id=>({dataset:{id:String(id)}}));
-const methylationAssignments=new Map([[0,'marlin'],[1,'sturgeon']]);
+const methylationAssignments=new Map([[0,'marlin'],[1,'sturgeon']]),methylationExcluded=new Set([2]);
 """ + "function methylationAssignmentPayload(){" + function + r"""
 assert.deepEqual(methylationAssignmentPayload(),{methylation_assignments:[{id:0,classifier:'marlin'},{id:1,classifier:'sturgeon'},{id:2,classifier:''}]});
 classifier='sturgeon';assert.equal(methylationAssignmentPayload().methylation_assignments[0].classifier,'marlin');
 classifier='';assert.throws(methylationAssignmentPayload,/Assign at least one/);
 classifier='marlin';ids=[1,2];assert.throws(methylationAssignmentPayload,/Assign at least one/);
-analysis='both';assert.deepEqual(methylationAssignmentPayload(),{});
+analysis='both';assert.deepEqual(methylationAssignmentPayload(),{methylation_excluded_samples:[2]});
+methylationExcluded.add(1);assert.throws(methylationAssignmentPayload,/off for every sample/);
+ids=[0,1,2];assert.deepEqual(methylationAssignmentPayload(),{methylation_excluded_samples:[1,2]});
 analysis='cna';assert.deepEqual(methylationAssignmentPayload(),{});
 mode='illumina';analysis='methylation';assert.deepEqual(methylationAssignmentPayload(),{});
 """

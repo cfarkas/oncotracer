@@ -51,31 +51,43 @@ how to supply a licensed installation explicitly.
 
 ## ONT with methylation
 
-Save `ont.csv` with one row per library:
+Save `ont.csv` with one row per library. Use `methylation=false` for other cancer
+types or samples without suitable methylation inputs:
 
 ```bash
 cat > ont.csv <<'CSV'
-sample,library,status,tissue
-CASE_01,ONT/library_01,tumor,bone marrow
-CASE_02,ONT/library_02,tumor,CNS
-NORMAL_01,ONT/control_01,normal,blood
+sample,library,status,tissue,methylation
+CASE_01,ONT/library_01,tumor,bone marrow,true
+CASE_02,ONT/library_02,tumor,CNS,true
+CASE_03,ONT/library_03,tumor,lung,false
+NORMAL_01,ONT/control_01,normal,blood,true
 CSV
 ```
 
-Each library contains `fastq_pass/` and `pod5_pass/`. They may contain a single
-matching barcode directory. A folder containing several barcodes must be split
-into explicit sample rows with `fastq_dir` and `pod5` columns. Completed passed
-reads define the selected read IDs; failed-read folders are excluded.
+Each library needs `fastq_pass/`. Only samples with methylation enabled also need
+`pod5_pass/` for Rockfish. A matching single barcode subfolder is supported.
+For several barcodes, give each sample an explicit `fastq_dir` and `pod5` row.
+Completed passed reads define read IDs; failed-read folders are excluded.
+The optional `methylation` column accepts `true` or `false`; missing or blank
+values keep methylation enabled when the command requests it.
 
 ```bash
 oncotracer launch --samples ont.csv --project ont-run --specimen fresh --methylation --accept-sturgeon-license
 ```
 
-The acknowledgement is required only when CNS samples select Sturgeon. Review
-[its license](https://github.com/UMCUGenetics/sturgeon/blob/main/LICENSE) first.
-The licensed software and model are downloaded into your private cache; they are
-not included in the public image. Blood/marrow samples use MARLIN. Tissue
-routing uses the supplied records, never predicted diagnoses.
+`CASE_03` stays in CNA and variant analysis. Its methylation metadata records the
+exclusion, with no required POD5, methylation model or classifier prediction.
+If every sample should skip methylation, omit `--methylation` entirely.
+
+Only enabled CNS samples require the [Sturgeon license](https://github.com/UMCUGenetics/sturgeon/blob/main/LICENSE)
+acknowledgement. Its software and model are downloaded privately. Enabled
+blood/marrow samples use MARLIN. Tissue comes from your records, not a prediction.
+
+If methylation was not called during sequencing, compatible raw POD5 still lets
+Rockfish call it now. With only FASTQs or ordinary BAMs and no POD5, leave
+methylation off. Modkit requires existing `MM`/`ML` calls. Inputs with matching
+reads but no recorded calls receive `methylation_unavailable`; no prediction or
+zero-methylation measurement is fabricated. Other analyses continue.
 
 Rockfish requires R10.4.1 E8.2, 400 bases/s, 5 kHz POD5. The managed ONT profile
 uses pinned Dorado 1.1.1, SUP v5.2.0 and the validated Rockfish checkpoint.
