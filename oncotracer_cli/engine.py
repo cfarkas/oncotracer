@@ -438,6 +438,11 @@ def _single_ont_sample_folder(folder: Path) -> Path:
 
 
 def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
+    if config.get("ont_samplesheet"):
+        if any(config.get(key) for key in ("ont_barcodes", "ont_sample_names", "ont_normal_barcodes", "ont_normal_sample_names")):
+            raise OncoTracerError("Use ont_samplesheet or legacy sample lists, not both")
+        from .sample_manifest import parse_ont_manifest
+        return parse_ont_manifest(Path(str(config["ont_samplesheet"])))
     single = config.get("ont_single_sample", False)
     named = config.get("ont_named_samples", False)
     if not isinstance(named, bool):

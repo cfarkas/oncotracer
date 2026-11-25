@@ -23,13 +23,32 @@ REGISTRY_PUT = ROOT / "scripts" / "release_registry_put_if_absent.sh"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_release_notes_render_commands_without_executing_them(self) -> None:
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        marker = '          cat > "$RUNNER_TEMP/RELEASE_NOTES.md" <<EOF\n'
+        block = marker + workflow.split(marker, 1)[1].split("          EOF\n", 1)[0] + "          EOF\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            env = {**os.environ, "RUNNER_TEMP": str(root), "MAIN_SHA": "a" * 40,
+                   "IMAGE_NAME": "ghcr.io/cfarkas/oncotracer", "IMAGE_DIGEST": "sha256:" + "b" * 64}
+            command = ('oncotracer() { touch "$RUNNER_TEMP/command-was-executed"; return 99; }\n'
+                       + textwrap.dedent(block))
+            result = subprocess.run(["bash", "-eu", "-c", command], env=env,
+                                    capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse((root / "command-was-executed").exists())
+            notes = (root / "RELEASE_NOTES.md").read_text()
+            self.assertIn("`oncotracer launch --samples samples.csv --project my-run --specimen fresh`", notes)
+            self.assertIn("`" + env["MAIN_SHA"] + "`", notes)
+            self.assertIn("`" + env["IMAGE_NAME"] + "@" + env["IMAGE_DIGEST"] + "`", notes)
+
     def test_automatic_updates_skip_published_versions_without_weakening_guards(self) -> None:
         workflow = WORKFLOW.read_text(encoding="utf-8")
         step = workflow.split("        run: |\n", 1)[1].split("\n      - name:", 1)[0]
         gate = textwrap.dedent(step)
         main_sha, old_sha = "a" * 40, "b" * 40
         release = {
-            "tag_name": "v5.0.0", "draft": False, "prerelease": False,
+            "tag_name": "v6.0.0", "draft": False, "prerelease": False,
             "target_commitish": old_sha,
         }
         runs = {"workflow_runs": [
@@ -46,10 +65,10 @@ set -Eeuo pipefail
 case "$*" in
   'api /repos/cfarkas/oncotracer/commits/main --jq .sha')
     printf '%s\n' "$FAKE_MAIN" ;;
-  'api /repos/cfarkas/oncotracer/commits/v5.0.0 --jq .sha')
+  'api /repos/cfarkas/oncotracer/commits/v6.0.0 --jq .sha')
     test "${FAKE_TAG_ERROR:-0}" = 0
     printf '%s\n' "$FAKE_TAG" ;;
-  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/releases/tags/v5.0.0')
+  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/releases/tags/v6.0.0')
     test "${FAKE_FORBID_RELEASE:-0}" = 0
     if [[ "$FAKE_STATUS" != 200 ]]; then
       printf 'gh: request failed (HTTP %s)\n' "$FAKE_STATUS" >&2
@@ -73,7 +92,7 @@ esac
                 **os.environ, "PATH": f"{root}:{os.environ['PATH']}",
                 "RUNNER_TEMP": str(root), "GITHUB_OUTPUT": str(output),
                 "GITHUB_STEP_SUMMARY": str(summary),
-                "GITHUB_REPOSITORY": "cfarkas/oncotracer", "RELEASE_TAG": "v5.0.0",
+                "GITHUB_REPOSITORY": "cfarkas/oncotracer", "RELEASE_TAG": "v6.0.0",
                 "GITHUB_EVENT_NAME": "workflow_run", "EVENT_SHA": main_sha,
                 "FAKE_MAIN": main_sha, "FAKE_TAG": old_sha, "FAKE_STATUS": "200",
                 "FAKE_RELEASE": json.dumps(release), "FAKE_RUNS": json.dumps(runs),
@@ -168,7 +187,7 @@ esac
     def test_stable_tags_are_classified_as_an_atomic_pair(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertGreaterEqual(text.count("scripts/release_registry_pair.sh"), 4)
-        self.assertIn('"$IMAGE_NAME:5.0.0" "$IMAGE_NAME:v5.0.0"', text)
+        self.assertIn('"$IMAGE_NAME:6.0.0" "$IMAGE_NAME:v6.0.0"', text)
         self.assertIn('case "$STABLE_STATE" in', text)
         self.assertIn("missing)", text)
         self.assertIn("existing)", text)
@@ -200,9 +219,9 @@ esac
     def test_conditional_registry_publisher_never_overwrites(self) -> None:
         manifest = b'{"schemaVersion":2}\n'
         digest = "sha256:" + hashlib.sha256(manifest).hexdigest()
-        source = "ghcr.io/cfarkas/oncotracer:v5.0.0-candidate-123-1"
-        target = "ghcr.io/cfarkas/oncotracer:5.0.0"
-        second_target = "ghcr.io/cfarkas/oncotracer:v5.0.0"
+        source = "ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-123-1"
+        target = "ghcr.io/cfarkas/oncotracer:6.0.0"
+        second_target = "ghcr.io/cfarkas/oncotracer:v6.0.0"
         main_sha = "a" * 40
 
         fake_docker = r"""#!/usr/bin/env bash
@@ -210,10 +229,10 @@ set -Eeuo pipefail
 test "$#" -eq 4
 test "$1" = buildx && test "$2" = imagetools && test "$3" = inspect
 case "$4" in
-  ghcr.io/cfarkas/oncotracer:v5.0.0-candidate-123-1)
+  ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-123-1)
     printf 'Name: source\nDigest: %s\n' "$FAKE_DIGEST"
     ;;
-  ghcr.io/cfarkas/oncotracer:5.0.0)
+  ghcr.io/cfarkas/oncotracer:6.0.0)
     if [[ "$(cat "$FAKE_TARGET_STATE")" == present ]]; then
       printf 'Name: target\nDigest: %s\n' "$FAKE_DIGEST"
     else
@@ -221,7 +240,7 @@ case "$4" in
       exit 1
     fi
     ;;
-  ghcr.io/cfarkas/oncotracer:v5.0.0)
+  ghcr.io/cfarkas/oncotracer:v6.0.0)
     if [[ "$(cat "$FAKE_SECOND_TARGET_STATE")" == present ]]; then
       printf 'Name: second-target\nDigest: %s\n' "$FAKE_DIGEST"
     else
@@ -274,14 +293,14 @@ if [[ "$method" == GET && "$url" == *"/manifests/$FAKE_DIGEST" ]]; then
   cp "$FAKE_MANIFEST" "$output"
   exit 0
 fi
-if [[ "$method" == PUT && "$url" == *'/manifests/v5.0.0-candidate-123-1' ]]; then
+if [[ "$method" == PUT && "$url" == *'/manifests/v6.0.0-candidate-123-1' ]]; then
   status="${FAKE_PROBE_STATUS:-412}"
   : > "$headers"
   : > "$output"
   printf '%s' "$status"
   exit 0
 fi
-if [[ "$method" == PUT && "$url" == *'/manifests/5.0.0' ]]; then
+if [[ "$method" == PUT && "$url" == *'/manifests/6.0.0' ]]; then
   status="${FAKE_CREATE_STATUS:-201}"
   if [[ "$status" == 201 ]]; then
     printf 'HTTP/1.1 201 Created\r\nDocker-Content-Digest: %s\r\n\r\n' "$FAKE_DIGEST" > "$headers"
@@ -296,7 +315,7 @@ if [[ "$method" == PUT && "$url" == *'/manifests/5.0.0' ]]; then
   printf '%s' "$status"
   exit 0
 fi
-if [[ "$method" == PUT && "$url" == *'/manifests/v5.0.0' ]]; then
+if [[ "$method" == PUT && "$url" == *'/manifests/v6.0.0' ]]; then
   status="${FAKE_SECOND_CREATE_STATUS:-201}"
   if [[ "$status" == 201 ]]; then
     printf 'HTTP/1.1 201 Created\r\nDocker-Content-Digest: %s\r\n\r\n' "$FAKE_DIGEST" > "$headers"
@@ -497,7 +516,7 @@ printf '%s\n' "$FAKE_MAIN"
         self.assertLess(preaccept_index, stable_mutation_index)
         self.assertLess(stable_mutation_index, release_mutation_index)
         self.assertIn(
-            '"ghcr.io/cfarkas/oncotracer:v5.0.0-candidate-'
+            '"ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-'
             '${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"',
             text,
         )
@@ -632,7 +651,7 @@ printf '%s\n' "$FAKE_MAIN"
 set -Eeuo pipefail
 case "${1:-}" in
   --version)
-    printf 'OncoTracer 5.0.0\\n'
+    printf 'OncoTracer 6.0.0\\n'
     ;;
   --help)
     printf '%s\\n' HELP_OUTPUT
@@ -665,11 +684,11 @@ esac
             release = root / "release-source"
             release.mkdir()
             (release / "oncotracer").write_text(executable, encoding="utf-8")
-            (release / "oncotracer-v5.0.0-parity-audit.tar.gz").write_bytes(
+            (release / "oncotracer-v6.0.0-parity-audit.tar.gz").write_bytes(
                 b"parity-audit\n"
             )
             for name in ("oncotracer-v5.0.0-study-benchmark.tar.gz",
-                         "oncotracer-5.0.0-py3-none-any.whl", "oncotracer-5.0.0.tar.gz"):
+                         "oncotracer-6.0.0-py3-none-any.whl", "oncotracer-6.0.0.tar.gz"):
                 (release / name).write_bytes((name + "\n").encode())
             benchmark_sha = hashlib.sha256(
                 (release / "oncotracer-v5.0.0-study-benchmark.tar.gz").read_bytes()
@@ -678,12 +697,12 @@ esac
                 (release / "oncotracer").read_bytes()
             ).hexdigest()
             parity_sha = hashlib.sha256(
-                (release / "oncotracer-v5.0.0-parity-audit.tar.gz").read_bytes()
+                (release / "oncotracer-v6.0.0-parity-audit.tar.gz").read_bytes()
             ).hexdigest()
             provenance = {
                 "schema": "oncotracer-v2-release-provenance-v3",
-                "version": "5.0.0",
-                "release_tag": "v5.0.0",
+                "version": "6.0.0",
+                "release_tag": "v6.0.0",
                 "source_commit": main_sha,
                 "source_sha256": source_sha,
                 "source_tree_dirty": False,
@@ -692,7 +711,8 @@ esac
                 "study_benchmark": {
                     "bundle_sha256": benchmark_sha,
                     "output_validation": "all_study_outputs_validated",
-                    "scientific_runtime_source_unchanged": True,
+                    "version": "5.0.0", "historical": True,
+                    "scientific_runtime_source_unchanged": False,
                 },
                 "native_nextflow_required": False,
                 "container": {
@@ -744,10 +764,10 @@ esac
             def write_sums() -> None:
                 names = (
                     "oncotracer",
-                    "oncotracer-v5.0.0-parity-audit.tar.gz",
+                    "oncotracer-v6.0.0-parity-audit.tar.gz",
                     "oncotracer-v5.0.0-study-benchmark.tar.gz",
-                    "oncotracer-5.0.0-py3-none-any.whl",
-                    "oncotracer-5.0.0.tar.gz",
+                    "oncotracer-6.0.0-py3-none-any.whl",
+                    "oncotracer-6.0.0.tar.gz",
                     "release-provenance.json",
                 )
                 lines = [
@@ -799,7 +819,7 @@ esac
             dangling_root.unlink()
 
             hardlink = root / "parity-hardlink"
-            os.link(release / "oncotracer-v5.0.0-parity-audit.tar.gz", hardlink)
+            os.link(release / "oncotracer-v6.0.0-parity-audit.tar.gz", hardlink)
             linked = run_helper("hardlinked-source-run")
             self.assertNotEqual(linked.returncode, 0)
             hardlink.unlink()

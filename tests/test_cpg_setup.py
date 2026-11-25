@@ -308,13 +308,19 @@ class CpgSetupTests(unittest.TestCase):
     def test_conflicting_modes_and_run_flags_never_open_browser(self):
         cases = [("--run",), ("--terminal",), ("--non-interactive",), ("--variants",),
                  ("--input-folder", str(self.reads)), ("--project", str(self.root / "other")),
-                 ("--backend", "docker"), ("--mode", "illumina"), ("--analysis", "cna")]
+                 ("--backend", "singularity"), ("--mode", "illumina"), ("--analysis", "cna")]
         for extra in cases:
             with self.subTest(extra=extra), patch("oncotracer_cli.web.command_web") as browser:
                 with self.assertRaises(OncoTracerError):
                     args = parse_arguments(["setup", "--cpg-from", str(self.project), *extra])
                     command_setup(args)
                 browser.assert_not_called()
+
+    def test_docker_cpg_continuation_opens_without_downloads(self):
+        with patch("oncotracer_cli.web.command_web", return_value=0) as browser:
+            args = parse_arguments(["setup", "--cpg-from", str(self.project), "--backend", "docker"])
+            self.assertEqual(command_setup(args), 0)
+            self.assertEqual(browser.call_args.args[0].backend, "docker")
 
     def test_public_command_opens_only_browser_with_restored_context(self):
         before = self.snapshot()

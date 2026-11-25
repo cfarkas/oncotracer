@@ -66,10 +66,13 @@ def check_pip_install(relative_path: str) -> None:
     tag = "v" + version
     url = f"https://github.com/cfarkas/oncotracer/releases/download/{tag}/oncotracer-{version}-py3-none-any.whl"
     block = find_block(relative_path, url)
-    require(first_command(block) == f'python3 -m pip install --upgrade --force-reinstall "{url}"',
-            f"{relative_path} must start with the versioned release wheel")
+    require_order(block, ("python3 -m venv oncotracer-env", "source oncotracer-env/bin/activate",
+                          f'python -m pip install "{url}"'),
+                  f"{relative_path} isolated launcher installation")
+    require(first_command(block) == "python3 -m venv oncotracer-env",
+            f"{relative_path} must create an isolated launcher environment first")
     text = read(relative_path)
-    require("pip install oncotracer" in text and "separately published PyPI" in text,
+    require("pip install oncotracer" in text and ("separate PyPI" in text or "separately published PyPI" in text),
             f"{relative_path} must distinguish the release asset from the PyPI version")
     require("benchmark" in text.lower(),
             f"{relative_path} must distinguish software release from study benchmark completion")

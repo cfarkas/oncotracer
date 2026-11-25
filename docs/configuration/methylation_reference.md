@@ -1,14 +1,19 @@
 # Methylation resource and processing reference
 
-Version 5 defaults to **Rockfish**. Prepare its raw-signal runtime using the [version 5 guide](../releases/5.0.0.md). The Dorado/Modkit workflows below remain available by explicitly selecting **Modkit**.
+Version 6 uses Rockfish by default. [Launch with Docker](../launch.md) prepares the
+pinned tools and models without manual path entry. The image supplies Rockfish,
+MARLIN, Modkit and classifier dependencies. Dorado and Sturgeon are prepared in
+a private cache; Sturgeon requires acknowledgement of its upstream license.
 
-Version 5 defaults to Rockfish. See [Rockfish setup and caller selection](../releases/5.0.0.md). The Dorado/Modkit examples below require `--methylation-caller modkit`; their modified-base model and MM/ML requirements apply to that explicit route.
+The reference below documents advanced external resources and the explicit
+Dorado/Modkit route. Select `--methylation-caller modkit` for those examples.
 
 For the short workflow and an explanation of flags and paths, start with the [methylation guide](methylation.md). This reference covers local resources and manual BAM or POD5 configuration.
 
 ## Obtain the optional resources
 
-Install these separately, following their own instructions and licenses:
+For a Conda/host installation or custom resources, install these separately.
+Docker launch performs the supported preparation automatically:
 
 | Resource | Official source | Path to give OncoTracer |
 | --- | --- | --- |
@@ -22,7 +27,7 @@ MARLIN's files are `marlin_v1.model.hdf5`, `marlin_v1.features.RData`, `marlin_v
 
 MARLIN needs compatible R/Keras and Python/TensorFlow packages. `marlin_rscript` and `marlin_python` must point to that environment, not an unrelated system installation. `oncotracer setup` collects these paths and records hashes; `--resources` can reuse them for another project. A locally computed hash records the file you chose; it does not authenticate the file's upstream origin.
 
-OncoTracer can run an optional methylation branch for Oxford Nanopore Technologies (ONT) analyses. Choose Sturgeon for a CNS-tumor research classifier or MARLIN for a leukemia research classifier. OncoTracer does not infer the disease type: the user must select exactly one classifier explicitly.
+OncoTracer can run an optional methylation branch for Oxford Nanopore Technologies (ONT) analyses. Choose Sturgeon for a CNS-tumor research classifier or MARLIN for a leukemia research classifier. OncoTracer does not infer the disease type. A single-classifier project selects it explicitly; launch routes mixed cohorts using the tissue column.
 
 This branch is research-only. A methylation class is not a diagnosis and must be reviewed with morphology, immunophenotyping, cytogenetics, validated molecular assays, and the assay-specific quality controls.
 
@@ -46,8 +51,9 @@ The model, probe table, license text, acknowledgement time and SHA-256 receipts
 are kept under `~/.local/share/oncotracer/models/sturgeon` (or `$XDG_DATA_HOME`).
 Later requests verify these files before reuse. An observed download hash records
 the received file; it is not a publisher-supplied signature. OncoTracer does not
-bundle or sublicense the Sturgeon model. The Sturgeon executable, Dorado and
-Modkit still need to be installed as described above.
+bundle or sublicense the Sturgeon model. For this advanced host workflow, install the Sturgeon executable, Dorado and
+Modkit separately. Docker launch instead prepares the private software cache
+and uses its bundled dependencies.
 
 For terminal setup, use `--sturgeon-model general` with `--classifier sturgeon`.
 Interactive terminal setup asks for acknowledgement; unattended setup additionally
@@ -99,11 +105,11 @@ Also provide:
 - an explicit, compatible Dorado 5mCG/5hmCG model directory (POD5 route only);
 - classifier-specific executable/model/probe resources and exact SHA-256 values.
 
-OncoTracer does not download, install, or update these optional classifier/model resources. Supply their paths explicitly; executable names can also resolve from `PATH`. Methylation outputs go below `<outdir>/07_methylation/`; reference preparation uses the configured reference cache. The branch never indexes or modifies the source POD5/FASTQ directories.
+For manually managed resources, supply paths explicitly; executable names can resolve from `PATH`. Docker launch downloads pinned assets automatically and records their checksums. Methylation outputs go below `<outdir>/07_methylation/`; reference preparation uses the configured reference cache. The branch never indexes or modifies the source POD5/FASTQ directories.
 
 ## Backend restriction
 
-Use `host`, `conda`, or `poetry` with explicit local executable/resource paths. The Docker and Singularity/Apptainer image deliberately does not redistribute Dorado, Sturgeon, their models, or user-licensed classifier resources, so the CLI rejects optional methylation with those container backends.
+Use Docker for managed preparation, or host, Conda and Poetry with explicit executable/resource paths. Docker bundles permitted software and mounts private licensed resources read-only. Singularity/Apptainer methylation remains unsupported.
 
 ## CNS example: Sturgeon
 

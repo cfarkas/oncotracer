@@ -1,0 +1,667 @@
+{
+  "schema": 1,
+  "description": "Retain the authenticated earlier browser tutorial evidence while adding v6 managed Docker resources and launch. Each reversible change is checked against both source hashes. The original videos are not claimed to demonstrate launch.",
+  "recorded_commit": "3efe28c7fb01579ee53e6d1264fefddddc5fb6f7",
+  "files": {
+    "oncotracer_cli/__init__.py": {
+      "recorded_sha256": "dfe64d110e0fe678f30a1df2499e4b665e0f967cc23b21057f0057c85ad47488",
+      "current_sha256": "043be678eaf39f45efccbd1f12fde20c680d14f0accad8bfd0637cc9f262b7c8",
+      "changes": [
+        {
+          "start": 43,
+          "end": 65,
+          "current": "__version__ = \"6.0.0\"\n",
+          "recorded": "__version__ = \"5.0.0\"\n"
+        }
+      ]
+    },
+    "oncotracer_cli/cli.py": {
+      "recorded_sha256": "e9fcac28a8bab598bd87a4e9dd0522471113925d952851b2c9b986401cb0c941",
+      "current_sha256": "4b1e22b00f5bc8afb344d3405a9a8277e1a97fc46a54eb4e815c04adb72f76fc",
+      "changes": [
+        {
+          "start": 1655,
+          "end": 1703,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:6.0.0\"\n",
+          "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:5.0.0\"\n"
+        },
+        {
+          "start": 74682,
+          "end": 74775,
+          "current": "    from .launch import add_command as add_launch_command\n    add_launch_command(subparsers)\n",
+          "recorded": ""
+        },
+        {
+          "start": 79724,
+          "end": 79746,
+          "current": "            \"launch\",\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/cpg_setup.py": {
+      "recorded_sha256": "22289b78e9abfa39e0952d92c397629f4015696a899915d3150e47c97516ace7",
+      "current_sha256": "146c8a0a7acdef5347b4c0dda3ddfb6e20978424b8569e62f561be3b74986660",
+      "changes": [
+        {
+          "start": 5054,
+          "end": 5218,
+          "current": "    if backend not in (\"conda\", \"host\", \"poetry\", \"docker\"):\n        raise OncoTracerError(\"CpG classification requires --backend docker, conda, host, or poetry.\")\n",
+          "recorded": "    if backend not in (\"conda\", \"host\", \"poetry\"):\n        raise OncoTracerError(\"CpG classification requires --backend conda, host, or poetry.\")\n"
+        }
+      ]
+    },
+    "oncotracer_cli/docker_runtime.py": {
+      "recorded_sha256": "c9198111110645cc3c5c9d62d7db3de42b4cff1ff6a8359be913e3581a035b62",
+      "current_sha256": "3e3f979ba36fee723c0d9cd26182f45e49df237442282a7f6467581b5e40041c",
+      "changes": [
+        {
+          "start": 3715,
+          "end": 3833,
+          "current": "    for key in (\"lpwgs_root\", \"outdir\", \"illumina_samplesheet\", \"ont_samplesheet\", \"ont_folder\", \"ont_normal_folder\",\n",
+          "recorded": "    for key in (\"lpwgs_root\", \"outdir\", \"illumina_samplesheet\", \"ont_folder\", \"ont_normal_folder\",\n"
+        },
+        {
+          "start": 11510,
+          "end": 11621,
+          "current": "    for key in (\"illumina_samplesheet\", \"ont_samplesheet\", \"ont_folder\", \"ont_normal_folder\", \"pathology_csv\",\n",
+          "recorded": "    for key in (\"illumina_samplesheet\", \"ont_folder\", \"ont_normal_folder\", \"pathology_csv\",\n"
+        },
+        {
+          "start": 13493,
+          "end": 13568,
+          "current": "        # MARLIN is bundled; licensed Sturgeon stays in the private cache.\n",
+          "recorded": "        # The public image contains neither classifier models nor licensed Sturgeon.\n"
+        }
+      ]
+    },
+    "oncotracer_cli/engine.py": {
+      "recorded_sha256": "407d01f8173dc7c879b95f1dc623b783489b4517cf83eb05a9def8859ddadf98",
+      "current_sha256": "a51ec03ff27f34c01746cb98b806d4709ce58bc558efffa9a75c88f4496688c9",
+      "changes": [
+        {
+          "start": 16828,
+          "end": 17215,
+          "current": "    if config.get(\"ont_samplesheet\"):\n        if any(config.get(key) for key in (\"ont_barcodes\", \"ont_sample_names\", \"ont_normal_barcodes\", \"ont_normal_sample_names\")):\n            raise OncoTracerError(\"Use ont_samplesheet or legacy sample lists, not both\")\n        from .sample_manifest import parse_ont_manifest\n        return parse_ont_manifest(Path(str(config[\"ont_samplesheet\"])))\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/install_safety.py": {
+      "recorded_sha256": "a6aa5029af99efc7599c236496b88adb48f39456367d046e78f6a04673494385",
+      "current_sha256": "fb47fe50afa66a54551bbf00088c0ca84c517b81090790004ae1f783a479465b",
+      "changes": [
+        {
+          "start": 3972,
+          "end": 4055,
+          "current": "        # Recognize known prior owned environments during the 6.0.0 upgrade. Reuse\n",
+          "recorded": "        # Recognize known prior owned environments during the 5.0.0 upgrade. Reuse\n"
+        },
+        {
+          "start": 4250,
+          "end": 4352,
+          "current": "            \"2.3.1rc1\", \"2.3.1rc2\", \"2.3.1rc3\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\",\n",
+          "recorded": "            \"2.3.1rc1\", \"2.3.1rc2\", \"2.3.1rc3\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\",\n"
+        }
+      ]
+    },
+    "oncotracer_cli/methylation.py": {
+      "recorded_sha256": "c37a20a78222c4f44fda2ec4eff0b163ffa53e83724046b485761e0832305c1d",
+      "current_sha256": "2a17606f0ed368fb5f4ba13efe84cfd400bbb186c93988bb9db1e18145dc3236",
+      "changes": [
+        {
+          "start": 3481,
+          "end": 3605,
+          "current": "    if value == \"bundled\":\n        from .managed_resources import bundled_executable\n        return bundled_executable(key)\n",
+          "recorded": ""
+        },
+        {
+          "start": 4043,
+          "end": 4380,
+          "current": "\n\ndef _executable_sha256(path: Path) -> str:\n    from .managed_resources import BUNDLED_EXECUTABLES\n    from .docker_runtime import is_host_preview\n    if is_host_preview() and str(path) in BUNDLED_EXECUTABLES.values():\n        return \"\"  # The selected image checks and hashes its runtime before execution.\n    return sha256_file(path)\n",
+          "recorded": ""
+        },
+        {
+          "start": 21980,
+          "end": 22650,
+          "current": "    for manifest_key, asset in ((\"methylation_dorado_runtime_manifest\", \"dorado\"),\n                                (\"sturgeon_runtime_manifest\", \"sturgeon_source\")):\n        if config.get(manifest_key) and (asset != \"sturgeon_source\" or classifier == \"sturgeon\"):\n            from .managed_resources import validate_installation\n            expected = str(config.get(manifest_key + \"_sha256\") or \"\")\n            if not SHA256_PATTERN.fullmatch(expected):\n                raise OncoTracerError(manifest_key + \"_sha256 must contain the exact runtime receipt hash\")\n            asset_sha256[manifest_key] = validate_installation(str(config[manifest_key]), expected, asset)\n",
+          "recorded": ""
+        },
+        {
+          "start": 26580,
+          "end": 26667,
+          "current": "        asset_sha256[\"marlin_python\"] = _executable_sha256(classifier_paths[\"python\"])\n",
+          "recorded": "        asset_sha256[\"marlin_python\"] = sha256_file(classifier_paths[\"python\"])\n"
+        },
+        {
+          "start": 27348,
+          "end": 27412,
+          "current": "        \"modkit\": _executable_sha256(modkit) if modkit else \"\",\n",
+          "recorded": "        \"modkit\": sha256_file(modkit) if modkit else \"\",\n"
+        },
+        {
+          "start": 27532,
+          "end": 27582,
+          "current": "        \"samtools\": _executable_sha256(samtools),\n",
+          "recorded": "        \"samtools\": sha256_file(samtools),\n"
+        },
+        {
+          "start": 27604,
+          "end": 27658,
+          "current": "            _executable_sha256(classifier_executable)\n",
+          "recorded": "            sha256_file(classifier_executable)\n"
+        }
+      ]
+    },
+    "oncotracer_cli/methylation_routing.py": {
+      "recorded_sha256": "9f8803bc811a015ca873035f41d4b0168d8bc47c29afac27a9d7814ce8600571",
+      "current_sha256": "415bfec02b0b23364823e822af06f9f6b7bc983fb23b18a6142ac880a937ac61",
+      "changes": [
+        {
+          "start": 477,
+          "end": 585,
+          "current": "    if tissue in {\"blood\", \"peripheral blood\", \"pb\", \"pbmc\", \"pbmcs\", \"peripheral blood mononuclear cells\",\n",
+          "recorded": "    if tissue in {\"peripheral blood\", \"pb\", \"pbmc\", \"pbmcs\", \"peripheral blood mononuclear cells\",\n"
+        }
+      ]
+    },
+    "oncotracer_cli/setup.py": {
+      "recorded_sha256": "8548ea1d7d84c420892c83df93345fa3cfd609760aecc72d3697ac19ce30aaf0",
+      "current_sha256": "c81c051aecb528aed78af666f3b5e409c90c72aade355b68934584d96649f461",
+      "changes": [
+        {
+          "start": 22999,
+          "end": 22999,
+          "current": "",
+          "recorded": "    if args.backend in {\"docker\"} and (analysis or args.analysis) != 'cna':\n        raise OncoTracerError('Docker small-variant calling currently supports --analysis cna only.')\n"
+        },
+        {
+          "start": 42959,
+          "end": 42959,
+          "current": "",
+          "recorded": "            if analysis != 'cna':\n                raise OncoTracerError('Docker small-variant calling currently supports --analysis cna only.')\n"
+        },
+        {
+          "start": 44949,
+          "end": 45159,
+          "current": "        if args.backend not in {\"host\", \"conda\", \"poetry\", \"docker\"}:\n            raise OncoTracerError(\"Methylation supports Docker, Conda, host or Poetry. Use --backend docker for managed tools and models.\")\n",
+          "recorded": "        if args.backend not in {\"host\", \"conda\", \"poetry\"}:\n            raise OncoTracerError(\n                \"methylation needs --backend conda, host, or poetry; the current containers do not include its tools\"\n            )\n"
+        },
+        {
+          "start": 45321,
+          "end": 46816,
+          "current": "        from .rockfish import resolve_caller\n        args.methylation_caller = resolve_caller(getattr(args, \"methylation_caller\", None) or resources.get(\"methylation_caller\"))\n        managed_docker = args.backend == \"docker\" and not args.resources and not any(\n            getattr(args, key, None) for key in (*EXECUTABLES, *RESOURCE_FILES[classifier]))\n        if managed_docker:\n            from .launch import cache_directory, _docker_image\n            from .managed_resources import prepare_for_launch\n            from .cli import DEFAULT_IMAGE\n            args.image = args.image or DEFAULT_IMAGE\n            if classifier == \"sturgeon\" and not args.accept_sturgeon_license and interactive:\n                from .sturgeon_resources import LICENSE_URL\n                print(\"Sturgeon license: \" + LICENSE_URL)\n                args.accept_sturgeon_license = _ask(None, \"Have you reviewed and accepted these terms?\",\n                    default=\"no\", choices=(\"yes\", \"no\"), interactive=True) == \"yes\"\n            if classifier == \"sturgeon\" and not args.accept_sturgeon_license:\n                from .sturgeon_resources import LICENSE_URL\n                raise OncoTracerError(\"Review \" + LICENSE_URL + \" then pass --accept-sturgeon-license.\")\n            _docker_image(args.image)\n            resources.update(prepare_for_launch(cache_directory(getattr(args, \"resource_cache\", None)), [classifier], args))\n            values.update(resources)\n            values[\"docker_image\"] = args.image\n",
+          "recorded": ""
+        },
+        {
+          "start": 47920,
+          "end": 47970,
+          "current": "            methylation_gpu_usage=bool(args.gpu),\n",
+          "recorded": ""
+        },
+        {
+          "start": 49340,
+          "end": 49815,
+          "current": "            if args.backend == \"docker\" and key == \"methylation_rockfish_python\" and not supplied:\n                continue  # The image supplies its pinned Rockfish runtime.\n            if supplied == \"bundled\" and args.backend == \"docker\":\n                from .managed_resources import BUNDLED_EXECUTABLES\n                if key not in BUNDLED_EXECUTABLES:raise OncoTracerError(\"No bundled tool for \" + key)\n                values[key] = supplied\n                continue\n",
+          "recorded": ""
+        },
+        {
+          "start": 51206,
+          "end": 51362,
+          "current": "            if args.backend == \"docker\" and key in {\"methylation_rockfish_source\", \"methylation_rockfish_model\"} and not supplied:\n                continue\n",
+          "recorded": ""
+        },
+        {
+          "start": 53895,
+          "end": 54104,
+          "current": "        from .docker_runtime import docker_host_preview\n        with docker_host_preview() if args.backend == \"docker\" else contextlib.nullcontext():\n            resolve_methylation_request(values, mode=mode)\n",
+          "recorded": "        resolve_methylation_request(values, mode=mode)\n"
+        },
+        {
+          "start": 55589,
+          "end": 55659,
+          "current": "    print(\"Setup saved the configuration; analysis has not started.\")\n",
+          "recorded": "    print(\"Setup has not run an analysis or installed optional resources.\")\n"
+        },
+        {
+          "start": 57267,
+          "end": 57458,
+          "current": "            from .methylation import resolve_methylation_request\n            from .docker_runtime import docker_host_preview\n            preview = config.get(\"execution_backend\") == \"docker\"\n",
+          "recorded": "            from .rockfish import resolve_caller\n            caller = resolve_caller(config.get(\"methylation_caller\"))\n"
+        },
+        {
+          "start": 57520,
+          "end": 58482,
+          "current": "            if classifier in RESOURCE_FILES:\n                for key, label in RESOURCE_FILES[classifier].items():\n                    if not config.get(key):errors.append(key + \": missing \" + label)\n                if not config.get(\"methylation_modbam\") and not config.get(\"methylation_pod5_dir\"):\n                    errors.append(\"methylation_pod5_dir: provide POD5, or methylation_modbam for Modkit\")\n            try:\n                with docker_host_preview() if preview else contextlib.nullcontext():\n                    resolve_methylation_request(config, mode=mode, enabled_override=True)\n            except (OncoTracerError, OSError, ValueError) as error:\n                errors.append(str(error))\n            if not config.get(\"methylation_gpu_usage\", config.get(\"methylation_gpu\")) and not config.get(\"methylation_modbam\"):\n                warnings.append(\"CPU POD5 basecalling can take days. Existing modified-base BAMs can be reused with Modkit.\")\n",
+          "recorded": "            if classifier not in RESOURCE_FILES:\n                errors.append(\n                    \"methylation_classifier: choose marlin (leukemia) or sturgeon (CNS)\"\n                )\n            else:\n                fields = dict(RESOURCE_FILES[classifier])\n                if not config.get(\"methylation_modbam\"):\n                    fields.update(\n                        methylation_pod5_dir=\"raw signal directory\",\n                        methylation_dorado_model=\"Dorado base model\",\n                        methylation_dorado_modbase_model=\"Dorado modified-base model\",\n                    )\n                else:\n                    fields[\"methylation_modbam\"] = (\n                        \"existing modified-base BAM file or directory\"\n                    )\n                if caller == \"rockfish\":\n                    fields.pop(\"methylation_dorado_modbase_model\", None)\n                    fields.update(methylation_pod5_dir=\"raw POD5 signal\", methylation_rockfish_model=\"Rockfish 5kHz checkpoint\", methylation_rockfish_source=\"Pinned Rockfish source\")\n                    if config.get(\"methylation_modbam\"):\n                        errors.append(\"Rockfish requires POD5; set methylation_caller: modkit to reuse MM/ML BAMs\")\n                for key, label in fields.items():\n                    value = config.get(key)\n                    if not value:\n                        errors.append(f\"{key}: missing {label}\")\n                    elif not Path(str(value)).expanduser().exists():\n                        errors.append(f\"{key}: path does not exist: {value}\")\n                    if key in RESOURCE_FILES[classifier] and not config.get(\n                        key + \"_sha256\"\n                    ):\n                        errors.append(\n                            f\"{key}_sha256: missing; setup computes this from your local file\"\n                        )\n                for key in _resource_keys(classifier, caller):\n                    program, label = EXECUTABLES[key]\n                    try:\n                        _executable(str(config.get(key) or program), label)\n                    except OncoTracerError as error:\n                        errors.append(f\"{key}: {error}\")\n            if not config.get(\"methylation_gpu\") and not config.get(\n                \"methylation_modbam\"\n            ):\n                warnings.append(\n                    \"CPU POD5 basecalling can take days. Consider existing modified-base BAMs if available.\"\n                )\n"
+        },
+        {
+          "start": 74166,
+          "end": 74280,
+          "current": "    meth.add_argument(\"--resource-cache\", help=\"Shared Docker methylation cache; default ~/.cache/oncotracer/v6\")\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/variant_model_assets.py": {
+      "recorded_sha256": "372f943309fef40475ca3bf581d01c459919e67d96c9818a8f4b6b13ce8d5e55",
+      "current_sha256": "63007d0a78d00bcba055d0b5dbbd7730d8e2a8ab4b2f18f7c4bcf2face2125b4",
+      "changes": [
+        {
+          "start": 227,
+          "end": 333,
+          "current": "HTTPS URLs on 2026-09-22, with HAC v5.2.0 added on 2026-10-18 and SUP v5.2.0 on 2026-11-24; these are not\n",
+          "recorded": "HTTPS URLs on 2026-09-22, with HAC v5.2.0 added on 2026-10-18; these are not\n"
+        },
+        {
+          "start": 1209,
+          "end": 1528,
+          "current": "    'r1041_e82_400bps_sup_v520': {'label': 'R10.4.1 E8.2 / Dorado SUP v5.2.0 / 400 bps / 5 kHz',\n        'size': 74631356, 'sha256': '12434424cfc1d0e644d5205d542bfb232a8c4b8f53c8ae29f4f18e46fba2a8ec',\n        'source': 'https://github.com/nanoporetech/rerio/blob/master/clair3_models/r1041_e82_400bps_sup_v520_model'},\n",
+          "recorded": ""
+        },
+        {
+          "start": 5911,
+          "end": 6343,
+          "current": "_CLAIR3_FILE_SHA256['r1041_e82_400bps_sup_v520'] = {'pileup.index': 'a213ccd9f859cde0b36a9587acfccf44ec2c23b838f9801c7e0b6c2f44de7b56', 'pileup.data-00000-of-00001': 'fdf1d0dbaf2259af5bd90d6dab748ee01eab9d3578e5ef54261e0fb35f10959c', 'full_alignment.data-00000-of-00001': '1b459d2dfee24f185b3a4dd5b4362ccf08d8f5580409ad45582e3616f4afc790', 'full_alignment.index': 'dbf9d43f2cf4d3e331f4e309e30f302ad6266e0fb42006473e1a8f4dedf9254f'}\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/web.py": {
+      "recorded_sha256": "9e3e6784ac196c2f0b5627ba4ac73cd962b2e21d1dc4b7cd857814f355a19316",
+      "current_sha256": "c7f431f23c7963ffd96dbf43dd5abbb2ad443beaa1dbf66cb49d9beaf24894ec",
+      "changes": [
+        {
+          "start": 29487,
+          "end": 29595,
+          "current": "                args.resource_cache = _text(data, \"resource_cache\") if data.get(\"resource_cache\") else None\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/web_ui.py": {
+      "recorded_sha256": "201f6ffee651b5432999ba367bcf5796d83057b10cf35e1626206de79452762c",
+      "current_sha256": "06796e083b9b1ba9b0026c0d01bb2d8251ddddf67979f607305886a256cd6b60",
+      "changes": [
+        {
+          "start": 19168,
+          "end": 28003,
+          "current": "<div id=\"methylation-fields\" hidden><h3>ONT methylation</h3><p class=\"hint\">Rockfish calls CpG 5mC from raw POD5 signal by default. Choose Modkit to use Dorado MM/ML modified-base calls. Select Sturgeon for CNS tumours or MARLIN for leukemias.</p><div id=\"methylation-assignment-board\" hidden><h3>Assign samples to a CpG classifier</h3><p class=\"hint\">Choose from the specimen diagnosis: MARLIN for leukemia research or Sturgeon for CNS-tumor research. Drag cards or use their dropdowns. These assignments are separate from Cancer/Normal roles. Leave unknown or unsuitable samples in Unknown / do not classify. Only the classifier group selected below is saved and run; the other group is not queued. Use a separate project for each classifier, keeping the completed ONT project unchanged.</p><div class=\"sample-board\"><div class=\"sample-column\" data-methylation-classifier=\"\"><h3>Unknown / do not classify</h3><div id=\"methylation-unassigned\" class=\"sample-list\" data-empty=\"All included samples have a classifier.\"></div></div><div class=\"sample-column\" data-methylation-classifier=\"marlin\"><h3>MARLIN · leukemia</h3><div id=\"methylation-marlin\" class=\"sample-list\" data-empty=\"Drop leukemia samples here.\"></div></div><div class=\"sample-column\" data-methylation-classifier=\"sturgeon\"><h3>Sturgeon · CNS</h3><div id=\"methylation-sturgeon\" class=\"sample-list\" data-empty=\"Drop CNS-tumor samples here.\"></div></div></div><p id=\"methylation-group-note\" class=\"notice\" role=\"status\" aria-live=\"polite\"></p></div><div class=\"grid\"><div><label id=\"classifier-label\" for=\"classifier\">Methylation classifier</label><select id=\"classifier\"><option value=\"\">Choose a classifier…</option><option value=\"sturgeon\">Sturgeon · CNS tumours</option><option value=\"marlin\">MARLIN · leukemias</option></select></div><div id=\"methylation-gpu-field\" hidden><label for=\"device\">GPU usage for methylation</label><select id=\"device\"><option value=\"cpu\">No · CPU</option><option value=\"gpu\">Yes · reserved GPU</option></select></div><div><label for=\"methylation-caller\">CpG method</label><select id=\"methylation-caller\"><option value=\"rockfish\">Rockfish · raw signal (default)</option><option value=\"modkit\">Modkit · Dorado MM/ML calls</option></select></div><div><label for=\"methylation-source\">Use this linked methylation input</label><select id=\"methylation-source\"><option value=\"pod5\">POD5 · raw signal</option><option value=\"modbam\">Modified-base BAM · Modkit only</option></select></div></div><p id=\"methylation-input-note\" class=\"notice\"></p><p class=\"hint\">Rockfish requires R10.4.1, 5kHz POD5 and reports binary 5mC without a separate 5hmC channel. GPU can accelerate Rockfish, Dorado basecalling and MARLIN inference. FASTQs alone do not contain methylation calls.</p><div id=\"managed-methylation-settings\" hidden><p class=\"notice\">Docker supplies the classifier runtimes. Saving prepares verified models and Dorado in your cache. The first download can take several minutes; progress is printed in the terminal.</p><label for=\"resource-cache\">Shared model cache (optional)</label><input id=\"resource-cache\" placeholder=\"~/.cache/oncotracer/v6\"><label class=\"check\"><input id=\"manual-methylation\" type=\"checkbox\">Use my own tools and model paths</label></div><div id=\"manual-methylation-resources\"><label for=\"resources\">Reuse tool/model paths from a resource YAML (optional)</label><div class=\"row\"><input id=\"resources\"><button data-browse=\"resources\" data-kind=\"file\">Browse YAML</button></div><p class=\"hint\">Or select installed tools and model files below. Blank tool fields use your command search path where supported. Models are required here or in the YAML. Setup records checksums automatically.</p><div class=\"grid\"><div><label for=\"methylation_dorado_executable\">Dorado executable (alignment/basecalling)</label><div class=\"row\"><input id=\"methylation_dorado_executable\" data-resource=\"methylation_dorado_executable\"><button data-browse=\"methylation_dorado_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_modkit_executable\">Modkit executable (methylation extraction)</label><div class=\"row\"><input id=\"methylation_modkit_executable\" data-resource=\"methylation_modkit_executable\"><button data-browse=\"methylation_modkit_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_samtools_executable\">samtools executable (BAM processing)</label><div class=\"row\"><input id=\"methylation_samtools_executable\" data-resource=\"methylation_samtools_executable\"><button data-browse=\"methylation_samtools_executable\" data-kind=\"asset\">Browse</button></div></div></div><div id=\"rockfish-fields\"><h3>Rockfish runtime</h3><div class=\"grid\"><div><label for=\"methylation_rockfish_python\">Python in the Rockfish environment</label><div class=\"row\"><input id=\"methylation_rockfish_python\" data-resource=\"methylation_rockfish_python\"><button data-browse=\"methylation_rockfish_python\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_rockfish_source\">Pinned Rockfish source directory</label><div class=\"row\"><input id=\"methylation_rockfish_source\" data-resource=\"methylation_rockfish_source\"><button data-browse=\"methylation_rockfish_source\" data-kind=\"folder\">Browse</button></div></div><div><label for=\"methylation_rockfish_model\">Rockfish 5kHz checkpoint</label><div class=\"row\"><input id=\"methylation_rockfish_model\" data-resource=\"methylation_rockfish_model\"><button data-browse=\"methylation_rockfish_model\" data-kind=\"asset\">Browse</button></div></div></div></div><div id=\"dorado-model-fields\" hidden><h3>POD5 basecalling models</h3><div class=\"grid\"><div><label for=\"methylation_dorado_model\">Dorado basecalling model folder</label><div class=\"row\"><input id=\"methylation_dorado_model\" data-resource=\"methylation_dorado_model\"><button data-browse=\"methylation_dorado_model\" data-kind=\"folder\">Browse</button></div></div><div><label for=\"methylation_dorado_modbase_model\">Matching Dorado modified-base model folder (5mCG/5hmCG)</label><div class=\"row\"><input id=\"methylation_dorado_modbase_model\" data-resource=\"methylation_dorado_modbase_model\"><button data-browse=\"methylation_dorado_modbase_model\" data-kind=\"folder\">Browse</button></div></div></div></div><div id=\"sturgeon-fields\" hidden><h3>Sturgeon · CNS tumours</h3><div class=\"grid\"><div><label for=\"sturgeon_executable\">Sturgeon executable</label><div class=\"row\"><input id=\"sturgeon_executable\" data-resource=\"sturgeon_executable\"><button data-browse=\"sturgeon_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"sturgeon_model\">Sturgeon model (.zip)</label><div class=\"row\"><input id=\"sturgeon_model\" data-resource=\"sturgeon_model\"><button data-browse=\"sturgeon_model\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"sturgeon_probes\">Sturgeon hg38 probe coordinates (.bed)</label><div class=\"row\"><input id=\"sturgeon_probes\" data-resource=\"sturgeon_probes\"><button data-browse=\"sturgeon_probes\" data-kind=\"asset\">Browse</button></div></div></div></div><div id=\"marlin-fields\" hidden><h3>MARLIN · leukemias</h3><div class=\"grid\"><div><label for=\"marlin_rscript\">Rscript in your MARLIN environment</label><div class=\"row\"><input id=\"marlin_rscript\" data-resource=\"marlin_rscript\"><button data-browse=\"marlin_rscript\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_python\">Python in your MARLIN environment</label><div class=\"row\"><input id=\"marlin_python\" data-resource=\"marlin_python\"><button data-browse=\"marlin_python\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_model\">MARLIN model (.hdf5)</label><div class=\"row\"><input id=\"marlin_model\" data-resource=\"marlin_model\"><button data-browse=\"marlin_model\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_features\">MARLIN feature order (.RData)</label><div class=\"row\"><input id=\"marlin_features\" data-resource=\"marlin_features\"><button data-browse=\"marlin_features\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_class_annotations\">MARLIN class names (.xlsx)</label><div class=\"row\"><input id=\"marlin_class_annotations\" data-resource=\"marlin_class_annotations\"><button data-browse=\"marlin_class_annotations\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_probe_bed\">MARLIN hg38 probe coordinates (uncompressed .bed)</label><div class=\"row\"><input id=\"marlin_probe_bed\" data-resource=\"marlin_probe_bed\"><button data-browse=\"marlin_probe_bed\" data-kind=\"asset\">Browse</button></div></div></div></div></div><div id=\"sturgeon-license-field\" hidden><label class=\"check\"><input id=\"license\" type=\"checkbox\">I have reviewed and accepted the <a href=\"https://github.com/UMCUGenetics/sturgeon/blob/main/LICENSE\" target=\"_blank\" rel=\"noopener noreferrer\">Sturgeon license</a> for this use.</label></div></div>\n",
+          "recorded": "<div id=\"methylation-fields\" hidden><h3>ONT methylation</h3><p class=\"hint\">Rockfish calls CpG 5mC from raw POD5 signal by default. Choose Modkit to use Dorado MM/ML modified-base calls. Select Sturgeon for CNS tumours or MARLIN for leukemias.</p><div id=\"methylation-assignment-board\" hidden><h3>Assign samples to a CpG classifier</h3><p class=\"hint\">Choose from the specimen diagnosis: MARLIN for leukemia research or Sturgeon for CNS-tumor research. Drag cards or use their dropdowns. These assignments are separate from Cancer/Normal roles. Leave unknown or unsuitable samples in Unknown / do not classify. Only the classifier group selected below is saved and run; the other group is not queued. Use a separate project for each classifier, keeping the completed ONT project unchanged.</p><div class=\"sample-board\"><div class=\"sample-column\" data-methylation-classifier=\"\"><h3>Unknown / do not classify</h3><div id=\"methylation-unassigned\" class=\"sample-list\" data-empty=\"All included samples have a classifier.\"></div></div><div class=\"sample-column\" data-methylation-classifier=\"marlin\"><h3>MARLIN · leukemia</h3><div id=\"methylation-marlin\" class=\"sample-list\" data-empty=\"Drop leukemia samples here.\"></div></div><div class=\"sample-column\" data-methylation-classifier=\"sturgeon\"><h3>Sturgeon · CNS</h3><div id=\"methylation-sturgeon\" class=\"sample-list\" data-empty=\"Drop CNS-tumor samples here.\"></div></div></div><p id=\"methylation-group-note\" class=\"notice\" role=\"status\" aria-live=\"polite\"></p></div><div class=\"grid\"><div><label id=\"classifier-label\" for=\"classifier\">Methylation classifier</label><select id=\"classifier\"><option value=\"\">Choose a classifier…</option><option value=\"sturgeon\">Sturgeon · CNS tumours</option><option value=\"marlin\">MARLIN · leukemias</option></select></div><div id=\"methylation-gpu-field\" hidden><label for=\"device\">GPU usage for methylation</label><select id=\"device\"><option value=\"cpu\">No · CPU</option><option value=\"gpu\">Yes · reserved GPU</option></select></div><div><label for=\"methylation-caller\">CpG method</label><select id=\"methylation-caller\"><option value=\"rockfish\">Rockfish · raw signal (default)</option><option value=\"modkit\">Modkit · Dorado MM/ML calls</option></select></div><div><label for=\"methylation-source\">Use this linked methylation input</label><select id=\"methylation-source\"><option value=\"pod5\">POD5 · raw signal</option><option value=\"modbam\">Modified-base BAM · Modkit only</option></select></div></div><p id=\"methylation-input-note\" class=\"notice\"></p><p class=\"hint\">Rockfish requires R10.4.1, 5kHz POD5 and reports binary 5mC without a separate 5hmC channel. GPU can accelerate Rockfish, Dorado basecalling and MARLIN inference. FASTQs alone do not contain methylation calls.</p><label for=\"resources\">Reuse tool/model paths from a resource YAML (optional)</label><div class=\"row\"><input id=\"resources\"><button data-browse=\"resources\" data-kind=\"file\">Browse YAML</button></div><p class=\"hint\">Or select installed tools and model files below. Blank tool fields use your command search path where supported. Models are required here or in the YAML. Setup records checksums automatically.</p><div class=\"grid\"><div><label for=\"methylation_dorado_executable\">Dorado executable (alignment/basecalling)</label><div class=\"row\"><input id=\"methylation_dorado_executable\" data-resource=\"methylation_dorado_executable\"><button data-browse=\"methylation_dorado_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_modkit_executable\">Modkit executable (methylation extraction)</label><div class=\"row\"><input id=\"methylation_modkit_executable\" data-resource=\"methylation_modkit_executable\"><button data-browse=\"methylation_modkit_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_samtools_executable\">samtools executable (BAM processing)</label><div class=\"row\"><input id=\"methylation_samtools_executable\" data-resource=\"methylation_samtools_executable\"><button data-browse=\"methylation_samtools_executable\" data-kind=\"asset\">Browse</button></div></div></div><div id=\"rockfish-fields\"><h3>Rockfish runtime</h3><div class=\"grid\"><div><label for=\"methylation_rockfish_python\">Python in the Rockfish environment</label><div class=\"row\"><input id=\"methylation_rockfish_python\" data-resource=\"methylation_rockfish_python\"><button data-browse=\"methylation_rockfish_python\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_rockfish_source\">Pinned Rockfish source directory</label><div class=\"row\"><input id=\"methylation_rockfish_source\" data-resource=\"methylation_rockfish_source\"><button data-browse=\"methylation_rockfish_source\" data-kind=\"folder\">Browse</button></div></div><div><label for=\"methylation_rockfish_model\">Rockfish 5kHz checkpoint</label><div class=\"row\"><input id=\"methylation_rockfish_model\" data-resource=\"methylation_rockfish_model\"><button data-browse=\"methylation_rockfish_model\" data-kind=\"asset\">Browse</button></div></div></div></div><div id=\"dorado-model-fields\" hidden><h3>POD5 basecalling models</h3><div class=\"grid\"><div><label for=\"methylation_dorado_model\">Dorado basecalling model folder</label><div class=\"row\"><input id=\"methylation_dorado_model\" data-resource=\"methylation_dorado_model\"><button data-browse=\"methylation_dorado_model\" data-kind=\"folder\">Browse</button></div></div><div><label for=\"methylation_dorado_modbase_model\">Matching Dorado modified-base model folder (5mCG/5hmCG)</label><div class=\"row\"><input id=\"methylation_dorado_modbase_model\" data-resource=\"methylation_dorado_modbase_model\"><button data-browse=\"methylation_dorado_modbase_model\" data-kind=\"folder\">Browse</button></div></div></div></div><div id=\"sturgeon-fields\" hidden><h3>Sturgeon · CNS tumours</h3><div class=\"grid\"><div><label for=\"sturgeon_executable\">Sturgeon executable</label><div class=\"row\"><input id=\"sturgeon_executable\" data-resource=\"sturgeon_executable\"><button data-browse=\"sturgeon_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"sturgeon_model\">Sturgeon model (.zip)</label><div class=\"row\"><input id=\"sturgeon_model\" data-resource=\"sturgeon_model\"><button data-browse=\"sturgeon_model\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"sturgeon_probes\">Sturgeon hg38 probe coordinates (.bed)</label><div class=\"row\"><input id=\"sturgeon_probes\" data-resource=\"sturgeon_probes\"><button data-browse=\"sturgeon_probes\" data-kind=\"asset\">Browse</button></div></div></div><label class=\"check\"><input id=\"license\" type=\"checkbox\">I obtained Sturgeon and accepted its applicable license.</label></div><div id=\"marlin-fields\" hidden><h3>MARLIN · leukemias</h3><div class=\"grid\"><div><label for=\"marlin_rscript\">Rscript in your MARLIN environment</label><div class=\"row\"><input id=\"marlin_rscript\" data-resource=\"marlin_rscript\"><button data-browse=\"marlin_rscript\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_python\">Python in your MARLIN environment</label><div class=\"row\"><input id=\"marlin_python\" data-resource=\"marlin_python\"><button data-browse=\"marlin_python\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_model\">MARLIN model (.hdf5)</label><div class=\"row\"><input id=\"marlin_model\" data-resource=\"marlin_model\"><button data-browse=\"marlin_model\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_features\">MARLIN feature order (.RData)</label><div class=\"row\"><input id=\"marlin_features\" data-resource=\"marlin_features\"><button data-browse=\"marlin_features\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_class_annotations\">MARLIN class names (.xlsx)</label><div class=\"row\"><input id=\"marlin_class_annotations\" data-resource=\"marlin_class_annotations\"><button data-browse=\"marlin_class_annotations\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_probe_bed\">MARLIN hg38 probe coordinates (uncompressed .bed)</label><div class=\"row\"><input id=\"marlin_probe_bed\" data-resource=\"marlin_probe_bed\"><button data-browse=\"marlin_probe_bed\" data-kind=\"asset\">Browse</button></div></div></div></div></div>\n"
+        },
+        {
+          "start": 62331,
+          "end": 62574,
+          "current": "  const managed=$('backend').value==='docker';\n  show('managed-methylation-settings',managed);show('manual-methylation-resources',!managed||$('manual-methylation').checked);\n  show('sturgeon-license-field',$('classifier').value==='sturgeon');\n",
+          "recorded": ""
+        },
+        {
+          "start": 63746,
+          "end": 63921,
+          "current": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&option.value==='singularity')||($('variants').checked&&option.value==='singularity');\n",
+          "recorded": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n"
+        },
+        {
+          "start": 64138,
+          "end": 64214,
+          "current": "$('manual-methylation').onchange=()=>{methylationSettings();invalidate();};\n",
+          "recorded": ""
+        },
+        {
+          "start": 77033,
+          "end": 79692,
+          "current": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:['docker'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_caller:$('methylation-caller').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('manual-methylation-resources').hidden?'':$('resources').value,resource_cache:$('resource-cache').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n",
+          "recorded": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:['docker'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_caller:$('methylation-caller').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n"
+        }
+      ]
+    },
+    "tests/native_science_audit.py": {
+      "recorded_sha256": "cb357bcaeb2c553dd4472553e1187465bf622ac3fbf7e31e76a90d50134b5a44",
+      "current_sha256": "d1c4b936b6a893789c72b646cc7ace9f764f183eaf64a6a678fd81232a5ed1ab",
+      "changes": [
+        {
+          "start": 1537,
+          "end": 1602,
+          "current": "              'candidate':(candidate_sha,source_sha256,'6.0.0')}\n",
+          "recorded": "              'candidate':(candidate_sha,source_sha256,'5.0.0')}\n"
+        }
+      ]
+    },
+    "tests/test_copy_paste_paths.py": {
+      "recorded_sha256": "1a8137b02b643bef367a7a3940d083c628f14e361d651fc19bb7c415c16be544",
+      "current_sha256": "0d60c95bec29b1bd2b6981bf8ba67374e5df5ba9c44e02bacb1273a46faa2343",
+      "changes": [
+        {
+          "start": 2306,
+          "end": 2687,
+          "current": "    require_order(block, (\"python3 -m venv oncotracer-env\", \"source oncotracer-env/bin/activate\",\n                          f'python -m pip install \"{url}\"'),\n                  f\"{relative_path} isolated launcher installation\")\n    require(first_command(block) == \"python3 -m venv oncotracer-env\",\n            f\"{relative_path} must create an isolated launcher environment first\")\n",
+          "recorded": "    require(first_command(block) == f'python3 -m pip install --upgrade --force-reinstall \"{url}\"',\n            f\"{relative_path} must start with the versioned release wheel\")\n"
+        },
+        {
+          "start": 2718,
+          "end": 2833,
+          "current": "    require(\"pip install oncotracer\" in text and (\"separate PyPI\" in text or \"separately published PyPI\" in text),\n",
+          "recorded": "    require(\"pip install oncotracer\" in text and \"separately published PyPI\" in text,\n"
+        }
+      ]
+    },
+    "tests/test_cpg_setup.py": {
+      "recorded_sha256": "52759aa01ed4a501eade69d8a824fe4a354608a3b682150e1ec08cab4b8972eb",
+      "current_sha256": "22135125dedf5fecec3f4802c5d13f40c291baec27f63c129e4d567cc29d46ed",
+      "changes": [
+        {
+          "start": 17038,
+          "end": 17132,
+          "current": "                 (\"--backend\", \"singularity\"), (\"--mode\", \"illumina\"), (\"--analysis\", \"cna\")]\n",
+          "recorded": "                 (\"--backend\", \"docker\"), (\"--mode\", \"illumina\"), (\"--analysis\", \"cna\")]\n"
+        },
+        {
+          "start": 17492,
+          "end": 17871,
+          "current": "\n    def test_docker_cpg_continuation_opens_without_downloads(self):\n        with patch(\"oncotracer_cli.web.command_web\", return_value=0) as browser:\n            args = parse_arguments([\"setup\", \"--cpg-from\", str(self.project), \"--backend\", \"docker\"])\n            self.assertEqual(command_setup(args), 0)\n            self.assertEqual(browser.call_args.args[0].backend, \"docker\")\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "tests/test_docs_style.py": {
+      "recorded_sha256": "39b1e871bc600a543a273b13724c32ca79f6da7d1dd7e88c390a92be29b69b50",
+      "current_sha256": "76b27a3277d61e47e9fc7f46bf781f4558f98ec6c58124488922d9006e1f1bde",
+      "changes": [
+        {
+          "start": 6250,
+          "end": 6291,
+          "current": "        \"carlosfarkas/oncotracer:6.0.0\",\n",
+          "recorded": "        \"carlosfarkas/oncotracer:5.0.0\",\n"
+        },
+        {
+          "start": 7695,
+          "end": 7744,
+          "current": "        \"oncotracer-v6.0.0-parity-audit.tar.gz\",\n",
+          "recorded": "        \"oncotracer-v5.0.0-parity-audit.tar.gz\",\n"
+        }
+      ]
+    },
+    "tests/test_hosted_ci_storage_safety.py": {
+      "recorded_sha256": "1517027fe88e839bfdf8de1b20113ea8bce37111662f72a04fb5159ca402a6ef",
+      "current_sha256": "96e45c96d2de613a9fa79d939c8a36de92d46be5f52b9dbeec1f6bf6978e41c1",
+      "changes": [
+        {
+          "start": 137220,
+          "end": 137286,
+          "current": "                self.assertEqual(result.stdout.strip(), \"120 15\")\n",
+          "recorded": "                self.assertEqual(result.stdout.strip(), \"96 15\")\n"
+        }
+      ]
+    },
+    "tests/test_install_safety.py": {
+      "recorded_sha256": "877a7581465186f6b23d08080dba2449411541fe339fb9a8f75a6c03428853c6",
+      "current_sha256": "3bfc193f889e34df4dd14ae02db5fa2f982e00365e54484bee958d27254eb26b",
+      "changes": [
+        {
+          "start": 3179,
+          "end": 3301,
+          "current": "        for version in (\"2.1.0\", \"2.3.0\", \"2.3.1rc2\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\", __version__):\n",
+          "recorded": "        for version in (\"2.1.0\", \"2.3.0\", \"2.3.1rc2\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", __version__):\n"
+        },
+        {
+          "start": 3402,
+          "end": 3461,
+          "current": "        for version in (\"1.1.0\", \"2.3.99\", \"7.0.0\", None):\n",
+          "recorded": "        for version in (\"1.1.0\", \"2.3.99\", \"6.0.0\", None):\n"
+        }
+      ]
+    },
+    "tests/test_native_cli.py": {
+      "recorded_sha256": "774e5a16d81ba5afac741099a05513f5ce8638d80608d3bffb969b8a8bbee170",
+      "current_sha256": "cb3730b0c8d7b89aada6673c2af7d43946dbbd2ee57b7a0de839ad3a573ef5cd",
+      "changes": [
+        {
+          "start": 1005,
+          "end": 1052,
+          "current": "        self.assertEqual(__version__, \"6.0.0\")\n",
+          "recorded": "        self.assertEqual(__version__, \"5.0.0\")\n"
+        },
+        {
+          "start": 2334,
+          "end": 2385,
+          "current": "            ([], \"carlosfarkas/oncotracer:6.0.0\"),\n",
+          "recorded": "            ([], \"carlosfarkas/oncotracer:5.0.0\"),\n"
+        }
+      ]
+    },
+    "tests/test_native_provenance.py": {
+      "recorded_sha256": "e0c4c00922cc29891557495223799487c1f5a7d453efa390dcb997ef43affd27",
+      "current_sha256": "f1b1bdaa61b67c84e01ed3c6b14e6844cd1483e6f09c6ba269d3a0fdeb678087",
+      "changes": [
+        {
+          "start": 12645,
+          "end": 12703,
+          "current": "        self.assertIn(\"OncoTracer 6.0.0\", version.stdout)\n",
+          "recorded": "        self.assertIn(\"OncoTracer 5.0.0\", version.stdout)\n"
+        }
+      ]
+    },
+    "tests/test_native_science_audit.py": {
+      "recorded_sha256": "f2584daf60667b399977f675bc8501ff3688f0179e69c35f707f4722c006149b",
+      "current_sha256": "4aefa197889f12d73a24207ad3abf37600098c738efd601ebf21c1bf407ab4cb",
+      "changes": [
+        {
+          "start": 774,
+          "end": 931,
+          "current": "                       source_sha256=audit.BASELINE_SOURCE if side=='baseline' else self.source,oncotracer_version='3.0.0' if side=='baseline' else '6.0.0',\n",
+          "recorded": "                       source_sha256=audit.BASELINE_SOURCE if side=='baseline' else self.source,oncotracer_version='3.0.0' if side=='baseline' else '5.0.0',\n"
+        }
+      ]
+    },
+    "tests/test_poetry_cli.py": {
+      "recorded_sha256": "1976075830339e2b95f076b20036d75d2473cd6091a53eca2a64aea1b2e66dbe",
+      "current_sha256": "1f689004d335fd1f536d0e5cfbeb30df8a2e370f4dd72f4f2b7c8849e69e3eb9",
+      "changes": [
+        {
+          "start": 448,
+          "end": 495,
+          "current": "        self.assertEqual(__version__, \"6.0.0\")\n",
+          "recorded": "        self.assertEqual(__version__, \"5.0.0\")\n"
+        }
+      ]
+    },
+    "tests/test_release_workflow.py": {
+      "recorded_sha256": "876944aa79a95265f507e77bfc6cda4fbcbb0b03d04c9d07ccd7aa1e0c46f17d",
+      "current_sha256": "8e3b43b42041d878177e876bb640f8ffcb0d5a18b6bf0db63ee94fbcdd2663d0",
+      "changes": [
+        {
+          "start": 1067,
+          "end": 1138,
+          "current": "            \"tag_name\": \"v6.0.0\", \"draft\": False, \"prerelease\": False,\n",
+          "recorded": "            \"tag_name\": \"v5.0.0\", \"draft\": False, \"prerelease\": False,\n"
+        },
+        {
+          "start": 1791,
+          "end": 1851,
+          "current": "  'api /repos/cfarkas/oncotracer/commits/v6.0.0 --jq .sha')\n",
+          "recorded": "  'api /repos/cfarkas/oncotracer/commits/v5.0.0 --jq .sha')\n"
+        },
+        {
+          "start": 1920,
+          "end": 2015,
+          "current": "  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/releases/tags/v6.0.0')\n",
+          "recorded": "  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/releases/tags/v5.0.0')\n"
+        },
+        {
+          "start": 2982,
+          "end": 3066,
+          "current": "                \"GITHUB_REPOSITORY\": \"cfarkas/oncotracer\", \"RELEASE_TAG\": \"v6.0.0\",\n",
+          "recorded": "                \"GITHUB_REPOSITORY\": \"cfarkas/oncotracer\", \"RELEASE_TAG\": \"v5.0.0\",\n"
+        },
+        {
+          "start": 7721,
+          "end": 7793,
+          "current": "        self.assertIn('\"$IMAGE_NAME:6.0.0\" \"$IMAGE_NAME:v6.0.0\"', text)\n",
+          "recorded": "        self.assertIn('\"$IMAGE_NAME:5.0.0\" \"$IMAGE_NAME:v5.0.0\"', text)\n"
+        },
+        {
+          "start": 9381,
+          "end": 9562,
+          "current": "        source = \"ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-123-1\"\n        target = \"ghcr.io/cfarkas/oncotracer:6.0.0\"\n        second_target = \"ghcr.io/cfarkas/oncotracer:v6.0.0\"\n",
+          "recorded": "        source = \"ghcr.io/cfarkas/oncotracer:v5.0.0-candidate-123-1\"\n        target = \"ghcr.io/cfarkas/oncotracer:5.0.0\"\n        second_target = \"ghcr.io/cfarkas/oncotracer:v5.0.0\"\n"
+        },
+        {
+          "start": 9753,
+          "end": 9806,
+          "current": "  ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-123-1)\n",
+          "recorded": "  ghcr.io/cfarkas/oncotracer:v5.0.0-candidate-123-1)\n"
+        },
+        {
+          "start": 9868,
+          "end": 9904,
+          "current": "  ghcr.io/cfarkas/oncotracer:6.0.0)\n",
+          "recorded": "  ghcr.io/cfarkas/oncotracer:5.0.0)\n"
+        },
+        {
+          "start": 10091,
+          "end": 10128,
+          "current": "  ghcr.io/cfarkas/oncotracer:v6.0.0)\n",
+          "recorded": "  ghcr.io/cfarkas/oncotracer:v5.0.0)\n"
+        },
+        {
+          "start": 11367,
+          "end": 11449,
+          "current": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.0.0-candidate-123-1' ]]; then\n",
+          "recorded": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v5.0.0-candidate-123-1' ]]; then\n"
+        },
+        {
+          "start": 11555,
+          "end": 11620,
+          "current": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/6.0.0' ]]; then\n",
+          "recorded": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/5.0.0' ]]; then\n"
+        },
+        {
+          "start": 12057,
+          "end": 12123,
+          "current": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.0.0' ]]; then\n",
+          "recorded": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v5.0.0' ]]; then\n"
+        },
+        {
+          "start": 20815,
+          "end": 20875,
+          "current": "            '\"ghcr.io/cfarkas/oncotracer:v6.0.0-candidate-'\n",
+          "recorded": "            '\"ghcr.io/cfarkas/oncotracer:v5.0.0-candidate-'\n"
+        },
+        {
+          "start": 27360,
+          "end": 27393,
+          "current": "    printf 'OncoTracer 6.0.0\\\\n'\n",
+          "recorded": "    printf 'OncoTracer 5.0.0\\\\n'\n"
+        },
+        {
+          "start": 28424,
+          "end": 28501,
+          "current": "            (release / \"oncotracer-v6.0.0-parity-audit.tar.gz\").write_bytes(\n",
+          "recorded": "            (release / \"oncotracer-v5.0.0-parity-audit.tar.gz\").write_bytes(\n"
+        },
+        {
+          "start": 28618,
+          "end": 28708,
+          "current": "                         \"oncotracer-6.0.0-py3-none-any.whl\", \"oncotracer-6.0.0.tar.gz\"):\n",
+          "recorded": "                         \"oncotracer-5.0.0-py3-none-any.whl\", \"oncotracer-5.0.0.tar.gz\"):\n"
+        },
+        {
+          "start": 29093,
+          "end": 29174,
+          "current": "                (release / \"oncotracer-v6.0.0-parity-audit.tar.gz\").read_bytes()\n",
+          "recorded": "                (release / \"oncotracer-v5.0.0-parity-audit.tar.gz\").read_bytes()\n"
+        },
+        {
+          "start": 29292,
+          "end": 29369,
+          "current": "                \"version\": \"6.0.0\",\n                \"release_tag\": \"v6.0.0\",\n",
+          "recorded": "                \"version\": \"5.0.0\",\n                \"release_tag\": \"v5.0.0\",\n"
+        },
+        {
+          "start": 29765,
+          "end": 29891,
+          "current": "                    \"version\": \"5.0.0\", \"historical\": True,\n                    \"scientific_runtime_source_unchanged\": False,\n",
+          "recorded": "                    \"scientific_runtime_source_unchanged\": True,\n"
+        },
+        {
+          "start": 32141,
+          "end": 32202,
+          "current": "                    \"oncotracer-v6.0.0-parity-audit.tar.gz\",\n",
+          "recorded": "                    \"oncotracer-v5.0.0-parity-audit.tar.gz\",\n"
+        },
+        {
+          "start": 32266,
+          "end": 32370,
+          "current": "                    \"oncotracer-6.0.0-py3-none-any.whl\",\n                    \"oncotracer-6.0.0.tar.gz\",\n",
+          "recorded": "                    \"oncotracer-5.0.0-py3-none-any.whl\",\n                    \"oncotracer-5.0.0.tar.gz\",\n"
+        },
+        {
+          "start": 34356,
+          "end": 34437,
+          "current": "            os.link(release / \"oncotracer-v6.0.0-parity-audit.tar.gz\", hardlink)\n",
+          "recorded": "            os.link(release / \"oncotracer-v5.0.0-parity-audit.tar.gz\", hardlink)\n"
+        }
+      ]
+    },
+    "tests/test_sample_resource_browser.py": {
+      "recorded_sha256": "6e04af3867efeb556c3093ace8642f1c7e5a5c8b271aa30c72754203125a3d4c",
+      "current_sha256": "c39cf3fd969532a7a033ec3c05f422664c5b14726e422529652e90eb7074c3c3",
+      "changes": [
+        {
+          "start": 7046,
+          "end": 8672,
+          "current": "\n    def test_docker_methylation_shows_managed_resources_and_license(self):\n        ont=self.root/'ont-inputs';library=ont/'SYNTHETIC'\n        (library/'fastq_pass').mkdir(parents=True)\n        (library/'fastq_pass/reads.fastq').write_text('@synthetic\\nACGT\\n+\\nIIII\\n')\n        (library/'pod5_pass').mkdir();(library/'pod5_pass/reads.pod5').write_bytes(b'path-only fixture')\n        self.page.locator('#choose-new-analysis').click()\n        self.page.locator('#choose-ont').click()\n        self.page.locator('#variant-fresh').click()\n        self.page.locator('#input-folder').fill(str(ont))\n        self.page.locator('#scan').click()\n        self.page.wait_for_selector('#samples-card:not([hidden])')\n        self.page.locator('.type-select').first.select_option('cancer')\n        self.page.locator('#analysis').select_option('methylation')\n        self.page.locator('#classifier').select_option('sturgeon')\n        self.page.locator('#backend').select_option('docker')\n        expect(self.page.locator('#backend')).to_have_value('docker')\n        expect(self.page.locator('#managed-methylation-settings')).to_be_visible()\n        expect(self.page.locator('#manual-methylation-resources')).to_be_hidden()\n        expect(self.page.locator('#sturgeon-license-field')).to_be_visible()\n        self.page.locator('#manual-methylation').check()\n        expect(self.page.locator('#sturgeon_model')).to_be_visible()\n        self.page.locator('#manual-methylation').uncheck()\n        expect(self.page.locator('#sturgeon_model')).to_be_hidden()\n        self.assertFalse(self.errors,self.errors)\n        self.assertEqual(self.runs,[])\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "PAGE": {
+      "recorded_sha256": "ba18f58cc371b5c672d2435c2a61cc5e3e93f09944dc4f934c48ef6db5c21a39",
+      "current_sha256": "1610ee5890d3c9b58e86e28a16a9d5f3de8fb8dc1fe06e68306e0f42084f344c",
+      "changes": [
+        {
+          "start": 30413,
+          "end": 36843,
+          "current": "<div id=\"methylation-fields\" hidden><h3>ONT methylation</h3><p class=\"hint\">Rockfish calls CpG 5mC from raw POD5 signal by default. Choose Modkit to use Dorado MM/ML modified-base calls. Select Sturgeon for CNS tumours or MARLIN for leukemias.</p><div id=\"methylation-assignment-board\" hidden><h3>Assign samples to a CpG classifier</h3><p class=\"hint\">Choose from the specimen diagnosis: MARLIN for leukemia research or Sturgeon for CNS-tumor research. Drag cards or use their dropdowns. These assignments are separate from Cancer/Normal roles. Leave unknown or unsuitable samples in Unknown / do not classify. Only the classifier group selected below is saved and run; the other group is not queued. Use a separate project for each classifier, keeping the completed ONT project unchanged.</p><div class=\"sample-board\"><div class=\"sample-column\" data-methylation-classifier=\"\"><h3>Unknown / do not classify</h3><div id=\"methylation-unassigned\" class=\"sample-list\" data-empty=\"All included samples have a classifier.\"></div></div><div class=\"sample-column\" data-methylation-classifier=\"marlin\"><h3>MARLIN · leukemia</h3><div id=\"methylation-marlin\" class=\"sample-list\" data-empty=\"Drop leukemia samples here.\"></div></div><div class=\"sample-column\" data-methylation-classifier=\"sturgeon\"><h3>Sturgeon · CNS</h3><div id=\"methylation-sturgeon\" class=\"sample-list\" data-empty=\"Drop CNS-tumor samples here.\"></div></div></div><p id=\"methylation-group-note\" class=\"notice\" role=\"status\" aria-live=\"polite\"></p></div><div class=\"grid\"><div><label id=\"classifier-label\" for=\"classifier\">Methylation classifier</label><select id=\"classifier\"><option value=\"\">Choose a classifier…</option><option value=\"sturgeon\">Sturgeon · CNS tumours</option><option value=\"marlin\">MARLIN · leukemias</option></select></div><div id=\"methylation-gpu-field\" hidden><label for=\"device\">GPU usage for methylation</label><select id=\"device\"><option value=\"cpu\">No · CPU</option><option value=\"gpu\">Yes · reserved GPU</option></select></div><div><label for=\"methylation-caller\">CpG method</label><select id=\"methylation-caller\"><option value=\"rockfish\">Rockfish · raw signal (default)</option><option value=\"modkit\">Modkit · Dorado MM/ML calls</option></select></div><div><label for=\"methylation-source\">Use this linked methylation input</label><select id=\"methylation-source\"><option value=\"pod5\">POD5 · raw signal</option><option value=\"modbam\">Modified-base BAM · Modkit only</option></select></div></div><p id=\"methylation-input-note\" class=\"notice\"></p><p class=\"hint\">Rockfish requires R10.4.1, 5kHz POD5 and reports binary 5mC without a separate 5hmC channel. GPU can accelerate Rockfish, Dorado basecalling and MARLIN inference. FASTQs alone do not contain methylation calls.</p><div id=\"managed-methylation-settings\" hidden><p class=\"notice\">Docker supplies the classifier runtimes. Saving prepares verified models and Dorado in your cache. The first download can take several minutes; progress is printed in the terminal.</p><label for=\"resource-cache\">Shared model cache (optional)</label><input id=\"resource-cache\" placeholder=\"~/.cache/oncotracer/v6\"><label class=\"check\"><input id=\"manual-methylation\" type=\"checkbox\">Use my own tools and model paths</label></div><div id=\"manual-methylation-resources\"><label for=\"resources\">Reuse tool/model paths from a resource YAML (optional)</label><div class=\"row\"><input id=\"resources\"><button data-browse=\"resources\" data-kind=\"file\">Browse YAML</button></div><p class=\"hint\">Or select installed tools and model files below. Blank tool fields use your command search path where supported. Models are required here or in the YAML. Setup records checksums automatically.</p><div class=\"grid\"><div><label for=\"methylation_dorado_executable\">Dorado executable (alignment/basecalling)</label><div class=\"row\"><input id=\"methylation_dorado_executable\" data-resource=\"methylation_dorado_executable\"><button data-browse=\"methylation_dorado_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_modkit_executable\">Modkit executable (methylation extraction)</label><div class=\"row\"><input id=\"methylation_modkit_executable\" data-resource=\"methylation_modkit_executable\"><button data-browse=\"methylation_modkit_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_samtools_executable\">samtools executable (BAM processing)</label><div class=\"row\"><input id=\"methylation_samtools_executable\" data-resource=\"methylation_samtools_executable\"><button data-browse=\"methylation_samtools_executable\" data-kind=\"asset\">Browse</button></div></div></div><div id=\"rockfish-fields\"><h3>Rockfish runtime</h3><div class=\"grid\"><div><label for=\"methylation_rockfish_python\">Python in the Rockfish environment</label><div class=\"row\"><input id=\"methylation_rockfish_python\" data-resource=\"methylation_rockfish_python\"><button data-browse=\"methylation_rockfish_python\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_rockfish_source\">Pinned Rockfish source directory</label><div class=\"row\"><input id=\"methylation_rockfish_source\" data-resource=\"methylation_rockfish_source\"><button data-browse=\"methylation_rockfish_source\" data-kind=\"folder\">Browse</button></div></div><div><label for=\"methylation_rockfish_model\">Rockfish 5kHz checkpoint</label><div class=\"row\"><input id=\"methylation_rockfish_model\" data-resource=\"methylation_rockfish_model\"><button data-browse=\"methylation_rockfish_model\" data-kind=\"asset\">Browse</button></div></div></div></div><div id=\"dorado-model-fields\" hidden><h3>POD5 basecalling models</h3><div class=\"grid\"><div><label for=\"methylation_dorado_model\">Dorado basecalling model folder</label><div class=\"row\"><input id=\"methylation_dorado_model\" data-resource=\"methylation_dorado_model\"><button data-browse=\"methylation_dorado_model\" data-kind=\"folder\">Browse</button></div></div><div><label for=\"methylation_dorado_modbase_model\">Matching Dorado modified-base model folder (5mCG/5hmCG)</label><div class=\"row\"><input id=\"methylation_dorado_modbase_model\" data-resource=\"methylation_dorado_modbase_model\"><button data-browse=\"methylation_dorado_modbase_model\" data-kind=\"folder\">Browse</button></div></div></div></div><div id=\"sturgeon-fields\" hidden><h3>Sturgeon · CNS tumours</h3><div id=\"sturgeon-download\"><p>Use the pretrained general CNS model and matching hg38 probes, or supply your own paths below.</p>\n",
+          "recorded": "<div id=\"methylation-fields\" hidden><h3>ONT methylation</h3><p class=\"hint\">Rockfish calls CpG 5mC from raw POD5 signal by default. Choose Modkit to use Dorado MM/ML modified-base calls. Select Sturgeon for CNS tumours or MARLIN for leukemias.</p><div id=\"methylation-assignment-board\" hidden><h3>Assign samples to a CpG classifier</h3><p class=\"hint\">Choose from the specimen diagnosis: MARLIN for leukemia research or Sturgeon for CNS-tumor research. Drag cards or use their dropdowns. These assignments are separate from Cancer/Normal roles. Leave unknown or unsuitable samples in Unknown / do not classify. Only the classifier group selected below is saved and run; the other group is not queued. Use a separate project for each classifier, keeping the completed ONT project unchanged.</p><div class=\"sample-board\"><div class=\"sample-column\" data-methylation-classifier=\"\"><h3>Unknown / do not classify</h3><div id=\"methylation-unassigned\" class=\"sample-list\" data-empty=\"All included samples have a classifier.\"></div></div><div class=\"sample-column\" data-methylation-classifier=\"marlin\"><h3>MARLIN · leukemia</h3><div id=\"methylation-marlin\" class=\"sample-list\" data-empty=\"Drop leukemia samples here.\"></div></div><div class=\"sample-column\" data-methylation-classifier=\"sturgeon\"><h3>Sturgeon · CNS</h3><div id=\"methylation-sturgeon\" class=\"sample-list\" data-empty=\"Drop CNS-tumor samples here.\"></div></div></div><p id=\"methylation-group-note\" class=\"notice\" role=\"status\" aria-live=\"polite\"></p></div><div class=\"grid\"><div><label id=\"classifier-label\" for=\"classifier\">Methylation classifier</label><select id=\"classifier\"><option value=\"\">Choose a classifier…</option><option value=\"sturgeon\">Sturgeon · CNS tumours</option><option value=\"marlin\">MARLIN · leukemias</option></select></div><div id=\"methylation-gpu-field\" hidden><label for=\"device\">GPU usage for methylation</label><select id=\"device\"><option value=\"cpu\">No · CPU</option><option value=\"gpu\">Yes · reserved GPU</option></select></div><div><label for=\"methylation-caller\">CpG method</label><select id=\"methylation-caller\"><option value=\"rockfish\">Rockfish · raw signal (default)</option><option value=\"modkit\">Modkit · Dorado MM/ML calls</option></select></div><div><label for=\"methylation-source\">Use this linked methylation input</label><select id=\"methylation-source\"><option value=\"pod5\">POD5 · raw signal</option><option value=\"modbam\">Modified-base BAM · Modkit only</option></select></div></div><p id=\"methylation-input-note\" class=\"notice\"></p><p class=\"hint\">Rockfish requires R10.4.1, 5kHz POD5 and reports binary 5mC without a separate 5hmC channel. GPU can accelerate Rockfish, Dorado basecalling and MARLIN inference. FASTQs alone do not contain methylation calls.</p><label for=\"resources\">Reuse tool/model paths from a resource YAML (optional)</label><div class=\"row\"><input id=\"resources\"><button data-browse=\"resources\" data-kind=\"file\">Browse YAML</button></div><p class=\"hint\">Or select installed tools and model files below. Blank tool fields use your command search path where supported. Models are required here or in the YAML. Setup records checksums automatically.</p><div class=\"grid\"><div><label for=\"methylation_dorado_executable\">Dorado executable (alignment/basecalling)</label><div class=\"row\"><input id=\"methylation_dorado_executable\" data-resource=\"methylation_dorado_executable\"><button data-browse=\"methylation_dorado_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_modkit_executable\">Modkit executable (methylation extraction)</label><div class=\"row\"><input id=\"methylation_modkit_executable\" data-resource=\"methylation_modkit_executable\"><button data-browse=\"methylation_modkit_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_samtools_executable\">samtools executable (BAM processing)</label><div class=\"row\"><input id=\"methylation_samtools_executable\" data-resource=\"methylation_samtools_executable\"><button data-browse=\"methylation_samtools_executable\" data-kind=\"asset\">Browse</button></div></div></div><div id=\"rockfish-fields\"><h3>Rockfish runtime</h3><div class=\"grid\"><div><label for=\"methylation_rockfish_python\">Python in the Rockfish environment</label><div class=\"row\"><input id=\"methylation_rockfish_python\" data-resource=\"methylation_rockfish_python\"><button data-browse=\"methylation_rockfish_python\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"methylation_rockfish_source\">Pinned Rockfish source directory</label><div class=\"row\"><input id=\"methylation_rockfish_source\" data-resource=\"methylation_rockfish_source\"><button data-browse=\"methylation_rockfish_source\" data-kind=\"folder\">Browse</button></div></div><div><label for=\"methylation_rockfish_model\">Rockfish 5kHz checkpoint</label><div class=\"row\"><input id=\"methylation_rockfish_model\" data-resource=\"methylation_rockfish_model\"><button data-browse=\"methylation_rockfish_model\" data-kind=\"asset\">Browse</button></div></div></div></div><div id=\"dorado-model-fields\" hidden><h3>POD5 basecalling models</h3><div class=\"grid\"><div><label for=\"methylation_dorado_model\">Dorado basecalling model folder</label><div class=\"row\"><input id=\"methylation_dorado_model\" data-resource=\"methylation_dorado_model\"><button data-browse=\"methylation_dorado_model\" data-kind=\"folder\">Browse</button></div></div><div><label for=\"methylation_dorado_modbase_model\">Matching Dorado modified-base model folder (5mCG/5hmCG)</label><div class=\"row\"><input id=\"methylation_dorado_modbase_model\" data-resource=\"methylation_dorado_modbase_model\"><button data-browse=\"methylation_dorado_modbase_model\" data-kind=\"folder\">Browse</button></div></div></div></div><div id=\"sturgeon-fields\" hidden><h3>Sturgeon · CNS tumours</h3><div id=\"sturgeon-download\"><p>Use the pretrained general CNS model and matching hg38 probes, or supply your own paths below.</p>\n"
+        },
+        {
+          "start": 37102,
+          "end": 39787,
+          "current": "<button id=\"prepare-sturgeon\" type=\"button\">Download / verify Sturgeon general model</button><p id=\"sturgeon-download-status\" role=\"status\"></p></div><div class=\"grid\"><div><label for=\"sturgeon_executable\">Sturgeon executable</label><div class=\"row\"><input id=\"sturgeon_executable\" data-resource=\"sturgeon_executable\"><button data-browse=\"sturgeon_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"sturgeon_model\">Sturgeon model (.zip)</label><div class=\"row\"><input id=\"sturgeon_model\" data-resource=\"sturgeon_model\"><button data-browse=\"sturgeon_model\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"sturgeon_probes\">Sturgeon hg38 probe coordinates (.bed)</label><div class=\"row\"><input id=\"sturgeon_probes\" data-resource=\"sturgeon_probes\"><button data-browse=\"sturgeon_probes\" data-kind=\"asset\">Browse</button></div></div></div></div><div id=\"marlin-fields\" hidden><h3>MARLIN · leukemias</h3><div class=\"grid\"><div><label for=\"marlin_rscript\">Rscript in your MARLIN environment</label><div class=\"row\"><input id=\"marlin_rscript\" data-resource=\"marlin_rscript\"><button data-browse=\"marlin_rscript\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_python\">Python in your MARLIN environment</label><div class=\"row\"><input id=\"marlin_python\" data-resource=\"marlin_python\"><button data-browse=\"marlin_python\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_model\">MARLIN model (.hdf5)</label><div class=\"row\"><input id=\"marlin_model\" data-resource=\"marlin_model\"><button data-browse=\"marlin_model\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_features\">MARLIN feature order (.RData)</label><div class=\"row\"><input id=\"marlin_features\" data-resource=\"marlin_features\"><button data-browse=\"marlin_features\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_class_annotations\">MARLIN class names (.xlsx)</label><div class=\"row\"><input id=\"marlin_class_annotations\" data-resource=\"marlin_class_annotations\"><button data-browse=\"marlin_class_annotations\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_probe_bed\">MARLIN hg38 probe coordinates (uncompressed .bed)</label><div class=\"row\"><input id=\"marlin_probe_bed\" data-resource=\"marlin_probe_bed\"><button data-browse=\"marlin_probe_bed\" data-kind=\"asset\">Browse</button></div></div></div></div></div><div id=\"sturgeon-license-field\" hidden><label class=\"check\"><input id=\"license\" type=\"checkbox\">I have reviewed and accepted the <a href=\"https://github.com/UMCUGenetics/sturgeon/blob/main/LICENSE\" target=\"_blank\" rel=\"noopener noreferrer\">Sturgeon license</a> for this use.</label></div></div>\n",
+          "recorded": "<button id=\"prepare-sturgeon\" type=\"button\">Download / verify Sturgeon general model</button><p id=\"sturgeon-download-status\" role=\"status\"></p></div><div class=\"grid\"><div><label for=\"sturgeon_executable\">Sturgeon executable</label><div class=\"row\"><input id=\"sturgeon_executable\" data-resource=\"sturgeon_executable\"><button data-browse=\"sturgeon_executable\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"sturgeon_model\">Sturgeon model (.zip)</label><div class=\"row\"><input id=\"sturgeon_model\" data-resource=\"sturgeon_model\"><button data-browse=\"sturgeon_model\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"sturgeon_probes\">Sturgeon hg38 probe coordinates (.bed)</label><div class=\"row\"><input id=\"sturgeon_probes\" data-resource=\"sturgeon_probes\"><button data-browse=\"sturgeon_probes\" data-kind=\"asset\">Browse</button></div></div></div><label class=\"check\"><input id=\"license\" type=\"checkbox\">I have read and accepted the applicable Sturgeon license for my intended use.</label></div><div id=\"marlin-fields\" hidden><h3>MARLIN · leukemias</h3><div class=\"grid\"><div><label for=\"marlin_rscript\">Rscript in your MARLIN environment</label><div class=\"row\"><input id=\"marlin_rscript\" data-resource=\"marlin_rscript\"><button data-browse=\"marlin_rscript\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_python\">Python in your MARLIN environment</label><div class=\"row\"><input id=\"marlin_python\" data-resource=\"marlin_python\"><button data-browse=\"marlin_python\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_model\">MARLIN model (.hdf5)</label><div class=\"row\"><input id=\"marlin_model\" data-resource=\"marlin_model\"><button data-browse=\"marlin_model\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_features\">MARLIN feature order (.RData)</label><div class=\"row\"><input id=\"marlin_features\" data-resource=\"marlin_features\"><button data-browse=\"marlin_features\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_class_annotations\">MARLIN class names (.xlsx)</label><div class=\"row\"><input id=\"marlin_class_annotations\" data-resource=\"marlin_class_annotations\"><button data-browse=\"marlin_class_annotations\" data-kind=\"asset\">Browse</button></div></div><div><label for=\"marlin_probe_bed\">MARLIN hg38 probe coordinates (uncompressed .bed)</label><div class=\"row\"><input id=\"marlin_probe_bed\" data-resource=\"marlin_probe_bed\"><button data-browse=\"marlin_probe_bed\" data-kind=\"asset\">Browse</button></div></div></div></div></div>\n"
+        },
+        {
+          "start": 55855,
+          "end": 57031,
+          "current": "<label for=\"variant_ont_profile\">Flow cell and basecalling model used for these reads</label><select id=\"variant_ont_profile\"><option value=\"r1041_e82_400bps_sup_v520\">R10.4.1 E8.2 / Dorado SUP v5.2.0 / 400 bps / 5 kHz</option><option value=\"r1041_e82_400bps_sup_v500\">R10.4.1 E8.2 / Dorado SUP v5.0.0 / 400 bps / 5 kHz</option><option value=\"r1041_e82_400bps_hac_v500\">R10.4.1 E8.2 / Dorado HAC v5.0.0 / 400 bps / 5 kHz</option><option value=\"r1041_e82_400bps_hac_v520\">R10.4.1 E8.2 / Dorado HAC v5.2.0 / 400 bps / 5 kHz</option><option value=\"r1041_e82_400bps_sup_v420\">R10.4.1 E8.2 / Dorado SUP v4.2.0 / 400 bps / 5 kHz</option><option value=\"r1041_e82_400bps_sup_v410\">R10.4.1 E8.2 / Dorado SUP v4.1.0 / 400 bps / 4 kHz</option><option value=\"r1041_e82_400bps_hac_v410\">R10.4.1 E8.2 / Dorado HAC v4.1.0 / 400 bps / 4 kHz</option></select><p class=\"hint\">Check this selection against your sequencing records. Fresh/FFPE does not determine the flow cell or basecaller. The matching model is about 75 MB, downloaded once and reused.</p></div><div id=\"variant-clair3-local-fields\" hidden><div class=\"variant-path\"><label for=\"variant_clair3_model\">Clair3 model folder</label>\n",
+          "recorded": "<label for=\"variant_ont_profile\">Flow cell and basecalling model used for these reads</label><select id=\"variant_ont_profile\"><option value=\"r1041_e82_400bps_sup_v500\">R10.4.1 E8.2 / Dorado SUP v5.0.0 / 400 bps / 5 kHz</option><option value=\"r1041_e82_400bps_hac_v500\">R10.4.1 E8.2 / Dorado HAC v5.0.0 / 400 bps / 5 kHz</option><option value=\"r1041_e82_400bps_hac_v520\">R10.4.1 E8.2 / Dorado HAC v5.2.0 / 400 bps / 5 kHz</option><option value=\"r1041_e82_400bps_sup_v420\">R10.4.1 E8.2 / Dorado SUP v4.2.0 / 400 bps / 5 kHz</option><option value=\"r1041_e82_400bps_sup_v410\">R10.4.1 E8.2 / Dorado SUP v4.1.0 / 400 bps / 4 kHz</option><option value=\"r1041_e82_400bps_hac_v410\">R10.4.1 E8.2 / Dorado HAC v4.1.0 / 400 bps / 4 kHz</option></select><p class=\"hint\">Check this selection against your sequencing records. Fresh/FFPE does not determine the flow cell or basecaller. The matching model is about 75 MB, downloaded once and reused.</p></div><div id=\"variant-clair3-local-fields\" hidden><div class=\"variant-path\"><label for=\"variant_clair3_model\">Clair3 model folder</label>\n"
+        },
+        {
+          "start": 107959,
+          "end": 108202,
+          "current": "  const managed=$('backend').value==='docker';\n  show('managed-methylation-settings',managed);show('manual-methylation-resources',!managed||$('manual-methylation').checked);\n  show('sturgeon-license-field',$('classifier').value==='sturgeon');\n",
+          "recorded": ""
+        },
+        {
+          "start": 109374,
+          "end": 109549,
+          "current": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&option.value==='singularity')||($('variants').checked&&option.value==='singularity');\n",
+          "recorded": "  for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');\n"
+        },
+        {
+          "start": 109766,
+          "end": 109842,
+          "current": "$('manual-methylation').onchange=()=>{methylationSettings();invalidate();};\n",
+          "recorded": ""
+        },
+        {
+          "start": 122737,
+          "end": 125701,
+          "current": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:['docker'].includes($('backend').value)?$('docker_image').value.trim():''});if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),resources_selection:resourceSelection('sample'),backend:$('backend').value,docker_image:['docker'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_caller:$('methylation-caller').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('manual-methylation-resources').hidden?'':$('resources').value,resource_cache:$('resource-cache').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);if(prepared.kind==='existing_project'){showResumedProject();return;}$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n",
+          "recorded": "$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:['docker'].includes($('backend').value)?$('docker_image').value.trim():''});if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),resources_selection:resourceSelection('sample'),backend:$('backend').value,docker_image:['docker'].includes($('backend').value)?$('docker_image').value.trim():'',caller:$('caller').value,cna_profile:$('cna-profile').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_caller:$('methylation-caller').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);if(prepared.kind==='existing_project'){showResumedProject();return;}$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});\n"
+        }
+      ]
+    }
+  }
+}

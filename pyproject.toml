@@ -1,6 +1,6 @@
 [project]
 name = "oncotracer"
-version = "5.0.0"
+version = "6.0.0"
 description = "Native, auditable LP-WGS CNA analysis for Illumina and Oxford Nanopore data"
 authors = [{ name = "OncoTracer developers" }]
 readme = "PYPI_README.md"
@@ -48,6 +48,7 @@ include = [
   { path = "bin/scripts/native_marlin_prepare.R", format = ["wheel", "sdist"] },
   { path = "bin/scripts/native_rockfish.py", format = ["wheel", "sdist"] },
   { path = "oncotracer_cli/rockfish_assets.json", format = ["wheel", "sdist"] },
+  { path = "oncotracer_cli/managed_assets.json", format = ["wheel", "sdist"] },
   { path = "bin/scripts/native_sturgeon_prepare.py", format = ["wheel", "sdist"] },
   { path = "bin/scripts/native_qdnaseq.R", format = ["wheel", "sdist"] },
   { path = "bin/scripts/prepare_qdnaseq_bin_data.sh", format = ["wheel", "sdist"] },

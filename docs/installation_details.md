@@ -2,39 +2,22 @@
 
 ## Install from GitHub
 
-This installs the current `main` branch on Linux. You need Python 3.10–3.13,
-Git and [Conda](https://github.com/conda-forge/miniforge#install). Run:
+For routine analysis, use the [versioned wheel and Docker launch](installation.md).
+Use GitHub source when you intentionally need unreleased changes:
 
 ```bash
-python3 -m venv ~/.venvs/oncotracer
-source ~/.venvs/oncotracer/bin/activate
-python -m pip install --upgrade --force-reinstall "git+https://github.com/cfarkas/oncotracer.git@main"
-oncotracer install --conda
-oncotracer doctor --backend conda
-oncotracer --interactive --backend conda
+python3 -m venv oncotracer-env
+source oncotracer-env/bin/activate
+python -m pip install "git+https://github.com/cfarkas/oncotracer.git@main"
+oncotracer launch --samples samples.csv --project my-run --specimen fresh
 ```
 
-The last command opens setup in your browser. Select your input files and project
-folder, review the settings, then click **Run analysis**. To reopen setup later,
-run `oncotracer --interactive --backend conda`.
+This needs Git, Python 3.10–3.13 and Docker Engine. The `main` branch can change;
+record the source commit for reproducibility. Keep the Python environment after
+installation. No separate Conda installation is needed for this Docker route.
 
-The application stays in `~/.venvs/oncotracer`; keep that directory after
-installation. You do not need to maintain a source checkout. To install a
-released version, use the [standard installation guide](installation.md).
-
-For Docker, replace the last three commands with:
-
-```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:5.0.0
-oncotracer doctor --backend docker
-oncotracer --interactive --backend docker
-```
-
-Docker Engine must already be installed and running. If installation reports a
-missing PATH entry, apply the command it prints before opening a new terminal.
-
-The sections below cover backend options, shared installations and recovery.
-For source-code changes, see [editable development installation](#editable-development-installation).
+The sections below cover alternative backends and administration. For code
+changes, use [editable development installation](#editable-development-installation).
 
 ## Choose the installation route
 
@@ -61,7 +44,7 @@ Before installation, provide:
 - sufficient **available RAM**, not just installed RAM; see the planning check below;
 - one backend: Conda, Docker, or Singularity/Apptainer.
 
-For a first run, Conda is the recommended backend. [Miniforge installation instructions](https://github.com/conda-forge/miniforge#install) cover installing Conda itself. `oncotracer install --conda` installs OncoTracer's analysis tools after Conda is available.
+For a first run, [Docker launch](launch.md) is the recommended route. For Conda, [Miniforge installation instructions](https://github.com/conda-forge/miniforge#install) cover installing Conda itself. `oncotracer install --conda` installs OncoTracer's analysis tools after Conda is available.
 
 Use `oncotracer system --path /path/to/project` before
 installation, and `oncotracer check --config /path/to/run.yml` before analysis.
@@ -80,6 +63,13 @@ Start with at least 60 GiB free for tools, reference assets and a small run;
 add space for your FASTQs, BAMs and temporary copies. Large runs need much more.
 
 The first analysis can take substantially longer because the reference, indexes, packages, and container layers are prepared. If `lpwgs_root/references/samurai_hg38` already exists, OncoTracer treats it as an external, read-only shared reference: every pinned file, index manifest, physical reader lock, and tool identity must validate, and OncoTracer will stop instead of repairing it in place. A plain existing FASTA/index directory is not auto-adopted. When that path is absent, FASTA/index, ichorCNA, and qDNAseq assets go to OncoTracer-owned, content-addressed caches below `lpwgs_root/.oncotracer/reference-cache/`. Later analyses reuse those validated assets even when they use a fresh result directory. Conda channel URLs are retained as informational provenance, but portability validity is based on stable package metadata and the exact indexing-executable SHA-256.
+
+The Docker image includes a parallel downloader for large pinned models and tools.
+It resumes interrupted transfers using up to eight connections and verifies each
+file's size and SHA-256 before use. If parallel downloading fails, OncoTracer
+falls back to its standard resumable downloader. On other backends, it uses
+`aria2c` when available; installing it is optional.
+
 
 ## Standalone executable
 
@@ -207,7 +197,7 @@ oncotracer install --docker
 oncotracer doctor --backend docker
 ```
 
-The default installer pulls `carlosfarkas/oncotracer:5.0.0`, validates its tools and saves the image reference. The older `ghcr.io/cfarkas/oncotracer:2.1.0` remains available for earlier CNA workflows. It does not install Docker, alter daemon settings, or request administrator privileges silently.
+The default installer pulls `carlosfarkas/oncotracer:6.0.0`, validates its tools and saves the image reference. The older `ghcr.io/cfarkas/oncotracer:2.1.0` remains available for earlier CNA workflows. It does not install Docker, alter daemon settings, or request administrator privileges silently.
 
 Run an analysis with:
 
@@ -226,7 +216,7 @@ Choose the current image explicitly when installing. Later doctor and run comman
 use the saved image selection:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:5.0.0
+oncotracer install --docker --image carlosfarkas/oncotracer:6.0.0
 oncotracer doctor --backend docker
 oncotracer run --backend docker \
   --config /absolute/path/project/config/run.yml

@@ -22,11 +22,14 @@ REQUIRED = {
     backend.PROVENANCE, "bin/scripts/native_qdnaseq.R", "main.nf", "nextflow.config",
     "oncotracer_cli/cna_quality.py", "bin/scripts/qdnaseq_post_normalization_qc.R",
     "oncotracer_cli/broad_cna.py",
+    "oncotracer_cli/launch.py", "oncotracer_cli/launch_ont_profile.py",
+    "oncotracer_cli/sample_manifest.py", "oncotracer_cli/managed_resources.py",
+    "oncotracer_cli/managed_assets.json",
     "bin/cna_classifier_nf/bin/cna_assessment_reports.py",
     "oncotracer_cli/lpwgs/main.nf", "oncotracer_cli/lpwgs/nextflow.config",
     "oncotracer_cli/lpwgs/bin/bcftools_compat.py",
     *("environments/native-" + name + ".yml" for name in (
-        "core", "qdnaseq", "ichorcna", "classifier", "gistic2", "variants", "ffperase", "strelka2")),
+        "core", "qdnaseq", "ichorcna", "classifier", "gistic2", "variants", "ffperase", "strelka2", "marlin", "sturgeon-deps")),
 }
 
 

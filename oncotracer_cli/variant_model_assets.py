@@ -2,7 +2,7 @@
 
 Catalog provenance: Clair3 v1.2.0 README and the official nanoporetech/rerio
 model stubs. Archive SHA256/lengths were independently measured from those
-HTTPS URLs on 2026-09-22, with HAC v5.2.0 added on 2026-10-18; these are not
+HTTPS URLs on 2026-09-22, with HAC v5.2.0 added on 2026-10-18 and SUP v5.2.0 on 2026-11-24; these are not
 claimed as upstream-published checksums.
 Planning executes no caller, model loader, installer or shell. Explicit runtime
 preflight separately checks the selected dependency environment before downloads.
@@ -30,6 +30,9 @@ CLAIR3_BASE = 'https://cdn.oxfordnanoportal.com/software/analysis/models/clair3/
 CLAIR3_FILES = ('pileup.index', 'pileup.data-00000-of-00001',
                 'full_alignment.index', 'full_alignment.data-00000-of-00001')
 CLAIR3_PROFILES = {
+    'r1041_e82_400bps_sup_v520': {'label': 'R10.4.1 E8.2 / Dorado SUP v5.2.0 / 400 bps / 5 kHz',
+        'size': 74631356, 'sha256': '12434424cfc1d0e644d5205d542bfb232a8c4b8f53c8ae29f4f18e46fba2a8ec',
+        'source': 'https://github.com/nanoporetech/rerio/blob/master/clair3_models/r1041_e82_400bps_sup_v520_model'},
     'r1041_e82_400bps_sup_v500': {'label': 'R10.4.1 E8.2 / Dorado SUP v5.0.0 / 400 bps / 5 kHz',
         'size': 74586126, 'sha256': '01c05768661bdd7de611e6bae1043c43b7523a54b223e029c683bfac0db7a678'},
     'r1041_e82_400bps_hac_v500': {'label': 'R10.4.1 E8.2 / Dorado HAC v5.0.0 / 400 bps / 5 kHz',
@@ -68,6 +71,7 @@ _CLAIR3_FILE_SHA256 = {'r1041_e82_400bps_hac_v410': {'full_alignment.data-00000-
                                'full_alignment.index': '1e702f3605e1979efd8d22c7f43a91a66d5e28cc33c2188c921d9229e994d000',
                                'pileup.data-00000-of-00001': 'c1b02a6b8e0fc5ef7067f82dabecd3fbcc0422f45ee3335117093242fd498988',
                                'pileup.index': '2c28334119b24395dad45d1c6f06158f1d30abfff8b1c1c5824cd1d48b3fff4b'}}
+_CLAIR3_FILE_SHA256['r1041_e82_400bps_sup_v520'] = {'pileup.index': 'a213ccd9f859cde0b36a9587acfccf44ec2c23b838f9801c7e0b6c2f44de7b56', 'pileup.data-00000-of-00001': 'fdf1d0dbaf2259af5bd90d6dab748ee01eab9d3578e5ef54261e0fb35f10959c', 'full_alignment.data-00000-of-00001': '1b459d2dfee24f185b3a4dd5b4362ccf08d8f5580409ad45582e3616f4afc790', 'full_alignment.index': 'dbf9d43f2cf4d3e331f4e309e30f302ad6266e0fb42006473e1a8f4dedf9254f'}
 for _profile, _metadata in CLAIR3_PROFILES.items():
     _metadata.update(url=CLAIR3_BASE + _profile + '.tar.gz', caller_version='1.2.0',
                      source=_metadata.get('source', CLAIR3_SOURCE), files=list(CLAIR3_FILES), archive_root=_profile,

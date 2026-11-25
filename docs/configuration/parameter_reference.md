@@ -232,7 +232,7 @@ Give `--backend` explicitly for reproducible scripts: ordinary `run` does not
 select the backend from YAML `execution_backend`. To reuse that project setting,
 use `setup --project PROJECT --run` instead.
 
-Optional methylation is ONT-only and supports the `host`, `conda`, and `poetry` backends with explicit user-installed resources. The stable container does not redistribute the licensed tools/models, so Docker and Singularity/Apptainer reject this branch.
+Optional methylation is ONT-only. Version 6 supports Docker with [managed resources](../launch.md), plus host, Conda and Poetry with explicit resources. Sturgeon is prepared in a private cache after license acknowledgement. Singularity/Apptainer methylation remains unsupported.
 
 ## Common YAML fields
 

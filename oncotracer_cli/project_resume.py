@@ -52,7 +52,9 @@ def _runtime(backend, config):
                    "--env", "HOME=/tmp", str(image),
                    "provenance", "--runtime-identity"]
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+            # Creating a container can exceed a minute on busy disks. Keep
+            # verification bounded while allowing that startup delay.
+            result = subprocess.run(command, capture_output=True, text=True, timeout=180)
         except (OSError, subprocess.TimeoutExpired) as error:
             raise OncoTracerError(f"Cannot verify the selected {backend.capitalize()} runtime before resuming: {error}") from error
         if result.returncode:

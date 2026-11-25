@@ -188,7 +188,7 @@ REQUIRED_TEXT = {
     ),
     "docs/containers.md": (
         "All backends use the same native stage graph",
-        "carlosfarkas/oncotracer:5.0.0",
+        "carlosfarkas/oncotracer:6.0.0",
         "The five core Conda groups are",
         "`variants` and `ffperase` environments",
         "core",
@@ -229,7 +229,7 @@ REQUIRED_TEXT = {
         "all three HCC1143 libraries",
         "six checksum-validated FASTQs",
         "same exact current",
-        "oncotracer-v5.0.0-parity-audit.tar.gz",
+        "oncotracer-v6.0.0-parity-audit.tar.gz",
         "SHA256SUMS",
     ),
     "docs/citation_research_use.md": (

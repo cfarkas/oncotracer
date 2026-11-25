@@ -37,9 +37,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
 WORKDIR ${ONCOTRACER_HOME}
 COPY environments/ ${ONCOTRACER_HOME}/environments/
 
-# Core tools live in base so the direct BAM-refinement helper can use the
-# read-only-container fallback without creating another environment.
-RUN conda config --system --set channel_priority strict \
+# Core tools retain /opt/conda for native helpers and packaged caller builds.
+# Stage the base prefix in this writable layer before Conda replaces packages.
+# Updating files directly in Miniforge's lower layer otherwise triggers a copy
+# and filesystem sync for each rename, which is costly on disk-backed CI VMs.
+RUN cp -a /opt/conda /opt/oncotracer-core-stage \
+    && rm -rf /opt/conda \
+    && mv /opt/oncotracer-core-stage /opt/conda \
+    && conda config --system --set channel_priority strict \
     && conda env update --prefix /opt/conda --file environments/native-core.yml \
     && conda clean -afy
 
@@ -96,23 +101,22 @@ ENV ONCOTRACER_GPU_REPORTS_PREFIX=/opt/oncotracer-envs/gpu-reports
 
 ENV ONCOTRACER_CONTAINER_RUNTIME=docker
 
+# Keep classifier dependencies separate from the validated CNA/variant environments.
+RUN CONDA_OVERRIDE_CUDA=11.8 conda env create --prefix /opt/oncotracer-envs/marlin --file environments/native-marlin.yml \
+    && conda clean -afy
+RUN conda env create --prefix /opt/oncotracer-envs/sturgeon-deps --file environments/native-sturgeon-deps.yml \
+    && conda clean -afy
+
 # Authenticate the bundled launcher and JAR before publishing the image. Runtime
 # preparation copies this read-only distribution into a verified generation.
 RUN echo 'a73e0d796932b9455cbef207dda4937b98b06b687b049acda46c152d1d25f2c9  /usr/local/bin/nextflow' | sha256sum -c - \
     && echo 'a0fc1d8cadedd6c8aae0532da04da06a3b642d910bc9a15718ba263ac9013a2b  /opt/nextflow/framework/26.04.2/nextflow-26.04.2-one.jar' | sha256sum -c -
 
-# Keep release identity after the expensive dependencies so metadata changes
-# can reuse their verified layers. Environment files still control their cache.
-ARG SOURCE_COMMIT
-ARG SOURCE_SHA256
-
-LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="5.0.0" \
-      org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
-      org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
-      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
-      org.opencontainers.image.source.sha256="${SOURCE_SHA256}" \
-      org.opencontainers.image.licenses="MIT"
+# Large pinned model downloads use bounded parallel connections with resume.
+# Keep this small helper separate from the scientific runtime environments.
+RUN conda create --yes --prefix /opt/oncotracer-downloader --channel conda-forge aria2=1.37.0 \
+    && /opt/oncotracer-downloader/bin/aria2c --version >/dev/null \
+    && conda clean -afy
 
 COPY . ${ONCOTRACER_HOME}/
 
@@ -125,11 +129,33 @@ RUN CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc \
     && chmod 0755 /opt/oncotracer-rockfish/source
 ENV ONCOTRACER_ROCKFISH_PREFIX=/opt/oncotracer-rockfish
 
+# MARLIN model: CC-BY-4.0; its MIT adapter and attribution ship with this image.
+# Dorado and licensed Sturgeon are prepared only in each user's private cache.
+RUN /opt/conda/bin/python -B -c "from oncotracer_cli.managed_resources import prepare_marlin; prepare_marlin('/opt/oncotracer-resources/marlin')" \
+    && cp bin/scripts/MARLIN-MIT-LICENSE.txt docs/licenses/MARLIN-model-attribution.txt /opt/oncotracer-resources/marlin/ \
+    && RETICULATE_PYTHON=/opt/oncotracer-envs/marlin/bin/python RETICULATE_USE_MANAGED_VENV=no CUDA_VISIBLE_DEVICES=-1 \
+       /opt/oncotracer-envs/marlin/bin/Rscript --vanilla bin/scripts/native_marlin_preflight.R --python /opt/oncotracer-envs/marlin/bin/python \
+    && /opt/oncotracer-envs/marlin/bin/modkit --version \
+    && /opt/oncotracer-envs/sturgeon-deps/bin/python -c "import numpy,pandas,onnxruntime,pysam,modbampy"
+
 # Run the same isolated tool and synthetic-call probes used by Conda installation.
 RUN python -B -c "from pathlib import Path; from oncotracer_cli.variant_install_checks import verify_variant_environment; verify_variant_environment(Path('/opt/oncotracer-envs/variants'))"
 RUN PATH="${ONCOTRACER_VARIANTS_PREFIX}/bin:/opt/micromamba/envs/clairs-to/bin:${PATH}" /opt/conda/bin/python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_glimpse_preflight_parallel tests.test_haplotype_evidence tests.test_variant_postcalling tests.test_quilt2_recovery tests.test_gpu_resources tests.test_glimpse_joint tests.test_glimpse_resume tests.test_optional_cohort tests.test_glimpse_storage tests.test_dynamic_resources tests.test_scheduler_recovery tests.test_quilt_parallel tests.test_gistic_eligibility tests.test_project_resume tests.test_podman_backend tests.test_cna_sensitivity tests.test_broad_cna -q
 RUN "${ONCOTRACER_QDNASEQ_PREFIX}/bin/Rscript" --vanilla tests/test_cna_coverage.R
 RUN "${ONCOTRACER_CLASSIFIER_PREFIX}/bin/python" -B -m unittest tests.test_native_classifier.NativeClassifierTests.test_required_gistic_with_one_eligible_sample_finishes_reports_and_preserves_qc -q
+
+# Bind release identity only after runtime/model preparation and checks.
+# A merge commit can reuse those layers while producing its own bound binary.
+ARG SOURCE_COMMIT
+ARG SOURCE_SHA256
+
+LABEL org.opencontainers.image.title="OncoTracer" \
+      org.opencontainers.image.version="6.0.0" \
+      org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
+      org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
+      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
+      org.opencontainers.image.source.sha256="${SOURCE_SHA256}" \
+      org.opencontainers.image.licenses="MIT"
 
 RUN if [[ -z "${SOURCE_COMMIT}" && -z "${SOURCE_SHA256}" ]]; then \
         python scripts/build_native_binary.py \

@@ -477,6 +477,7 @@ class WebState:
                 source = _choice(data, "methylation_source", ("modbam", "pod5"))
                 setattr(args, "modbam" if source == "modbam" else "pod5_dir", _text(data, "methylation_path"))
                 args.resources = _text(data, "resources") if data.get("resources") else None
+                args.resource_cache = _text(data, "resource_cache") if data.get("resource_cache") else None
                 from .setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
                 resources = data.get("resource_paths", {})
                 allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[args.classifier])
