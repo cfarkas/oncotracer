@@ -241,7 +241,7 @@ def inspect_dependencies(data=None, *, progress=lambda message: None):
     if not report['ready'] and not environments_ready and backend != 'docker':
         manager = paths['conda']
         if manager:
-            report['actions'].append({'id': 'native', 'label': 'Install verified analysis environments',
+            report['actions'].append({'id': 'native', 'label': 'Install analysis environments with Conda',
                 'backend': 'conda',
                 'reason': 'One or more required analysis environments are unavailable.'})
         else:
@@ -366,7 +366,9 @@ def terminal_setup(args):
     for action in report['actions']:
         plan = service.plan({'check_id': check['id'], 'action_id': action['id']})
         print('\n' + action['label'] + '\n' + plan['note'])
-        print('Installation folder: ' + plan['directory'])
+        if plan['fields'].get('docker_image'):
+            print('Docker image: ' + plan['fields']['docker_image'])
+        print('Installation log folder: ' + plan['directory'])
         try:
             answer = input('Install and verify these tools now? [y/N]: ').strip().lower()
         except EOFError as error:
