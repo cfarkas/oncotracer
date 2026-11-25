@@ -345,6 +345,18 @@
         }
       ]
     },
+    "tests/test_docs_style.py": {
+      "recorded_sha256": "39b1e871bc600a543a273b13724c32ca79f6da7d1dd7e88c390a92be29b69b50",
+      "current_sha256": "162038aab2efa5272c2a9cb5f384ff18f5ec420edc3f4f91cd04b6d29a01df1e",
+      "changes": [
+        {
+          "start": 6250,
+          "end": 6291,
+          "current": "        \"carlosfarkas/oncotracer:6.0.0\",\n",
+          "recorded": "        \"carlosfarkas/oncotracer:5.0.0\",\n"
+        }
+      ]
+    },
     "tests/test_native_cli.py": {
       "recorded_sha256": "774e5a16d81ba5afac741099a05513f5ce8638d80608d3bffb969b8a8bbee170",
       "current_sha256": "cb3730b0c8d7b89aada6673c2af7d43946dbbd2ee57b7a0de839ad3a573ef5cd",
@@ -534,6 +546,18 @@
           "end": 34437,
           "current": "            os.link(release / \"oncotracer-v6.0.0-parity-audit.tar.gz\", hardlink)\n",
           "recorded": "            os.link(release / \"oncotracer-v5.0.0-parity-audit.tar.gz\", hardlink)\n"
+        }
+      ]
+    },
+    "tests/test_sample_resource_browser.py": {
+      "recorded_sha256": "6e04af3867efeb556c3093ace8642f1c7e5a5c8b271aa30c72754203125a3d4c",
+      "current_sha256": "c39cf3fd969532a7a033ec3c05f422664c5b14726e422529652e90eb7074c3c3",
+      "changes": [
+        {
+          "start": 7046,
+          "end": 8672,
+          "current": "\n    def test_docker_methylation_shows_managed_resources_and_license(self):\n        ont=self.root/'ont-inputs';library=ont/'SYNTHETIC'\n        (library/'fastq_pass').mkdir(parents=True)\n        (library/'fastq_pass/reads.fastq').write_text('@synthetic\\nACGT\\n+\\nIIII\\n')\n        (library/'pod5_pass').mkdir();(library/'pod5_pass/reads.pod5').write_bytes(b'path-only fixture')\n        self.page.locator('#choose-new-analysis').click()\n        self.page.locator('#choose-ont').click()\n        self.page.locator('#variant-fresh').click()\n        self.page.locator('#input-folder').fill(str(ont))\n        self.page.locator('#scan').click()\n        self.page.wait_for_selector('#samples-card:not([hidden])')\n        self.page.locator('.type-select').first.select_option('cancer')\n        self.page.locator('#analysis').select_option('methylation')\n        self.page.locator('#classifier').select_option('sturgeon')\n        self.page.locator('#backend').select_option('docker')\n        expect(self.page.locator('#backend')).to_have_value('docker')\n        expect(self.page.locator('#managed-methylation-settings')).to_be_visible()\n        expect(self.page.locator('#manual-methylation-resources')).to_be_hidden()\n        expect(self.page.locator('#sturgeon-license-field')).to_be_visible()\n        self.page.locator('#manual-methylation').check()\n        expect(self.page.locator('#sturgeon_model')).to_be_visible()\n        self.page.locator('#manual-methylation').uncheck()\n        expect(self.page.locator('#sturgeon_model')).to_be_hidden()\n        self.assertFalse(self.errors,self.errors)\n        self.assertEqual(self.runs,[])\n",
+          "recorded": ""
         }
       ]
     },
