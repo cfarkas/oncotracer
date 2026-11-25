@@ -23,6 +23,25 @@ REGISTRY_PUT = ROOT / "scripts" / "release_registry_put_if_absent.sh"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_release_notes_render_commands_without_executing_them(self) -> None:
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        marker = '          cat > "$RUNNER_TEMP/RELEASE_NOTES.md" <<EOF\n'
+        block = marker + workflow.split(marker, 1)[1].split("          EOF\n", 1)[0] + "          EOF\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            env = {**os.environ, "RUNNER_TEMP": str(root), "MAIN_SHA": "a" * 40,
+                   "IMAGE_NAME": "ghcr.io/cfarkas/oncotracer", "IMAGE_DIGEST": "sha256:" + "b" * 64}
+            command = ('oncotracer() { touch "$RUNNER_TEMP/command-was-executed"; return 99; }\n'
+                       + textwrap.dedent(block))
+            result = subprocess.run(["bash", "-eu", "-c", command], env=env,
+                                    capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse((root / "command-was-executed").exists())
+            notes = (root / "RELEASE_NOTES.md").read_text()
+            self.assertIn("`oncotracer launch --samples samples.csv --project my-run --specimen fresh`", notes)
+            self.assertIn("`" + env["MAIN_SHA"] + "`", notes)
+            self.assertIn("`" + env["IMAGE_NAME"] + "@" + env["IMAGE_DIGEST"] + "`", notes)
+
     def test_automatic_updates_skip_published_versions_without_weakening_guards(self) -> None:
         workflow = WORKFLOW.read_text(encoding="utf-8")
         step = workflow.split("        run: |\n", 1)[1].split("\n      - name:", 1)[0]

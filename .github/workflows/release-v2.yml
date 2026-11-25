@@ -681,7 +681,7 @@ jobs:
           cat > "$RUNNER_TEMP/RELEASE_NOTES.md" <<EOF
           # OncoTracer v6.0.0
 
-          - Run with one sample table: `oncotracer launch --samples samples.csv --project my-run --specimen fresh`.
+          - Run with one sample table: \`oncotracer launch --samples samples.csv --project my-run --specimen fresh\`.
           - Automatically prepare Docker tools, references and pinned methylation resources; save the full YAML for review and reuse.
           - Use bundled MARLIN and isolated classifier dependencies; prepare licensed Sturgeon privately after acknowledgement.
 
