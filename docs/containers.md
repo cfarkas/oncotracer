@@ -68,9 +68,9 @@ oncotracer install --conda \
 ### FASTQ to CNA and variants
 
 The current Linux x86-64 image is
-`carlosfarkas/oncotracer:5.0.0`. It includes the complete
-Illumina GLIMPSE2 workflow, FFPE repairs, integrated ONT callers and concurrent
-project support. `oncotracer install --docker` selects this image by default.
+`carlosfarkas/oncotracer:6.0.0`. It includes the complete
+Illumina GLIMPSE2 workflow, FFPE repairs, ONT callers, MARLIN and Modkit
+runtimes. Licensed Sturgeon and Dorado resources are prepared privately. `oncotracer install --docker` selects this image by default.
 
 To build the current source checkout instead (older dated tags remain unchanged):
 
@@ -124,10 +124,10 @@ preparation before parallel samples start.
 
 ### Versioned release
 
-Version 4 image (the study benchmark is reported separately):
+Version 6 image (the historical v5 study benchmark is reported separately):
 
 ```text
-carlosfarkas/oncotracer:5.0.0
+carlosfarkas/oncotracer:6.0.0
 ```
 
 Install and run:
@@ -151,7 +151,7 @@ Select a local image tag or immutable registry digest:
 ```bash
 oncotracer run \
   --backend docker \
-  --image carlosfarkas/oncotracer:5.0.0 \
+  --image carlosfarkas/oncotracer:6.0.0 \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
@@ -167,8 +167,8 @@ the Illumina callers. Requested callers must be native tools in the chosen image
 a container preflight checks them before alignment. Docker does not nest
 ClairS-TO or FFPERASE SIF execution. External source/model folders and existing
 ANNOVAR databases remain host resources and are mounted read-only. Browser setup
-hides host prefix and SIF fields when Docker is selected. Docker methylation and
-the full Singularity backend with small variants remain unsupported.
+hides host prefix and SIF fields when Docker is selected. Docker also supports [managed methylation](launch.md). The full Singularity
+backend with small variants remains unsupported.
 
 For direct Compose inspection:
 
@@ -309,6 +309,6 @@ The scientific settings remain the same across supported backends. Setup also re
 
 ## Mixed ONT methylation cohorts
 
-Version 5 supports tissue-routed methylation in Docker. Supply `methylation_classifier: tissue` and a TSV `methylation_sample_metadata` with one row per selected sample: `sample`, `tissue`, `pod5` for Rockfish, or `sample`, `tissue`, `modbam` when explicitly selecting Modkit. MARLIN is assigned to peripheral blood/PBMC/marrow; Sturgeon to CNS. Unknown and other tissues remain unassigned. Explicitly configured external model files and executable environments are mounted read-only. Their hashes and any existing license acknowledgement are still checked inside the container; the public image does not redistribute these classifier resources. See [version 5 settings](releases/5.0.0.md).
+Version 5 supports tissue-routed methylation in Docker. Supply `methylation_classifier: tissue` and a TSV `methylation_sample_metadata` with one row per selected sample: `sample`, `tissue`, `pod5` for Rockfish, or `sample`, `tissue`, `modbam` when explicitly selecting Modkit. MARLIN is assigned to peripheral blood/PBMC/marrow; Sturgeon to CNS. Unknown and other tissues remain unassigned. Explicitly configured external model files and executable environments are mounted read-only. Their hashes and any existing license acknowledgement are still checked inside the container; v6 bundles MARLIN, Modkit and classifier dependencies. Sturgeon remains a private licensed installation. New projects can use [launch](launch.md) to prepare the paths automatically; advanced explicit resources remain supported.
 
 The automatic multi-sample cohort figure is written to `09_cohort_figure/` with source tables, legend and checksums. Single-sample runs skip this figure.

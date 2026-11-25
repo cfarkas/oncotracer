@@ -106,8 +106,8 @@ def prepare_cpg_setup(args):
     if getattr(args, "mode", None) not in (None, "ont") or getattr(args, "analysis", None) not in (None, "methylation"):
         raise OncoTracerError("--cpg-from requires ONT methylation-only setup.")
     backend = getattr(args, "backend", None) or "conda"
-    if backend not in ("conda", "host", "poetry"):
-        raise OncoTracerError("CpG classification requires --backend conda, host, or poetry.")
+    if backend not in ("conda", "host", "poetry", "docker"):
+        raise OncoTracerError("CpG classification requires --backend docker, conda, host, or poetry.")
     project = Path(args.cpg_from).expanduser().resolve()
     config_path = project / "config/run.yml"
     if not project.is_dir() or not config_path.is_file():

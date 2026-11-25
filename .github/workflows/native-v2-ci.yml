@@ -90,6 +90,7 @@ jobs:
         run: |
           python3 -m unittest -v \
             tests/test_bootstrap.py \
+            tests/test_launch.py tests/test_launch_ont_profile.py tests/test_sample_manifest.py tests/test_managed_resources.py \
             tests/test_native_cli.py \
             tests/test_optional_cohort.py \
             tests/test_nextflow_gateway.py \
@@ -206,7 +207,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/outside-checkout"
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
-          ./oncotracer --version | grep -F 'OncoTracer 5.0.0'
+          ./oncotracer --version | grep -F 'OncoTracer 6.0.0'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA and variant analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
@@ -236,6 +237,11 @@ jobs:
               'payload/bin/scripts/MARLIN-MIT-LICENSE.txt',
               'oncotracer_cli/classifier.py',
               'oncotracer_cli/methylation.py',
+              'oncotracer_cli/launch.py',
+              'oncotracer_cli/launch_ont_profile.py',
+              'oncotracer_cli/sample_manifest.py',
+              'oncotracer_cli/managed_resources.py',
+              'oncotracer_cli/managed_assets.json',
               'oncotracer_cli/ichor_rescue.py',
               'payload/bin/scripts/native_ichor_fallback.py',
               'payload/bin/scripts/ichor_fallback_assets.json',
@@ -280,7 +286,7 @@ jobs:
           python3 -m pip install 'poetry>=2,<3'
           poetry check --lock
           poetry install --no-interaction
-          poetry run oncotracer --version | grep -F 'OncoTracer 5.0.0'
+          poetry run oncotracer --version | grep -F 'OncoTracer 6.0.0'
       - name: Verify GPU controls in Firefox without starting analysis
         timeout-minutes: 15
         run: |
@@ -320,6 +326,8 @@ jobs:
           - native-strelka2
           - native-gpu-reports
           - native-gpu-clair3
+          - native-marlin
+          - native-sturgeon-deps
     defaults:
       run:
         shell: bash -el {0}
@@ -348,6 +356,7 @@ jobs:
               export BASH_ENV="$GITHUB_WORKSPACE/scripts/bioconductor_mirror.sh"
               ;;
           esac
+          if [[ "${{ matrix.environment }}" == native-marlin ]]; then export CONDA_OVERRIDE_CUDA=11.8; fi
           conda env create \
             --prefix "$RUNNER_TEMP/${{ matrix.environment }}" \
             --file "environments/${{ matrix.environment }}.yml"
@@ -356,6 +365,14 @@ jobs:
           set -Eeuo pipefail
           PREFIX="$RUNNER_TEMP/${{ matrix.environment }}"
           case '${{ matrix.environment }}' in
+            native-marlin)
+              RETICULATE_PYTHON="$PREFIX/bin/python" RETICULATE_USE_MANAGED_VENV=no CUDA_VISIBLE_DEVICES=-1 \
+                "$PREFIX/bin/Rscript" --vanilla bin/scripts/native_marlin_preflight.R --python "$PREFIX/bin/python"
+              "$PREFIX/bin/modkit" --version
+              ;;
+            native-sturgeon-deps)
+              "$PREFIX/bin/python" -c 'import numpy,pandas,onnxruntime,pysam,modbampy; print("STURGEON_DEPENDENCIES_OK")'
+              ;;
             native-gpu-reports)
               "$PREFIX/bin/python" -I -B -c 'import torch,transformers; assert torch.version.cuda == "12.4"; print("GPU_REPORTS_RUNTIME_OK")'
               ;;
@@ -602,7 +619,7 @@ jobs:
             "$RUNNER_TEMP/docker-installed-doctor.json"
       - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
-          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 5.0.0'
+          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 6.0.0'
           docker run --rm oncotracer:v2-ci provenance --json \
             | tee "$RUNNER_TEMP/docker-provenance.json"
           jq -e \
@@ -618,7 +635,10 @@ jobs:
             --env XDG_CONFIG_HOME=/tmp/oncotracer-test-config \
             --entrypoint /opt/conda/bin/python oncotracer:v2-ci -B -m unittest \
             tests.test_sample_parallelism tests.test_glimpse_parallel tests.test_nextflow_runtime tests.test_completion_counts tests.test_terminal_progress tests.test_gpu_resources \
-            tests.test_docker_variants tests.test_podman_backend tests.test_project_resume
+            tests.test_docker_variants tests.test_podman_backend tests.test_project_resume \
+            tests.test_launch tests.test_launch_ont_profile tests.test_sample_manifest tests.test_managed_resources
+          python3 -B scripts/smoke_launch.py --image oncotracer:v2-ci \
+            --work-dir "$RUNNER_TEMP/docker-launch-smoke"
           python3 -B scripts/smoke_docker_resume.py --image oncotracer:v2-ci \
             --work-dir "$RUNNER_TEMP/docker-resume-smoke"
           docker run --rm --network none --user 1000:1000 --env HOME=/tmp \

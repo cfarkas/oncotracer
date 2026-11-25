@@ -96,6 +96,12 @@ ENV ONCOTRACER_GPU_REPORTS_PREFIX=/opt/oncotracer-envs/gpu-reports
 
 ENV ONCOTRACER_CONTAINER_RUNTIME=docker
 
+# Keep classifier dependencies separate from the validated CNA/variant environments.
+RUN CONDA_OVERRIDE_CUDA=11.8 conda env create --prefix /opt/oncotracer-envs/marlin --file environments/native-marlin.yml \
+    && conda clean -afy
+RUN conda env create --prefix /opt/oncotracer-envs/sturgeon-deps --file environments/native-sturgeon-deps.yml \
+    && conda clean -afy
+
 # Authenticate the bundled launcher and JAR before publishing the image. Runtime
 # preparation copies this read-only distribution into a verified generation.
 RUN echo 'a73e0d796932b9455cbef207dda4937b98b06b687b049acda46c152d1d25f2c9  /usr/local/bin/nextflow' | sha256sum -c - \
@@ -107,7 +113,7 @@ ARG SOURCE_COMMIT
 ARG SOURCE_SHA256
 
 LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="5.0.0" \
+      org.opencontainers.image.version="6.0.0" \
       org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
       org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
@@ -124,6 +130,15 @@ RUN CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc \
     --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python --cuda \
     && chmod 0755 /opt/oncotracer-rockfish/source
 ENV ONCOTRACER_ROCKFISH_PREFIX=/opt/oncotracer-rockfish
+
+# MARLIN model: CC-BY-4.0; its MIT adapter and attribution ship with this image.
+# Dorado and licensed Sturgeon are prepared only in each user's private cache.
+RUN /opt/conda/bin/python -B -c "from oncotracer_cli.managed_resources import prepare_marlin; prepare_marlin('/opt/oncotracer-resources/marlin')" \
+    && cp bin/scripts/MARLIN-MIT-LICENSE.txt docs/licenses/MARLIN-model-attribution.txt /opt/oncotracer-resources/marlin/ \
+    && RETICULATE_PYTHON=/opt/oncotracer-envs/marlin/bin/python RETICULATE_USE_MANAGED_VENV=no CUDA_VISIBLE_DEVICES=-1 \
+       /opt/oncotracer-envs/marlin/bin/Rscript --vanilla bin/scripts/native_marlin_preflight.R --python /opt/oncotracer-envs/marlin/bin/python \
+    && /opt/oncotracer-envs/marlin/bin/modkit --version \
+    && /opt/oncotracer-envs/sturgeon-deps/bin/python -c "import numpy,pandas,onnxruntime,pysam,modbampy"
 
 # Run the same isolated tool and synthetic-call probes used by Conda installation.
 RUN python -B -c "from pathlib import Path; from oncotracer_cli.variant_install_checks import verify_variant_environment; verify_variant_environment(Path('/opt/oncotracer-envs/variants'))"

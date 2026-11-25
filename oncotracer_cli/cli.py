@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:5.0.0"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:6.0.0"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -1810,6 +1810,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command")
     add_setup_commands(subparsers)
+    from .launch import add_command as add_launch_command
+    add_launch_command(subparsers)
     from .rockfish_setup import add_command as add_rockfish_command
     add_rockfish_command(subparsers)
     add_web_command(subparsers)
@@ -1923,6 +1925,7 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "uninstall",
             "reference",
             "prepare-rockfish",
+            "launch",
         }
         or values[0] in {"-h", "--help", "--version"}
     ):

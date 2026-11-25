@@ -1,0 +1,19 @@
+MARLIN v1 model and reference resources
+
+Source: MARLIN: Methylation-based Artificial intelligence for Rapid Leukemia IdeNtification
+Model record: https://zenodo.org/records/15565404
+Code and accompanying reference resources: https://github.com/hovestadt/MARLIN
+Model license: Creative Commons Attribution 4.0 International (CC-BY-4.0)
+License text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+Credit: Salvatore Benfatto (Dana-Farber Cancer Institute), MARLIN - model.
+DOI: 10.5281/zenodo.15565404. Additional contributors and the research article
+are identified in the upstream repository. OncoTracer redistributes the original model without modification.
+The compressed hg38 probe file is decompressed without changing its contents.
+All source URLs, sizes and SHA-256 checksums are in managed_assets.json.
+The MIT license for the integrated MARLIN adapter accompanies this notice.
+
+Sturgeon code and model are not part of the public image. Its dependencies are
+installed separately; the user must acknowledge the applicable upstream terms
+before privately downloading Sturgeon. Dorado is also prepared in the user's
+private cache from the official Oxford Nanopore download.

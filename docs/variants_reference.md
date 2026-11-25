@@ -54,7 +54,7 @@ Preservation is a separate choice: `fresh` or `ffpe`. Use one preservation type 
 
 ## Add calling during setup
 
-In browser setup, enable **Add small-variant calling**, select preservation and platform-compatible callers, and select automatic model preparation or existing resources. This branch requires aligned reads, so choose CNA or CNA plus methylation; methylation-only analysis is not eligible. Supported execution backends are `conda`, `host` and `poetry`. Docker supports CNA plus variants from FASTQ; Docker methylation and the Singularity backend with variants remain unavailable.
+In browser setup, enable **Add small-variant calling**, select preservation and platform-compatible callers, and select automatic model preparation or existing resources. This branch requires aligned reads, so choose CNA or CNA plus methylation; methylation-only analysis is not eligible. Supported execution backends are Docker, Conda, host and Poetry. Docker supports CNA, variants and ONT methylation together. The Singularity backend with variants remains unavailable.
 
 For example, prefill an Illumina FFPE project:
 

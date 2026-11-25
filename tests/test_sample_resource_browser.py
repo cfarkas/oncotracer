@@ -125,6 +125,32 @@ class SampleJobBrowserTests(unittest.TestCase):
         self.assertEqual(self.runs,[])
         self.assertFalse(self.errors,self.errors)
 
+    def test_docker_methylation_shows_managed_resources_and_license(self):
+        ont=self.root/'ont-inputs';library=ont/'SYNTHETIC'
+        (library/'fastq_pass').mkdir(parents=True)
+        (library/'fastq_pass/reads.fastq').write_text('@synthetic\nACGT\n+\nIIII\n')
+        (library/'pod5_pass').mkdir();(library/'pod5_pass/reads.pod5').write_bytes(b'path-only fixture')
+        self.page.locator('#choose-new-analysis').click()
+        self.page.locator('#choose-ont').click()
+        self.page.locator('#variant-fresh').click()
+        self.page.locator('#input-folder').fill(str(ont))
+        self.page.locator('#scan').click()
+        self.page.wait_for_selector('#samples-card:not([hidden])')
+        self.page.locator('.type-select').first.select_option('cancer')
+        self.page.locator('#analysis').select_option('methylation')
+        self.page.locator('#classifier').select_option('sturgeon')
+        self.page.locator('#backend').select_option('docker')
+        expect(self.page.locator('#backend')).to_have_value('docker')
+        expect(self.page.locator('#managed-methylation-settings')).to_be_visible()
+        expect(self.page.locator('#manual-methylation-resources')).to_be_hidden()
+        expect(self.page.locator('#sturgeon-license-field')).to_be_visible()
+        self.page.locator('#manual-methylation').check()
+        expect(self.page.locator('#sturgeon_model')).to_be_visible()
+        self.page.locator('#manual-methylation').uncheck()
+        expect(self.page.locator('#sturgeon_model')).to_be_hidden()
+        self.assertFalse(self.errors,self.errors)
+        self.assertEqual(self.runs,[])
+
     def test_docker_setup_saves_image_and_reaches_reviewed_run(self):
         self.new_form()
         expect(self.page.locator('#backend option[value=podman]')).to_have_count(0)

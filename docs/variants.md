@@ -78,7 +78,7 @@ Missing caller programs stop preflight. Selected Clair3 models and approved
 FFPERASE resources can be prepared when **Run analysis** starts; saving, checking
 and dry runs download no variant resources. ANNOVAR remains separately supplied. CNA plus methylation
 can also include variants on supported host backends; methylation-only analysis
-cannot, and Docker methylation is unavailable.
+cannot. Docker supports combined CNA, variants and methylation through [launch](launch.md).
 
 ## Configure variants in four sections
 

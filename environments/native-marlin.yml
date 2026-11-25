@@ -1,0 +1,17 @@
+# MARLIN v1 model/interface runtime; separate from the CNA/variant environments.
+name: oncotracer-v6-marlin
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.10.22
+  - r-base=4.3.3
+  - r-keras=2.13.0
+  - r-tensorflow=2.13.0
+  - tensorflow=2.13.1=cuda118py310h189a05f_1
+  - r-data.table=1.17.8
+  - r-reticulate=1.43.0
+  - r-openxlsx=4.2.8
+  - numpy=1.26.4
+  - h5py=3.16.0
+  - ont-modkit=0.6.4

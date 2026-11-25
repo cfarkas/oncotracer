@@ -21,7 +21,7 @@ Run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing path
 | No FASTQ-selected reads with MM/ML tags | Match the FASTQs to BAMs made with modified-base calling, or use raw POD5 |
 | `no_classifier_probes` | Check usable human alignment and hg38 probe coordinates. CpG calls elsewhere cannot support a MARLIN prediction |
 
-For methylation, `install --conda` does not install optional Dorado, Modkit, or classifier resources. See the [methylation guide](configuration/methylation.md).
+For automatic methylation preparation, use [launch with Docker](launch.md). Advanced Conda projects still need explicit Dorado, Modkit and classifier resources; see the [resource guide](configuration/methylation_reference.md).
 
 Start with the exact command, backend, YAML, `outdir`, and source identity. Avoid deleting reference indexes, `.oncotracer-native/state.json`, or partial outputs before identifying the failing stage.
 

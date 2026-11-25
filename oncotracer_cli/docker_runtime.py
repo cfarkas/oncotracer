@@ -84,7 +84,7 @@ def validate_docker_variants(config: Mapping[str, object]) -> None:
                 f"Docker path {label} starts with '~'; use its absolute host path "
                 "or a path relative to the current working directory. The saved YAML is unchanged."
             )
-    for key in ("lpwgs_root", "outdir", "illumina_samplesheet", "ont_folder", "ont_normal_folder",
+    for key in ("lpwgs_root", "outdir", "illumina_samplesheet", "ont_samplesheet", "ont_folder", "ont_normal_folder",
                 "pathology_csv", "variant_targets_bed", "variant_clair3_model",
                 "variant_annovar_dir", "variant_annovar_db", "variant_ffperase_root",
                 "variant_ffperase_models", "variant_varlociraptor_scenario", *GLIMPSE_INPUTS, *GLIMPSE_CACHES):
@@ -227,7 +227,7 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
             if value.is_symlink():raise OncoTracerError(f'Docker writable cache must not be a symlink: {value}')
             add(value, 'rw')
             writable_caches.append(value)
-    for key in ("illumina_samplesheet", "ont_folder", "ont_normal_folder", "pathology_csv",
+    for key in ("illumina_samplesheet", "ont_samplesheet", "ont_folder", "ont_normal_folder", "pathology_csv",
                 "variant_targets_bed", "variant_clair3_model", "variant_annovar_dir", "variant_annovar_db",
                 "variant_ffperase_root", "variant_ffperase_models", "variant_varlociraptor_scenario"):
         if config.get(key) and not is_auto_resource(key, config[key]):
@@ -259,7 +259,7 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
                     add(path, resource=True)
     if config.get("methylation") or config.get("methylation_only"):
         # These are explicitly configured, user-licensed external resources.
-        # The public image contains neither classifier models nor licensed Sturgeon.
+        # MARLIN is bundled; licensed Sturgeon stays in the private cache.
         metadata = config.get("methylation_sample_metadata")
         if metadata:
             add(metadata, resource=True)

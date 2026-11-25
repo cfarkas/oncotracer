@@ -28,6 +28,7 @@ nav:
   - Home: index.md
   - Getting Started:
       - Install — Conda or Docker: installation.md
+      - Run from a Sample Table: launch.md
       - Interactive Browser Demo: browser_demo.md
       - Set Up Your Own Data: setup.md
       - CLI and Headless Servers: headless.md

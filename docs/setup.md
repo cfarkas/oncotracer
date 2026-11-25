@@ -1,17 +1,15 @@
 # Set up your own data
 
-[Install once](installation.md). Explore the [demo](browser_demo.md) or [SSH/headless guide](headless.md).
+[Install](installation.md), then use [one sample table](launch.md) or the browser below.
 
 ## 1. Configure interactively (recommended)
-
-Fresh or FFPE:
 
 ```bash
 oncotracer --interactive --backend conda
 nextflow run main.nf --interactive --backend conda
 ```
 
-Keep the terminal open. Use its URL with the `#` session code; ports are selected automatically. See [concurrent projects](nextflow_entry.md#concurrent-projects).
+Keep the terminal open. Use its complete URL. See [concurrent projects](nextflow_entry.md#concurrent-projects).
 **Browse computer** selects inputs.
 Empty input folders display **No sequencing files found. Check your paths.**
 
@@ -48,8 +46,8 @@ including for CNA-only projects.
 
 Enable [variants](variants.md) to choose compatible callers for the selected preservation.
 ONT [methylation](configuration/methylation.md) requires modBAMs or raw POD5 and
-classifier resources; FASTQs alone lack methylation calls. Docker methylation
-is unavailable. Reports and [paper panels](paper_report.md) are optional.
+classifier resources; FASTQs alone lack methylation calls. Docker prepares the
+managed resources automatically; see [launch](launch.md). Reports and [paper panels](paper_report.md) are optional.
 
 <details markdown="1">
 <summary>Prefer terminal questions?</summary>

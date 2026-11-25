@@ -117,6 +117,9 @@ def _configured_executable(
     config: Mapping[str, object], key: str, default: str, label: str
 ) -> Path:
     value = str(config.get(key) or default).strip()
+    if value == "bundled":
+        from .managed_resources import bundled_executable
+        return bundled_executable(key)
     candidate: str | None
     if os.sep in value:
         path = Path(value).expanduser().absolute()
@@ -128,6 +131,14 @@ def _configured_executable(
             f"{label} executable is unavailable; set {key} to an existing executable"
         )
     return Path(candidate).expanduser().absolute()
+
+
+def _executable_sha256(path: Path) -> str:
+    from .managed_resources import BUNDLED_EXECUTABLES
+    from .docker_runtime import is_host_preview
+    if is_host_preview() and str(path) in BUNDLED_EXECUTABLES.values():
+        return ""  # The selected image checks and hashes its runtime before execution.
+    return sha256_file(path)
 
 
 def _directory_files(directory: Path) -> tuple[Path, ...]:
@@ -510,6 +521,14 @@ def resolve_methylation_request(
         else None
     )
     asset_sha256: dict[str, str] = {}
+    for manifest_key, asset in (("methylation_dorado_runtime_manifest", "dorado"),
+                                ("sturgeon_runtime_manifest", "sturgeon_source")):
+        if config.get(manifest_key) and (asset != "sturgeon_source" or classifier == "sturgeon"):
+            from .managed_resources import validate_installation
+            expected = str(config.get(manifest_key + "_sha256") or "")
+            if not SHA256_PATTERN.fullmatch(expected):
+                raise OncoTracerError(manifest_key + "_sha256 must contain the exact runtime receipt hash")
+            asset_sha256[manifest_key] = validate_installation(str(config[manifest_key]), expected, asset)
     if caller == "rockfish":
         from .rockfish import validate_assets
         if not rockfish_resources_deferred:
@@ -598,7 +617,7 @@ def resolve_methylation_request(
         classifier_paths["python"] = _configured_executable(
             config, "marlin_python", "python", "MARLIN Python"
         )
-        asset_sha256["marlin_python"] = sha256_file(classifier_paths["python"])
+        asset_sha256["marlin_python"] = _executable_sha256(classifier_paths["python"])
         for name, key, label in (
             ("model", "marlin_model", "MARLIN model"),
             ("features", "marlin_features", "MARLIN features"),
@@ -615,11 +634,11 @@ def resolve_methylation_request(
 
     executable_sha256 = {
         "dorado": sha256_file(dorado) if dorado else "",
-        "modkit": sha256_file(modkit) if modkit else "",
+        "modkit": _executable_sha256(modkit) if modkit else "",
         "rockfish_python": sha256_file(rockfish_python) if rockfish_python and not rockfish_resources_deferred else "",
-        "samtools": sha256_file(samtools),
+        "samtools": _executable_sha256(samtools),
         classifier: (
-            sha256_file(classifier_executable)
+            _executable_sha256(classifier_executable)
             if classifier_executable is not None
             else ""
         ),

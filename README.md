@@ -2,116 +2,84 @@
 
 [![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
-Analyze Illumina and Oxford Nanopore (ONT) copy-number changes and small variants. ONT methylation supports MARLIN leukemia and Sturgeon CNS-tumor classifiers. For research use.
+Analyze Illumina and Oxford Nanopore (ONT) copy-number changes, small variants and ONT methylation. Version 6 prepares a project from one sample table, downloads its references and runs the tools in Docker. For research use.
 
 ## Quick start
 
-Install with Linux and Python 3.10–3.13. No Git checkout is required:
+You need **Linux x86-64, Python 3.10–3.13 and [Docker Engine](https://docs.docker.com/engine/install/)**. No Git checkout is required. [Installation details](docs/installation.md):
 
 ```bash
-python3 -m pip install --upgrade --force-reinstall "https://github.com/cfarkas/oncotracer/releases/download/v5.0.0/oncotracer-5.0.0-py3-none-any.whl"
+python3 -m venv oncotracer-env
+source oncotracer-env/bin/activate
+python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.0.0/oncotracer-6.0.0-py3-none-any.whl"
 ```
 
-Version 5 defaults to Rockfish, retains Modkit and preserves the 4.1 ichorCNA fallback, Broad profiles and coarse rescues. See [caller setup](docs/releases/5.0.0.md). `pip install oncotracer` follows the separate PyPI release. Choose **one** backend:
+Use the release wheel above; `pip install oncotracer` follows the separate PyPI release.
 
-### Conda
+Create `samples.csv`. Paths can be relative to this table:
 
-With [Conda](https://github.com/conda-forge/miniforge#install) available:
+```csv
+sample,fastq_1,fastq_2,status
+CASE_01,reads/case_R1.fastq.gz,reads/case_R2.fastq.gz,tumor
+NORMAL_01,reads/normal_R1.fastq.gz,reads/normal_R2.fastq.gz,normal
+```
+
+Run fresh Illumina data:
 
 ```bash
-oncotracer install --conda
-oncotracer doctor --backend conda
-oncotracer --interactive --backend conda
+oncotracer launch --samples samples.csv --project my-run --specimen fresh
 ```
 
-### Docker
+The first run pulls the image and prepares verified references. Later runs reuse the cache. CPU and memory allocations are detected automatically; use `--dry-run` to inspect them without downloading or writing anything. Results go to `my-run/results`; the full configuration is saved in `my-run/config/run.yml`. Repeat the launch command to resume.
 
-With Docker running:
+### ONT and FFPE
+
+For ONT, use `sample,library,status,tissue` columns. Each library folder contains its own `fastq_pass` and `pod5_pass`. Use tissue from specimen records: `blood`, `bone marrow` or `CNS`. [Sample tables and options](docs/launch.md) include Modkit inputs and multiple Illumina lanes.
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:5.0.0
-oncotracer doctor --backend docker
-oncotracer --interactive --backend docker
+oncotracer launch --samples ont.csv --project ont-run --specimen fresh --methylation
+oncotracer launch --samples ffpe.csv --project ffpe-run --specimen ffpe --accept-ffperase-license
 ```
 
-OncoTracer remembers the Docker image selected during installation. Pass `--image` to use a different one. ONT methylation also needs Dorado and a MARLIN or Sturgeon model; follow the [caller setup guide](docs/releases/5.0.0.md).
+Review [FFPErase terms](https://github.com/papaemmelab/nf-ffperase/blob/b0dd56cbd0a939896a966b9ce30c4d719b158170/LICENSE) before accepting. CNS classification similarly requires `--accept-sturgeon-license` after reviewing the [Sturgeon license](https://github.com/UMCUGenetics/sturgeon/blob/main/LICENSE). Its software and model are prepared privately. MARLIN and the permitted caller runtimes are supplied by Docker. Rockfish is the default; `--methylation-caller modkit` reuses modified-base BAMs. Compatible raw signal remains necessary for Rockfish.
 
-Run `oncotracer --detect-resources` to size parallel jobs. Choose the allocation in **Review and run**; see [CPU and memory settings](docs/MULTISAMPLE_QUICKSTART.md).
-
-New projects use the [sensitive CNA profile](docs/cna_evidence_assessment.md), which checks read support for low-coverage calls. Existing projects keep their saved profile.
-
-For GPU support, follow the [GPU installation steps](docs/gpu.md#install-and-check), then select **GPU usage → Yes** in setup.
-
-### Interactive setup with Nextflow
-
-From the [source checkout](docs/installation_details.md#editable-development-installation), Nextflow opens the same interface:
-
-```bash
-nextflow run main.nf --interactive --backend conda
-```
-
-Use the full path to `main.nf` from another directory. Select **Run analysis** to start. See [Nextflow setup](docs/nextflow_entry.md).
+Version 6 retains ichorCNA fallback, Broad profiles and coarse rescues. See [release details](docs/releases/6.0.0.md) and [CNA evidence](docs/cna_evidence_assessment.md). GPU methylation also requires the [NVIDIA container setup](docs/gpu.md).
 
 ## Run a saved project
 
-Setup saves `config/run.yml`. Run it with:
-
 ```bash
-oncotracer run --config /path/to/project/config/run.yml --backend conda
+oncotracer run --config /path/to/project/config/run.yml --backend docker
 ```
 
-Use `--backend docker` for Docker. See the [version 5 run guide](docs/releases/5.0.0.md) for caller setup and the [real benchmark commands](#real-benchmark-runs) below.
+Keep the recorded version for existing v5 results; use a new output directory for v6 validation. Conda remains supported through `oncotracer install --conda` and `oncotracer --interactive --backend conda`.
 
 ## Set up your analysis
 
-1. Choose **Illumina or ONT**, then **Fresh or FFPE**.
-2. Select input files, assign samples to Normal or Cancer, and choose the analysis and project folder.
-3. Review settings, select **Save configuration and check**, then **Run analysis**.
+Prefer a browser? Run `oncotracer --interactive --backend docker`.
 
-Keep the terminal open and use its complete URL, including the code after `#`. Concurrent projects need separate terminals, ports and output folders; divide resources between them.
+1. Choose **Illumina or ONT**, then **Fresh or FFPE**.
+2. Select inputs, assign sample roles and choose the analysis/project folder.
+3. Save, review the checks and select **Run analysis**.
+
+Docker prepares methylation resources automatically. Keep the terminal open and use its complete URL. [Browser walkthrough](docs/browser_demo.md) · [Nextflow entry](docs/nextflow_entry.md) · [SSH setup](docs/headless.md).
 
 ## Interactive demo
 
-[![OncoTracer browser setup: assign samples, choose settings, review and run. Click to explore the interactive demo.](docs/assets/setup-demo-preview.png)](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)
+[![OncoTracer browser setup with synthetic samples](docs/assets/setup-demo-preview.png)](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)
 
-[Try the demo](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html) with synthetic samples and simulated execution. See the [browser walkthrough](docs/browser_demo.md) for the sequence.
-
-### Continue an existing analysis
-
-Use `oncotracer --interactive --project /path/to/existing-project`. Load saved settings, then choose parallel sample jobs in **Review and run**. **Run analysis** applies and checks your selection. See [intermediate checks and relocation](docs/running.md#resume-behavior).
-
-[Sturgeon setup](docs/configuration/methylation_reference.md#sturgeon-pretrained-model-setup) offers the pretrained general model and hg38 probes after explicit license acknowledgement.
-
-### ONT input layout
-
-Select `ONT/` with **one folder per library**. Folder names become sample names; keep libraries separate even when they share a patient.
-
-```text
-ONT/
-├── ONCO-001/
-│   ├── fastq_pass/
-│   ├── fastq_fail/
-│   ├── pod5_pass/
-│   ├── pod5_fail/
-│   └── bam_pass/       # or modified_bam/
-└── ONCO-002/           # same layout
-```
-
-CNA/variants use `fastq_pass`; Rockfish methylation uses matching POD5 and Dorado models. Route MARLIN/Sturgeon using clinical records; select Modkit to reuse modified-base BAMs. See [ONT settings](docs/configuration/ont.md), [CpG calling](docs/post_ont_cpg.md) and [SSH setup](docs/headless.md).
-
-Validate before execution: `oncotracer check --config /path/to/project/config/run.yml`.
+[Try the demo](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html). It uses synthetic samples and simulated execution.
 
 ## Guides and examples
 
 | Task | Guide |
 | --- | --- |
+| Prepare your first sample table | [Launch a project](docs/launch.md) |
 | Try public Illumina and ONT data | [QuickStart 1](https://cfarkas.github.io/oncotracer/quick_start/) · [QuickStart 2](https://cfarkas.github.io/oncotracer/public_cohort/) |
 | Check hardware or reuse genome indexes | [Requirements](docs/installation.md#requirements) · [Prebuilt indexes](docs/reference_indexes.md) |
-| Prepare multiple samples | [Batch setup](docs/auto_params.md) · [Command basics](docs/command_basics.md) |
-| Add analysis options | [Methylation](docs/configuration/methylation.md) · [Variants](docs/variants.md) · [Paper report](docs/paper_report.md) |
+| Use Conda or develop the application | [Installation details](docs/installation_details.md) |
 | Understand results | [Outputs](docs/outputs.md) · [Troubleshooting](docs/troubleshooting.md) |
 
-[Complete documentation](https://cfarkas.github.io/oncotracer/). Optional `run_cna_classifier: true` adds CNA interpretation. Runs record commands and checksums; released builds include `release-provenance.json`.
+Runs record commands and checksums; released builds include `release-provenance.json`. Full launch includes CNA interpretation (`run_cna_classifier: true`), variants and imputation. Use `--analysis cna` for CNA alone. [Complete documentation](https://cfarkas.github.io/oncotracer/).
 
 ## Real benchmark runs
 

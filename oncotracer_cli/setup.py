@@ -449,8 +449,6 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
         raise OncoTracerError("Small-variant calling needs aligned reads: choose CNA or CNA and methylation, rather than methylation-only analysis.")
     if args.backend and args.backend not in {"host", "conda", "poetry", "docker"}:
         raise OncoTracerError("Small-variant calling needs --backend conda, host, poetry, docker; Singularity remains unsupported.")
-    if args.backend in {"docker"} and (analysis or args.analysis) != 'cna':
-        raise OncoTracerError('Docker small-variant calling currently supports --analysis cna only.')
     specimen = _ask(getattr(args, "variant_specimen_type", None),
                     "Sample preservation (--variant-specimen-type)",
                     choices=("fresh", "ffpe"), interactive=interactive)
@@ -846,8 +844,6 @@ def _command_setup(args: argparse.Namespace) -> int:
         if args.backend not in {"host", "conda", "poetry", "docker"}:
             raise OncoTracerError("Small-variant calling needs --backend conda, host, poetry, docker.")
         if args.backend in {"docker"}:
-            if analysis != 'cna':
-                raise OncoTracerError('Docker small-variant calling currently supports --analysis cna only.')
             from .docker_runtime import validate_docker_variants
             validate_docker_variants(dict(values, mode=mode))
         else:
@@ -884,15 +880,34 @@ def _command_setup(args: argparse.Namespace) -> int:
             choices=("marlin", "sturgeon"),
             interactive=interactive,
         )
-        if args.backend not in {"host", "conda", "poetry"}:
-            raise OncoTracerError(
-                "methylation needs --backend conda, host, or poetry; the current containers do not include its tools"
-            )
+        if args.backend not in {"host", "conda", "poetry", "docker"}:
+            raise OncoTracerError("Methylation supports Docker, Conda, host or Poetry. Use --backend docker for managed tools and models.")
         resources = (
             load_flat_yaml(require_file(Path(args.resources), "Resource YAML"))
             if args.resources
             else {}
         )
+        from .rockfish import resolve_caller
+        args.methylation_caller = resolve_caller(getattr(args, "methylation_caller", None) or resources.get("methylation_caller"))
+        managed_docker = args.backend == "docker" and not args.resources and not any(
+            getattr(args, key, None) for key in (*EXECUTABLES, *RESOURCE_FILES[classifier]))
+        if managed_docker:
+            from .launch import cache_directory, _docker_image
+            from .managed_resources import prepare_for_launch
+            from .cli import DEFAULT_IMAGE
+            args.image = args.image or DEFAULT_IMAGE
+            if classifier == "sturgeon" and not args.accept_sturgeon_license and interactive:
+                from .sturgeon_resources import LICENSE_URL
+                print("Sturgeon license: " + LICENSE_URL)
+                args.accept_sturgeon_license = _ask(None, "Have you reviewed and accepted these terms?",
+                    default="no", choices=("yes", "no"), interactive=True) == "yes"
+            if classifier == "sturgeon" and not args.accept_sturgeon_license:
+                from .sturgeon_resources import LICENSE_URL
+                raise OncoTracerError("Review " + LICENSE_URL + " then pass --accept-sturgeon-license.")
+            _docker_image(args.image)
+            resources.update(prepare_for_launch(cache_directory(getattr(args, "resource_cache", None)), [classifier], args))
+            values.update(resources)
+            values["docker_image"] = args.image
         if classifier == "sturgeon" and args.sturgeon_model == "general":
             from .sturgeon_resources import LICENSE_URL, prepare_sturgeon
             acknowledged = args.accept_sturgeon_license
@@ -911,6 +926,7 @@ def _command_setup(args: argparse.Namespace) -> int:
             methylation_only=analysis == "methylation",
             methylation_classifier=classifier,
             methylation_gpu=bool(args.gpu),
+            methylation_gpu_usage=bool(args.gpu),
         )
         source_kind = (
             "modbam"
@@ -947,6 +963,13 @@ def _command_setup(args: argparse.Namespace) -> int:
         for key in _resource_keys(classifier, caller):
             program, label = EXECUTABLES[key]
             supplied = getattr(args, key) or resources.get(key)
+            if args.backend == "docker" and key == "methylation_rockfish_python" and not supplied:
+                continue  # The image supplies its pinned Rockfish runtime.
+            if supplied == "bundled" and args.backend == "docker":
+                from .managed_resources import BUNDLED_EXECUTABLES
+                if key not in BUNDLED_EXECUTABLES:raise OncoTracerError("No bundled tool for " + key)
+                values[key] = supplied
+                continue
             # A MARLIN environment must be selected explicitly; system R/Python often lack its packages.
             default = shutil.which(program) if not key.startswith("marlin_") else None
             flag = RESOURCE_FLAGS.get(key, "--" + key.replace("_", "-"))
@@ -975,6 +998,8 @@ def _command_setup(args: argparse.Namespace) -> int:
             files.pop("methylation_dorado_modbase_model", None)
         for key, label in files.items():
             supplied = getattr(args, key) or resources.get(key)
+            if args.backend == "docker" and key in {"methylation_rockfish_source", "methylation_rockfish_model"} and not supplied:
+                continue
             flag = RESOURCE_FLAGS.get(key, "--" + key.replace("_", "-"))
             value = Path(_ask(supplied, f"{label} ({flag})", interactive=interactive))
             is_model_tree = key in {
@@ -1028,7 +1053,9 @@ def _command_setup(args: argparse.Namespace) -> int:
         # Validate all source files, tools and local hashes before writing the project.
         from .methylation import resolve_methylation_request
 
-        resolve_methylation_request(values, mode=mode)
+        from .docker_runtime import docker_host_preview
+        with docker_host_preview() if args.backend == "docker" else contextlib.nullcontext():
+            resolve_methylation_request(values, mode=mode)
 
     files = {}
     if sample_rows is not None:
@@ -1068,7 +1095,7 @@ def _command_setup(args: argparse.Namespace) -> int:
             ]
         )
     )
-    print("Setup has not run an analysis or installed optional resources.")
+    print("Setup saved the configuration; analysis has not started.")
     if values["hg38_auto_download"]:
         print("The run command will download prebuilt hg38 indexes automatically if needed.")
     elif args.build_reference:
@@ -1110,54 +1137,22 @@ def command_check(args: argparse.Namespace) -> int:
             config.get("methylation") is True or config.get("methylation_only") is True
         )
         if enabled:
-            from .rockfish import resolve_caller
-            caller = resolve_caller(config.get("methylation_caller"))
+            from .methylation import resolve_methylation_request
+            from .docker_runtime import docker_host_preview
+            preview = config.get("execution_backend") == "docker"
             classifier = config.get("methylation_classifier")
-            if classifier not in RESOURCE_FILES:
-                errors.append(
-                    "methylation_classifier: choose marlin (leukemia) or sturgeon (CNS)"
-                )
-            else:
-                fields = dict(RESOURCE_FILES[classifier])
-                if not config.get("methylation_modbam"):
-                    fields.update(
-                        methylation_pod5_dir="raw signal directory",
-                        methylation_dorado_model="Dorado base model",
-                        methylation_dorado_modbase_model="Dorado modified-base model",
-                    )
-                else:
-                    fields["methylation_modbam"] = (
-                        "existing modified-base BAM file or directory"
-                    )
-                if caller == "rockfish":
-                    fields.pop("methylation_dorado_modbase_model", None)
-                    fields.update(methylation_pod5_dir="raw POD5 signal", methylation_rockfish_model="Rockfish 5kHz checkpoint", methylation_rockfish_source="Pinned Rockfish source")
-                    if config.get("methylation_modbam"):
-                        errors.append("Rockfish requires POD5; set methylation_caller: modkit to reuse MM/ML BAMs")
-                for key, label in fields.items():
-                    value = config.get(key)
-                    if not value:
-                        errors.append(f"{key}: missing {label}")
-                    elif not Path(str(value)).expanduser().exists():
-                        errors.append(f"{key}: path does not exist: {value}")
-                    if key in RESOURCE_FILES[classifier] and not config.get(
-                        key + "_sha256"
-                    ):
-                        errors.append(
-                            f"{key}_sha256: missing; setup computes this from your local file"
-                        )
-                for key in _resource_keys(classifier, caller):
-                    program, label = EXECUTABLES[key]
-                    try:
-                        _executable(str(config.get(key) or program), label)
-                    except OncoTracerError as error:
-                        errors.append(f"{key}: {error}")
-            if not config.get("methylation_gpu") and not config.get(
-                "methylation_modbam"
-            ):
-                warnings.append(
-                    "CPU POD5 basecalling can take days. Consider existing modified-base BAMs if available."
-                )
+            if classifier in RESOURCE_FILES:
+                for key, label in RESOURCE_FILES[classifier].items():
+                    if not config.get(key):errors.append(key + ": missing " + label)
+                if not config.get("methylation_modbam") and not config.get("methylation_pod5_dir"):
+                    errors.append("methylation_pod5_dir: provide POD5, or methylation_modbam for Modkit")
+            try:
+                with docker_host_preview() if preview else contextlib.nullcontext():
+                    resolve_methylation_request(config, mode=mode, enabled_override=True)
+            except (OncoTracerError, OSError, ValueError) as error:
+                errors.append(str(error))
+            if not config.get("methylation_gpu_usage", config.get("methylation_gpu")) and not config.get("methylation_modbam"):
+                warnings.append("CPU POD5 basecalling can take days. Existing modified-base BAMs can be reused with Modkit.")
             warnings.append(
                 "Configuration validity does not establish methylome quality. Classification still needs covered classifier probes."
             )
@@ -1425,6 +1420,7 @@ def add_setup_commands(subparsers) -> None:
     inputs.add_argument(
         "--pod5-dir", help="raw POD5 directory; needs local Dorado basecalling models"
     )
+    meth.add_argument("--resource-cache", help="Shared Docker methylation cache; default ~/.cache/oncotracer/v6")
     meth.add_argument(
         "--resources",
         help="reuse tool/model paths and hashes from a previous setup YAML",

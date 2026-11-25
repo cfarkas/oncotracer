@@ -13,7 +13,7 @@ from .runtime import OncoTracerError, atomic_write_json, atomic_write_text, sha2
 
 def classifier_for_tissue(value):
     tissue = re.sub(r"[\s_-]+", " ", str(value or "").strip().lower())
-    if tissue in {"peripheral blood", "pb", "pbmc", "pbmcs", "peripheral blood mononuclear cells",
+    if tissue in {"blood", "peripheral blood", "pb", "pbmc", "pbmcs", "peripheral blood mononuclear cells",
                   "bone marrow", "marrow", "bm", "peripheral blood / bone marrow", "peripheral blood/bone marrow"}:
         return "marlin"
     if tissue in {"cns", "cns tissue", "central nervous system", "brain", "spinal cord", "cerebrospinal fluid", "csf"}:

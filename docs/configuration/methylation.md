@@ -1,8 +1,8 @@
 # ONT methylation: leukemia or CNS classification
 
-Version 5 defaults to **Rockfish**; see the [setup guide](../releases/5.0.0.md). The examples below explicitly select **Modkit**.
+Version 6 defaults to **Rockfish**. The simplest route is [one sample table with Docker](../launch.md#ont-with-methylation). Tools and models are prepared automatically; CNS samples require Sturgeon license acknowledgement. The advanced examples below explicitly select **Modkit**.
 
-Choose **MARLIN** for leukemia or **Sturgeon** for CNS-tumor research. Select the classifier explicitly; review predictions alongside other laboratory findings.
+Choose **MARLIN** for leukemia or **Sturgeon** for CNS-tumor research.
 
 [Install first](../installation.md). See [resources](methylation_reference.md) and [SSH/headless](../headless.md).
 
@@ -21,13 +21,13 @@ You need matching FASTQs, methylation input, and an installed classifier:
 
 **Modified-base BAMs** contain `MM`/`ML` tags; reusing them avoids basecalling. Ordinary BAMs or FASTQs alone are insufficient. Raw POD5 needs compatible Dorado basecalling and modification models.
 
-Use completed files; exclude live files, duplicates and alternate basecalls. Keep one intended library per named folder. Select legacy barcodes explicitly; include `unclassified` only with a justified assignment, never pooled across patients.
+Use completed files; exclude duplicates and alternate basecalls. Keep one intended library per named folder. Select legacy barcodes explicitly; include `unclassified` only with a justified assignment, never pooled across patients.
 
 ## 1. Prepare the tools once
 
-Use Conda. Methylation tools and classifier assets are separate from `oncotracer install --conda`; see [local resources](methylation_reference.md#obtain-the-optional-resources).
+With Docker, run `oncotracer --interactive --backend docker` and leave managed resources selected. Setup prepares pinned downloads and reuses your cache. For advanced Conda/host installations, tools and classifier assets remain separate; see [local resources](methylation_reference.md#obtain-the-optional-resources).
 
-Locate executables, model and probe BED; MARLIN also needs feature-order `.RData` and class-annotation `.xlsx` files. Setup records checksums. Probes are genomic sites recognized by the classifier.
+For external installations, locate executables, models and probe BEDs; MARLIN also needs feature-order `.RData` and class-annotation `.xlsx` files.
 
 ## 2. Link inputs in the browser
 
@@ -48,7 +48,8 @@ Other groups and unassigned samples are excluded, not queued; save each classifi
 to a separate project. **CNA and methylation** keeps one chosen classifier for all
 selected samples.
 
-Browse to the installed tools and model files, or reuse a resource YAML. Modkit
+Docker prepares these paths automatically. For advanced external installations,
+browse to the tools/model files or reuse a resource YAML. Modkit
 extracts CpG methylation for either classifier. Selected libraries and their
 FASTQ read IDs determine which signal reads belong to each sample. Save, check, and click
 **Run analysis** for the last saved project.
@@ -68,8 +69,8 @@ oncotracer setup --methylation-caller modkit --terminal \
   --cpu --threads 8
 ```
 
-This asks for remaining tool/model paths in the terminal. Check/run the saved
-`/work/leukemia-study/config/run.yml` below. `--no-browser` still starts a server.
+This asks for remaining tool/model paths, then saves
+`/work/leukemia-study/config/run.yml`.
 
 For unattended reuse, use a complete resource YAML from a previous project.
 Missing tools or assets stop setup. Check and run automatically:
@@ -156,6 +157,6 @@ Within your project, open `results/07_methylation/methylation_status.json` first
 | `no_classifier_probes` | CpG calls exist, but none overlap the supplied MARLIN probes | Check hg38 coordinates and usable coverage; no leukemia prediction was made |
 | `failed` | A tool, resource, or input check failed | Read the error and the logs in `07_methylation/logs/` |
 
-For MARLIN, inspect `covered_classifier_probes`. Total read count alone does not establish sufficient classifier coverage. A missing prediction is not evidence that the sample is normal.
+For MARLIN, inspect `covered_classifier_probes`. A missing prediction does not establish that a sample is normal.
 
 If you requested both branches, the summary records methylation and copy-number outcomes separately. Successful outputs are kept even when another requested branch fails. [Detailed processing and resource reference](methylation_reference.md).

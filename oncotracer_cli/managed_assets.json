@@ -1,0 +1,65 @@
+{
+  "schema": "oncotracer-managed-assets-v1",
+  "assets": {
+    "dorado": {
+      "url": "https://cdn.oxfordnanoportal.com/software/analysis/dorado-1.1.1-linux-x64.tar.gz",
+      "filename": "dorado-1.1.1-linux-x64.tar.gz",
+      "bytes": 4034007762,
+      "sha256": "08f6ef13b23867bddaa2abee292627e617ca2d2d68d9379dcae703add9940360",
+      "executable_sha256": "6962c63ae91274820cf6646e9848f678acf87348468e9da8c76339e9043af2b4",
+      "version": "1.1.1+e72f1492"
+    },
+    "dorado_model": {
+      "url": "https://cdn.oxfordnanoportal.com/software/analysis/dorado/dna_r10.4.1_e8.2_400bps_sup@v5.2.0.zip",
+      "filename": "dna_r10.4.1_e8.2_400bps_sup@v5.2.0.zip",
+      "bytes": 186952858,
+      "sha256": "94ddebdee5db58676f447cf09a6710ff6da3b5cba1fabead867d8672255bc73e"
+    },
+    "sturgeon_source": {
+      "url": "https://codeload.github.com/UMCUGenetics/sturgeon/tar.gz/4c742ddea49b0077a8f8ff3d99daafb238d00706",
+      "filename": "sturgeon-4c742ddea49b0077a8f8ff3d99daafb238d00706.tar.gz",
+      "bytes": 25976244,
+      "sha256": "ce316ec74454d159b340b18f485767655b5828030cc289cd5bea5ba759a8f895"
+    },
+    "sturgeon_model": {
+      "url": "https://www.dropbox.com/s/yzca4exl40x9ukw/general.zip?dl=1",
+      "filename": "general.zip",
+      "sha256": "706e043f3b9f248e51e9e57b0a01085efb93ae01d8a52fcff53418c7b39bbe26"
+    },
+    "sturgeon_probes": {
+      "url": "https://raw.githubusercontent.com/UMCUGenetics/sturgeon/4c742ddea49b0077a8f8ff3d99daafb238d00706/sturgeon/include/static/probes_hg38.bed",
+      "filename": "probes_hg38.bed",
+      "sha256": "bcb6dfbd2f851312b3745e4257fb7c978cf1c5d96e80cf60d4709788b89366f6"
+    },
+    "marlin_model": {
+      "url": "https://zenodo.org/api/records/15565404/files/marlin_v1.model.hdf5/content",
+      "filename": "marlin_v1.model.hdf5",
+      "bytes": 1098245560,
+      "sha256": "6210a674a0e7690b7b6c03184f5732a65037cf00ff4383e1892f26e90fdcb217"
+    },
+    "marlin_features": {
+      "url": "https://raw.githubusercontent.com/hovestadt/MARLIN/37c9836cc325ff2edccbdff06736604163db2c15/MARLIN_realtime/files/marlin_v1.features.RData",
+      "filename": "marlin_v1.features.RData",
+      "bytes": 1679167,
+      "sha256": "be8713c7d88945bdd30a3eb82e8b5796b32849cc00b06463345563b01508c6f5"
+    },
+    "marlin_class_annotations": {
+      "url": "https://raw.githubusercontent.com/hovestadt/MARLIN/37c9836cc325ff2edccbdff06736604163db2c15/MARLIN_realtime/files/marlin_v1.class_annotations.xlsx",
+      "filename": "marlin_v1.class_annotations.xlsx",
+      "bytes": 22367,
+      "sha256": "976ad5fdf347ac4513a39a3e565dee318990b0400c7f35b7cb13e32eeb64afc3"
+    },
+    "marlin_probe_gz": {
+      "url": "https://raw.githubusercontent.com/hovestadt/MARLIN/37c9836cc325ff2edccbdff06736604163db2c15/MARLIN_realtime/files/marlin_v1.probes_hg38.bed.gz",
+      "filename": "marlin_v1.probes_hg38.bed.gz",
+      "bytes": 5647214,
+      "sha256": "9b6d1ce805be0456de71c84b9f2cf8278a1e4d5d510d7c45d136032398664147"
+    },
+    "dorado_modbase_model": {
+      "filename": "dna_r10.4.1_e8.2_400bps_sup@v5.2.0_5mCG_5hmCG@v2.zip",
+      "url": "https://cdn.oxfordnanoportal.com/software/analysis/dorado/dna_r10.4.1_e8.2_400bps_sup@v5.2.0_5mCG_5hmCG@v2.zip",
+      "bytes": 38167905,
+      "sha256": "df3134f4cd970c11b351dc4dab725e91e9f7ad9714b85124031bdfbddeae2029"
+    }
+  }
+}

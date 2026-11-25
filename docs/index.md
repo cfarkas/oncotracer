@@ -7,19 +7,16 @@ For research use.
 
 ## Quick start
 
-On Linux with Python 3.10–3.13 and Conda available:
+Follow the [v6 installation](installation.md), create [a sample table](launch.md),
+then run:
 
 ```bash
-pip install oncotracer
-oncotracer install --conda
-oncotracer doctor --backend conda
-oncotracer --interactive --backend conda
+oncotracer launch --samples samples.csv --project my-run --specimen fresh
 ```
 
-Install once, then use the last command whenever you want to open setup.
-Prefer Docker? Follow the [Docker installation](installation.md#docker).
-See [installation](installation.md) for Python environments and hardware requirements,
-or [Nextflow setup](nextflow_entry.md) to launch through `main.nf`.
+Docker supplies the scientific tools. Launch prepares references and saves the
+complete configuration. Use `--dry-run` to inspect inputs and resources first.
+For a browser, run `oncotracer --interactive --backend docker`:
 
 1. Choose **Illumina or ONT**, then **Fresh or FFPE**.
 2. Select your inputs, assign samples to Cancer or Normal, and choose a project folder.

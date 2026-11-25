@@ -1,4 +1,4 @@
-# Update a verified 4.1 scientific runtime and add the isolated v5 Rockfish runtime.
+# Update a verified v5 runtime with isolated v6 classifier environments.
 # Pass an immutable local image ID/digest. Changes to existing environments require Dockerfile.
 # For a local image ID, use DOCKER_BUILDKIT=0 so no registry lookup is attempted.
 ARG BASE_IMAGE
@@ -15,7 +15,13 @@ WORKDIR /opt/oncotracer
 RUN python -B -c "from pathlib import Path; copies=[line for line in Path('/opt/oncotracer/Dockerfile').read_text().splitlines() if line.startswith('COPY --from=')]; assert copies and all('--chown=0:0' in line.split() for line in copies), 'Base image predates rootless ownership normalization; use the full Dockerfile'"
 
 COPY environments/ /tmp/oncotracer-update-environments/
-RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in p.rglob('*') if f.is_file()}; old=digest(Path('/opt/oncotracer/environments')); new=digest(Path('/tmp/oncotracer-update-environments')); assert all(new.get(k)==v for k,v in old.items()) and set(new)-set(old) <= {'native-rockfish.yml'}, 'Scientific environment definitions changed; use the full Dockerfile'"
+RUN python -B -c "from pathlib import Path; import hashlib; digest=lambda p:{str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in p.rglob('*') if f.is_file()}; old=digest(Path('/opt/oncotracer/environments')); new=digest(Path('/tmp/oncotracer-update-environments')); assert all(new.get(k)==v for k,v in old.items()) and set(new)-set(old) <= {'native-rockfish.yml', 'native-marlin.yml', 'native-sturgeon-deps.yml'}, 'Scientific environment definitions changed; use the full Dockerfile'"
+
+# Keep classifier dependencies separate from the validated CNA/variant environments.
+RUN CONDA_OVERRIDE_CUDA=11.8 conda env create --prefix /opt/oncotracer-envs/marlin --file /tmp/oncotracer-update-environments/native-marlin.yml \
+    && conda clean -afy
+RUN conda env create --prefix /opt/oncotracer-envs/sturgeon-deps --file /tmp/oncotracer-update-environments/native-sturgeon-deps.yml \
+    && conda clean -afy
 
 COPY . /opt/oncotracer/
 
@@ -25,6 +31,15 @@ RUN CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc \
     --directory /opt/oncotracer-rockfish --python /opt/conda/bin/python --cuda \
     && chmod 0755 /opt/oncotracer-rockfish/source
 ENV ONCOTRACER_ROCKFISH_PREFIX=/opt/oncotracer-rockfish
+
+# MARLIN model: CC-BY-4.0; its MIT adapter and attribution ship with this image.
+# Dorado and licensed Sturgeon are prepared only in each user's private cache.
+RUN /opt/conda/bin/python -B -c "from oncotracer_cli.managed_resources import prepare_marlin; prepare_marlin('/opt/oncotracer-resources/marlin')" \
+    && cp bin/scripts/MARLIN-MIT-LICENSE.txt docs/licenses/MARLIN-model-attribution.txt /opt/oncotracer-resources/marlin/ \
+    && RETICULATE_PYTHON=/opt/oncotracer-envs/marlin/bin/python RETICULATE_USE_MANAGED_VENV=no CUDA_VISIBLE_DEVICES=-1 \
+       /opt/oncotracer-envs/marlin/bin/Rscript --vanilla bin/scripts/native_marlin_preflight.R --python /opt/oncotracer-envs/marlin/bin/python \
+    && /opt/oncotracer-envs/marlin/bin/modkit --version \
+    && /opt/oncotracer-envs/sturgeon-deps/bin/python -c "import numpy,pandas,onnxruntime,pysam,modbampy"
 # Keep build-time Nextflow caches out of the writable runtime home, including
 # caches inherited from earlier incremental images used as the base.
 RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
@@ -41,7 +56,7 @@ RUN test -n "${SOURCE_COMMIT}" && test -n "${SOURCE_SHA256}" \
     && NXF_HOME=/tmp/nextflow-build nextflow -version \
     && rm -rf /tmp/nextflow-build /tmp/nextflow
 
-LABEL org.opencontainers.image.version="5.0.0" \
+LABEL org.opencontainers.image.version="6.0.0" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
       org.opencontainers.image.source.sha256="${SOURCE_SHA256}"
 
