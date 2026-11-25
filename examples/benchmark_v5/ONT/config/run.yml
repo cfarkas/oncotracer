@@ -1,0 +1,123 @@
+# Adapted from the real ONT_Fresh benchmark run, 19-23 November 2026.
+# Original YAML SHA256: cc814d2df78992026786db7c88642c15a1e18f52b225f3d445bc1bb5688332b1
+# Replace /path/to paths and sample identifiers; see ../../README.md.
+# Budgets are for the complete cohort, not each sample. The recorded Linux
+# memory ceiling was separate from these OncoTracer scheduler settings.
+# Scientific options and model checksums are retained from the benchmark.
+
+mode: ont
+
+# Prepared hg38 reference cache; share verified references between projects.
+lpwgs_root: /path/to/ONT/reference
+hg38_auto_download: true
+reference_download_cache: /path/to/references/download-cache
+outdir: /path/to/ONT/results
+
+# Total logical CPU threads; keep the command-line allocation consistent.
+threads: 66
+force: false
+run_cna_classifier: true
+run_gistic: true
+gistic_required: true
+knowledge_web: true
+
+# Each selected library has its own input/<sample>/fastq_pass and pod5_pass.
+ont_named_samples: true
+ont_folder: /path/to/ONT/input
+ont_barcodes: ONT_CASE_01,ONT_CASE_15,ONT_CASE_07,ONT_CASE_02,ONT_CASE_08,ONT_CASE_06,ONT_CASE_16,ONT_CASE_09,ONT_CASE_11,ONT_CASE_04,ONT_CASE_03,ONT_CASE_14,ONT_CASE_05,ONT_CASE_13,ONT_CASE_12,ONT_CASE_10
+ont_sample_names: ONT_CASE_01,ONT_CASE_15,ONT_CASE_07,ONT_CASE_02,ONT_CASE_08,ONT_CASE_06,ONT_CASE_16,ONT_CASE_09,ONT_CASE_11,ONT_CASE_04,ONT_CASE_03,ONT_CASE_14,ONT_CASE_05,ONT_CASE_13,ONT_CASE_12,ONT_CASE_10
+ont_caller: qdnaseq
+ont_binsize_kb: 50
+ont_normal_folder: /path/to/ONT/input
+ont_normal_barcodes: ONT_NORMAL_05,ONT_NORMAL_01,ONT_NORMAL_02,ONT_NORMAL_04,ONT_NORMAL_03
+ont_normal_sample_names: ONT_NORMAL_05,ONT_NORMAL_01,ONT_NORMAL_02,ONT_NORMAL_04,ONT_NORMAL_03
+ont_analysis_type: solid_biopsy
+cna_classifier_sample_set: broad_cancer
+cna_classifier_samples: ONT_NORMAL_01,ONT_NORMAL_02,ONT_NORMAL_03,ONT_NORMAL_04,ONT_NORMAL_05,ONT_CASE_01,ONT_CASE_02,ONT_CASE_03,ONT_CASE_04,ONT_CASE_05,ONT_CASE_06,ONT_CASE_07,ONT_CASE_08,ONT_CASE_09,ONT_CASE_10,ONT_CASE_11,ONT_CASE_12,ONT_CASE_13,ONT_CASE_14,ONT_CASE_15,ONT_CASE_16
+knowledge_literature_llm: true
+knowledge_deep_literature: true
+knowledge_deep_enable_llm_ranker: true
+pathology_use_biomed_models: false
+knowledge_catalog_llm: false
+knowledge_llm_threads: 4
+
+# Callers, imputation and reporting settings used in the timed run.
+run_variants: true
+variant_specimen_type: fresh
+variant_callers: clairs_to,clair3
+variant_annovar: auto
+
+# References and optional licensed tools were prepared before benchmarking.
+variant_download_resources: false
+variant_accept_ffperase_license: false
+variant_ont_profile: r1041_e82_400bps_sup_v500
+variant_varlociraptor: "off"
+variant_clair3_model: /path/to/models/clair3/r1041_e82_400bps_sup_v500
+variant_clairsto_platform: ont_r10_dorado_sup_5khz_ssrs
+variant_annovar_dir: /path/to/tools/annovar
+variant_annovar_db: /path/to/tools/annovar/humandb
+execution_backend: docker
+sample_metadata: /path/to/ONT/config/sample_metadata.csv
+docker_image: carlosfarkas/oncotracer:5.0.0
+parallel_samples: 4
+
+# Total cohort memory budget, using the original GB configuration syntax.
+analysis_memory: 360GB
+variant_parallel_samples: 4
+variant_memory: 360GB
+
+# Main workflow GPU use; ONT methylation has its own setting below.
+gpu_usage: false
+variant_monte_carlo_linkage: false
+variant_ont_imputation: quilt2
+variant_quilt2_cache: /path/to/references/quilt2-grch38
+variant_quilt2_reference_dir: /path/to/references/1000g-grch38-2021
+
+# Effective CNA profile from the recorded run command.
+cna_profile: sensitive
+
+# Preserve the automatic CNA fallback and coarse recovery workflow.
+ichorcna_fallback: true
+ichorcna_fallback_workers: 2
+variant_resource_mode: dynamic
+variant_storage_mode: compact
+
+# Route by the supplied tissue table: blood/marrow to MARLIN, CNS to Sturgeon.
+methylation_classifier: tissue
+methylation_modbam_alignment: realign
+methylation_samtools_executable: /path/to/environments/marlin/bin/samtools
+marlin_rscript: /path/to/environments/marlin/bin/Rscript
+marlin_python: /path/to/environments/marlin/bin/python
+
+# Original model checksums are retained; provide these exact resource versions.
+marlin_model: /path/to/models/marlin/marlin_v1.model.hdf5
+marlin_model_sha256: 6210a674a0e7690b7b6c03184f5732a65037cf00ff4383e1892f26e90fdcb217
+marlin_features: /path/to/models/marlin/marlin_v1.features.RData
+marlin_features_sha256: be8713c7d88945bdd30a3eb82e8b5796b32849cc00b06463345563b01508c6f5
+marlin_class_annotations: /path/to/models/marlin/marlin_v1.class_annotations.xlsx
+marlin_class_annotations_sha256: 976ad5fdf347ac4513a39a3e565dee318990b0400c7f35b7cb13e32eeb64afc3
+marlin_probe_bed: /path/to/models/marlin/marlin_v1.probes_hg38.bed
+marlin_probe_bed_sha256: e595243efb5d9aac1a448bf930a4dec9db5585f2b652b36c79d2ff54099f16ca
+sturgeon_executable: /path/to/environments/sturgeon/bin/sturgeon
+sturgeon_python: /path/to/environments/sturgeon/bin/python
+
+# Benchmark value was true. Set true only after your own license acknowledgement.
+sturgeon_license_acknowledged: false
+sturgeon_model: /path/to/models/sturgeon/general.zip
+sturgeon_model_sha256: 706e043f3b9f248e51e9e57b0a01085efb93ae01d8a52fcff53418c7b39bbe26
+sturgeon_probes: /path/to/models/sturgeon/probes_hg38.bed
+sturgeon_probes_sha256: bcb6dfbd2f851312b3745e4257fb7c978cf1c5d96e80cf60d4709788b89366f6
+methylation: true
+methylation_only: false
+
+# Exactly one tissue/POD5 row for every selected library, including normals.
+methylation_sample_metadata: /path/to/ONT/config/methylation_tissues.tsv
+variant_one_cpu_per_sample: false
+variant_merge_vcfs: false
+cohort_figure: true
+methylation_caller: rockfish
+
+# Dorado/Rockfish use the GPU; do not pass --cpu to the ONT command.
+methylation_gpu_usage: true
+methylation_dorado_executable: /path/to/tools/dorado/bin/dorado
+methylation_dorado_model: /path/to/models/dorado/dna_r10.4.1_e8.2_400bps_sup@v5.2.0

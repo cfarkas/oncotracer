@@ -1,0 +1,114 @@
+{
+  "benchmark_source_commit": "76da6c1b707f3ee14f0dc67f7521e394ff934e5d",
+  "run_manifest_sha256": "4a19508c52a51cb71760c3df921510a6703c7a754492d7db7e836786a2d633a5",
+  "configurations": [
+    {
+      "cohort": "ONT_Fresh",
+      "example": "ONT/config/run.yml",
+      "sample_count": 21,
+      "roles": {
+        "normal": 5,
+        "tumor": 16
+      },
+      "original_config_sha256": "cc814d2df78992026786db7c88642c15a1e18f52b225f3d445bc1bb5688332b1",
+      "matched_launch_record": true,
+      "example_sha256": "b4de198eb2f7820984850aad5c2e2ce76deeafd1d40f566b8b07ee7624c5ac20",
+      "path_and_sample_fields_replaced": [
+        "lpwgs_root",
+        "reference_download_cache",
+        "outdir",
+        "ont_folder",
+        "ont_barcodes",
+        "ont_sample_names",
+        "ont_normal_folder",
+        "ont_normal_barcodes",
+        "ont_normal_sample_names",
+        "cna_classifier_samples",
+        "variant_clair3_model",
+        "variant_annovar_dir",
+        "variant_annovar_db",
+        "sample_metadata",
+        "variant_quilt2_cache",
+        "variant_quilt2_reference_dir",
+        "methylation_samtools_executable",
+        "marlin_rscript",
+        "marlin_python",
+        "marlin_model",
+        "marlin_features",
+        "marlin_class_annotations",
+        "marlin_probe_bed",
+        "sturgeon_executable",
+        "sturgeon_python",
+        "sturgeon_model",
+        "sturgeon_probes",
+        "methylation_sample_metadata",
+        "methylation_dorado_executable",
+        "methylation_dorado_model"
+      ],
+      "explicit_command_overrides": {},
+      "license_acknowledgement_reset": true
+    },
+    {
+      "cohort": "Illumina_FFPE",
+      "example": "FFPE/config/run.yml",
+      "sample_count": 26,
+      "roles": {
+        "tumor": 26
+      },
+      "original_config_sha256": "380913f4375b739ba1fc68054f5b6afe07bc3f4dde68a57485d680086e99e05c",
+      "matched_launch_record": true,
+      "example_sha256": "df4ed37770000570959105cda45dd6c9c80dc6bdb352a28c13d67d3fb31299db",
+      "path_and_sample_fields_replaced": [
+        "lpwgs_root",
+        "reference_download_cache",
+        "outdir",
+        "illumina_samplesheet",
+        "cna_classifier_samples",
+        "variant_patients",
+        "variant_tool_prefix",
+        "variant_annovar_dir",
+        "variant_annovar_db",
+        "variant_ffperase_root",
+        "variant_ffperase_models",
+        "variant_ffperase_prefix",
+        "sample_metadata",
+        "variant_glimpse_reference_dir",
+        "variant_resource_dir"
+      ],
+      "explicit_command_overrides": {
+        "cna_profile": "standard"
+      },
+      "license_acknowledgement_reset": false
+    },
+    {
+      "cohort": "Illumina_Fresh",
+      "example": "Fresh/config/run.yml",
+      "sample_count": 11,
+      "roles": {
+        "normal": 5,
+        "tumor": 6
+      },
+      "original_config_sha256": "118686a88a81a6afa33ad66621cf3d7eb788b2e5b0b2c2ac38bae3a37f6d4e65",
+      "matched_launch_record": true,
+      "example_sha256": "2d053396fd8a48ad861394f24747f96deb817a4ff8a7dd548d89fc531fc55350",
+      "path_and_sample_fields_replaced": [
+        "lpwgs_root",
+        "reference_download_cache",
+        "outdir",
+        "illumina_samplesheet",
+        "cna_classifier_samples",
+        "variant_patients",
+        "variant_tool_prefix",
+        "variant_annovar_dir",
+        "variant_annovar_db",
+        "sample_metadata",
+        "variant_glimpse_reference_dir",
+        "variant_resource_dir"
+      ],
+      "explicit_command_overrides": {
+        "cna_profile": "standard"
+      },
+      "license_acknowledgement_reset": false
+    }
+  ]
+}

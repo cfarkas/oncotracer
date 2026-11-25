@@ -1,0 +1,81 @@
+# Adapted from the real Illumina_Fresh benchmark run, 19-23 November 2026.
+# Original YAML SHA256: 118686a88a81a6afa33ad66621cf3d7eb788b2e5b0b2c2ac38bae3a37f6d4e65
+# Replace /path/to paths and sample identifiers; see ../../README.md.
+# Budgets are for the complete cohort, not each sample. The recorded Linux
+# memory ceiling was separate from these OncoTracer scheduler settings.
+# Scientific options and model checksums are retained from the benchmark.
+
+mode: illumina
+
+# Prepared hg38 reference cache; share verified references between projects.
+lpwgs_root: /path/to/Fresh/reference
+hg38_auto_download: true
+reference_download_cache: /path/to/references/download-cache
+outdir: /path/to/Fresh/results
+
+# Total logical CPU threads; keep the command-line allocation consistent.
+threads: 18
+force: false
+run_cna_classifier: true
+run_gistic: true
+gistic_required: true
+knowledge_web: true
+
+# Paired FASTQs and tumor/normal roles; edit the companion CSV.
+illumina_samplesheet: /path/to/Fresh/config/samplesheet.csv
+illumina_caller: qdnaseq
+illumina_binsize_kb: 50
+cna_classifier_sample_set: leukemia
+cna_classifier_samples: FRESH_NORMAL_01,FRESH_NORMAL_02,FRESH_NORMAL_03,FRESH_NORMAL_04,FRESH_NORMAL_05,FRESH_CASE_01,FRESH_CASE_02,FRESH_CASE_03,FRESH_CASE_04,FRESH_CASE_05,FRESH_CASE_06
+knowledge_literature_llm: true
+knowledge_deep_literature: true
+knowledge_deep_enable_llm_ranker: true
+pathology_use_biomed_models: false
+knowledge_catalog_llm: false
+knowledge_llm_threads: 4
+
+# Callers, imputation and reporting settings used in the timed run.
+run_variants: true
+variant_engine: glimpse2
+variant_specimen_type: fresh
+variant_callers: bcftools,mutect2
+variant_annovar: auto
+variant_varlociraptor: "off"
+variant_ffperase: "off"
+variant_parallel_samples: 3
+variant_memory: 176GB
+variant_confidence_gwas: strict
+
+# Optional clinical context: the public template leaves personal fields blank.
+variant_patients: /path/to/Fresh/config/patients.tsv
+variant_tool_prefix: /path/to/environments/variants
+variant_annovar_dir: /path/to/tools/annovar
+variant_annovar_db: /path/to/tools/annovar/humandb
+
+# References and optional licensed tools were prepared before benchmarking.
+variant_download_resources: false
+variant_accept_ffperase_license: false
+execution_backend: conda
+sample_metadata: /path/to/Fresh/config/sample_metadata.csv
+parallel_samples: 3
+
+# Total cohort memory budget, using the original GB configuration syntax.
+analysis_memory: 176GB
+
+# Main workflow GPU use; ONT methylation has its own setting below.
+gpu_usage: false
+variant_monte_carlo_linkage: false
+variant_glimpse_reference_dir: /path/to/references/1000g-grch38-2021
+variant_resource_dir: /path/to/references/variant-resources-Fresh
+
+# Preserve the automatic CNA fallback and coarse recovery workflow.
+ichorcna_fallback: true
+ichorcna_fallback_workers: 2
+variant_resource_mode: fixed
+variant_storage_mode: compact
+variant_one_cpu_per_sample: false
+variant_merge_vcfs: false
+cohort_figure: true
+
+# Effective CNA profile from the recorded run command.
+cna_profile: standard

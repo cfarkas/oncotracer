@@ -1,0 +1,12 @@
+sample,sample_type,analysis_role,fastq_files
+FRESH_NORMAL_01,normal,normal,"[""/path/to/Fresh/input/FRESH_NORMAL_01_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_NORMAL_01_R2.fastq.gz""]"
+FRESH_NORMAL_02,normal,normal,"[""/path/to/Fresh/input/FRESH_NORMAL_02_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_NORMAL_02_R2.fastq.gz""]"
+FRESH_NORMAL_03,normal,normal,"[""/path/to/Fresh/input/FRESH_NORMAL_03_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_NORMAL_03_R2.fastq.gz""]"
+FRESH_NORMAL_04,normal,normal,"[""/path/to/Fresh/input/FRESH_NORMAL_04_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_NORMAL_04_R2.fastq.gz""]"
+FRESH_NORMAL_05,normal,normal,"[""/path/to/Fresh/input/FRESH_NORMAL_05_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_NORMAL_05_R2.fastq.gz""]"
+FRESH_CASE_01,cancer,tumor,"[""/path/to/Fresh/input/FRESH_CASE_01_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_CASE_01_R2.fastq.gz""]"
+FRESH_CASE_02,cancer,tumor,"[""/path/to/Fresh/input/FRESH_CASE_02_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_CASE_02_R2.fastq.gz""]"
+FRESH_CASE_03,cancer,tumor,"[""/path/to/Fresh/input/FRESH_CASE_03_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_CASE_03_R2.fastq.gz""]"
+FRESH_CASE_04,cancer,tumor,"[""/path/to/Fresh/input/FRESH_CASE_04_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_CASE_04_R2.fastq.gz""]"
+FRESH_CASE_05,cancer,tumor,"[""/path/to/Fresh/input/FRESH_CASE_05_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_CASE_05_R2.fastq.gz""]"
+FRESH_CASE_06,cancer,tumor,"[""/path/to/Fresh/input/FRESH_CASE_06_R1.fastq.gz"", ""/path/to/Fresh/input/FRESH_CASE_06_R2.fastq.gz""]"

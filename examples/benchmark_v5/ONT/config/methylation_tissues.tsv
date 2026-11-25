@@ -1,0 +1,22 @@
+sample	tissue	pod5
+ONT_CASE_01	Bone marrow	/path/to/ONT/input/ONT_CASE_01/pod5_pass
+ONT_CASE_15	Marrow	/path/to/ONT/input/ONT_CASE_15/pod5_pass
+ONT_CASE_07	CNS tissue	/path/to/ONT/input/ONT_CASE_07/pod5_pass
+ONT_CASE_02	Peripheral blood	/path/to/ONT/input/ONT_CASE_02/pod5_pass
+ONT_CASE_08	CNS tissue	/path/to/ONT/input/ONT_CASE_08/pod5_pass
+ONT_CASE_06	Peripheral blood / bone marrow	/path/to/ONT/input/ONT_CASE_06/pod5_pass
+ONT_CASE_16	CNS tissue	/path/to/ONT/input/ONT_CASE_16/pod5_pass
+ONT_CASE_09	CNS tissue	/path/to/ONT/input/ONT_CASE_09/pod5_pass
+ONT_CASE_11	CNS	/path/to/ONT/input/ONT_CASE_11/pod5_pass
+ONT_CASE_04	Peripheral blood / bone marrow	/path/to/ONT/input/ONT_CASE_04/pod5_pass
+ONT_CASE_03	Peripheral blood	/path/to/ONT/input/ONT_CASE_03/pod5_pass
+ONT_CASE_14	Peripheral blood	/path/to/ONT/input/ONT_CASE_14/pod5_pass
+ONT_CASE_05	Peripheral blood / bone marrow	/path/to/ONT/input/ONT_CASE_05/pod5_pass
+ONT_CASE_13	CNS tissue	/path/to/ONT/input/ONT_CASE_13/pod5_pass
+ONT_CASE_12	CNS tissue	/path/to/ONT/input/ONT_CASE_12/pod5_pass
+ONT_CASE_10	CNS	/path/to/ONT/input/ONT_CASE_10/pod5_pass
+ONT_NORMAL_05	Peripheral blood	/path/to/ONT/input/ONT_NORMAL_05/pod5_pass
+ONT_NORMAL_01	Peripheral blood	/path/to/ONT/input/ONT_NORMAL_01/pod5_pass
+ONT_NORMAL_02	Peripheral blood	/path/to/ONT/input/ONT_NORMAL_02/pod5_pass
+ONT_NORMAL_04	Peripheral blood	/path/to/ONT/input/ONT_NORMAL_04/pod5_pass
+ONT_NORMAL_03	Peripheral blood	/path/to/ONT/input/ONT_NORMAL_03/pod5_pass

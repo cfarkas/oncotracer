@@ -1,0 +1,84 @@
+# Adapted from the real Illumina_FFPE benchmark run, 19-23 November 2026.
+# Original YAML SHA256: 380913f4375b739ba1fc68054f5b6afe07bc3f4dde68a57485d680086e99e05c
+# Replace /path/to paths and sample identifiers; see ../../README.md.
+# Budgets are for the complete cohort, not each sample. The recorded Linux
+# memory ceiling was separate from these OncoTracer scheduler settings.
+# Scientific options and model checksums are retained from the benchmark.
+
+mode: illumina
+
+# Prepared hg38 reference cache; share verified references between projects.
+lpwgs_root: /path/to/FFPE/reference
+hg38_auto_download: true
+reference_download_cache: /path/to/references/download-cache
+outdir: /path/to/FFPE/results
+
+# Total logical CPU threads; keep the command-line allocation consistent.
+threads: 42
+force: false
+run_cna_classifier: true
+run_gistic: true
+gistic_required: true
+knowledge_web: true
+
+# Paired FASTQs and tumor/normal roles; edit the companion CSV.
+illumina_samplesheet: /path/to/FFPE/config/samplesheet.csv
+illumina_caller: qdnaseq
+illumina_binsize_kb: 50
+cna_classifier_sample_set: broad_cancer
+cna_classifier_samples: FFPE_CASE_01,FFPE_CASE_02,FFPE_CASE_03,FFPE_CASE_04,FFPE_CASE_05,FFPE_CASE_06,FFPE_CASE_07,FFPE_CASE_08,FFPE_CASE_09,FFPE_CASE_10,FFPE_CASE_11,FFPE_CASE_12,FFPE_CASE_13,FFPE_CASE_14,FFPE_CASE_15,FFPE_CASE_16,FFPE_CASE_17,FFPE_CASE_18,FFPE_CASE_19,FFPE_CASE_20,FFPE_CASE_21,FFPE_CASE_22,FFPE_CASE_23,FFPE_CASE_24,FFPE_CASE_25,FFPE_CASE_26
+knowledge_literature_llm: true
+knowledge_deep_literature: true
+knowledge_deep_enable_llm_ranker: true
+pathology_use_biomed_models: false
+knowledge_catalog_llm: false
+knowledge_llm_threads: 4
+
+# Callers, imputation and reporting settings used in the timed run.
+run_variants: true
+variant_engine: glimpse2
+variant_specimen_type: ffpe
+variant_callers: bcftools,mutect2
+variant_annovar: auto
+variant_varlociraptor: "off"
+variant_ffperase: required
+variant_parallel_samples: 7
+variant_memory: 400GB
+variant_confidence_gwas: strict
+
+# Optional clinical context: the public template leaves personal fields blank.
+variant_patients: /path/to/FFPE/config/patients.tsv
+variant_tool_prefix: /path/to/environments/variants
+variant_annovar_dir: /path/to/tools/annovar
+variant_annovar_db: /path/to/tools/annovar/humandb
+variant_ffperase_root: /path/to/tools/nf-ffperase-b0dd56cbd0a939896a966b9ce30c4d719b158170
+variant_ffperase_models: /path/to/models/ffperase
+variant_ffperase_prefix: /path/to/environments/ffperase
+
+# References and optional licensed tools were prepared before benchmarking.
+variant_download_resources: false
+variant_accept_ffperase_license: false
+execution_backend: conda
+sample_metadata: /path/to/FFPE/config/sample_metadata.csv
+parallel_samples: 7
+
+# Total cohort memory budget, using the original GB configuration syntax.
+analysis_memory: 400GB
+
+# Main workflow GPU use; ONT methylation has its own setting below.
+gpu_usage: false
+variant_monte_carlo_linkage: false
+variant_glimpse_reference_dir: /path/to/references/1000g-grch38-2021
+variant_resource_dir: /path/to/references/variant-resources-FFPE
+
+# Preserve the automatic CNA fallback and coarse recovery workflow.
+ichorcna_fallback: true
+ichorcna_fallback_workers: 2
+variant_resource_mode: fixed
+variant_storage_mode: compact
+variant_one_cpu_per_sample: false
+variant_merge_vcfs: false
+cohort_figure: true
+
+# Effective CNA profile from the recorded run command.
+cna_profile: standard

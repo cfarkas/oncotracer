@@ -1,0 +1,12 @@
+sample,fastq_1,fastq_2,status
+FRESH_NORMAL_01,/path/to/Fresh/input/FRESH_NORMAL_01_R1.fastq.gz,/path/to/Fresh/input/FRESH_NORMAL_01_R2.fastq.gz,normal
+FRESH_NORMAL_02,/path/to/Fresh/input/FRESH_NORMAL_02_R1.fastq.gz,/path/to/Fresh/input/FRESH_NORMAL_02_R2.fastq.gz,normal
+FRESH_NORMAL_03,/path/to/Fresh/input/FRESH_NORMAL_03_R1.fastq.gz,/path/to/Fresh/input/FRESH_NORMAL_03_R2.fastq.gz,normal
+FRESH_NORMAL_04,/path/to/Fresh/input/FRESH_NORMAL_04_R1.fastq.gz,/path/to/Fresh/input/FRESH_NORMAL_04_R2.fastq.gz,normal
+FRESH_NORMAL_05,/path/to/Fresh/input/FRESH_NORMAL_05_R1.fastq.gz,/path/to/Fresh/input/FRESH_NORMAL_05_R2.fastq.gz,normal
+FRESH_CASE_01,/path/to/Fresh/input/FRESH_CASE_01_R1.fastq.gz,/path/to/Fresh/input/FRESH_CASE_01_R2.fastq.gz,tumor
+FRESH_CASE_02,/path/to/Fresh/input/FRESH_CASE_02_R1.fastq.gz,/path/to/Fresh/input/FRESH_CASE_02_R2.fastq.gz,tumor
+FRESH_CASE_03,/path/to/Fresh/input/FRESH_CASE_03_R1.fastq.gz,/path/to/Fresh/input/FRESH_CASE_03_R2.fastq.gz,tumor
+FRESH_CASE_04,/path/to/Fresh/input/FRESH_CASE_04_R1.fastq.gz,/path/to/Fresh/input/FRESH_CASE_04_R2.fastq.gz,tumor
+FRESH_CASE_05,/path/to/Fresh/input/FRESH_CASE_05_R1.fastq.gz,/path/to/Fresh/input/FRESH_CASE_05_R2.fastq.gz,tumor
+FRESH_CASE_06,/path/to/Fresh/input/FRESH_CASE_06_R1.fastq.gz,/path/to/Fresh/input/FRESH_CASE_06_R2.fastq.gz,tumor
