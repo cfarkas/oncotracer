@@ -340,7 +340,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIs(record["real_reads_downloaded"], False)
         self.assertEqual(record["ui_page_sha256"], hashlib.sha256(self.before_release_3_0("PAGE", PAGE.encode())).hexdigest())
         self.assertEqual(record["mock_api_sha256"], hashlib.sha256(
-            (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes()).hexdigest())
+            self.before_release_3_0("docs/assets/setup-demo/mock-api.js", (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes())).hexdigest())
         for relative, expected in record["source_files"].items():
             self.assertEqual(expected, hashlib.sha256(self.before_release_3_0(relative, (ROOT / relative).read_bytes())).hexdigest(), relative)
         pages = {"quick-start-illumina-ont": None,

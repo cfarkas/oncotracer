@@ -1,6 +1,7 @@
 /* Browser-only synthetic service. This replaces fetch; it never forwards requests. */
 'use strict';
 const demoState={scan:null,prepared:null,job:null,revision:0,requests:[],lastPayload:null};
+const demoVersion='__ONCOTRACER_VERSION__';
 const demoGiB=1073741824;
 const demoPaths={illumina:'/demo/illumina/fastq',ont:'/demo/nanopore/fastq_pass'};
 function demoFixture(platform){
@@ -172,7 +173,18 @@ function demoResourceOptions(payload={}){
 function demoApi(path,payload){
   const url=new URL(path,location.href);
   switch(url.pathname){
-    case '/api/system':return {gpu:demoGpu,default_docker_image:'carlosfarkas/oncotracer:2.3.0-rc.1',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[{name:'Demo NVIDIA GPU',memory_total_bytes:24*demoGiB}],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:2.3.0-rc.1'}};
+    case '/api/system':return {gpu:demoGpu,launcher_version:demoVersion,dependency_selection:{backend:'docker',image:'carlosfarkas/oncotracer:'+demoVersion},default_docker_image:'carlosfarkas/oncotracer:'+demoVersion,hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[{name:'Demo NVIDIA GPU',memory_total_bytes:24*demoGiB}],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:'+demoVersion}};
+    case '/api/dependencies/install/status':return {status:'idle'};
+    case '/api/dependencies/check':{
+      demoState.dependencyCheck={id:'demo-dependency-check',status:'complete',stage:'Simulated tool check',
+        report:{launcher_version:demoVersion+' (demo)',selection:payload,ready:true,
+          release:{status:'checked',version:demoVersion+' (simulated)'},image:{version:demoVersion},
+          tools:[{name:'samtools',path:'/demo/tools/bin/samtools',status:'found'}],
+          environments:[{name:'Example analysis tools',status:'simulated'}],actions:[],
+          warnings:['This inventory is simulated. No software is checked, downloaded or installed.']}};
+      return demoState.dependencyCheck;
+    }
+    case '/api/dependencies/status':return demoState.dependencyCheck||{status:'idle'};
     case '/api/resource-options':return demoResourceOptions(payload);
     case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');
     case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');

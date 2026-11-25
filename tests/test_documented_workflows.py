@@ -174,6 +174,8 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 prompts.clear()
                 with contextlib.ExitStack() as guards:
                     guards.enter_context(patch("builtins.input", side_effect=prompt_handler))
+                    # Installation approval is tested separately; guide tests never contact registries.
+                    guards.enter_context(patch("oncotracer_cli.startup_dependencies.terminal_setup"))
                     if terminal_questions:
                         # Keep the documented four-thread choice portable to
                         # smaller CI runners without dispatching any tool.

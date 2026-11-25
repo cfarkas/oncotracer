@@ -112,6 +112,16 @@ class SampleJobBrowserTests(unittest.TestCase):
             expect(self.page.locator('#dependency-status')).to_contain_text('verified')
             self.assertFalse(self.errors, self.errors)
 
+    def test_static_demo_shows_simulated_dependency_check_without_errors(self):
+        demo = Path(__file__).resolve().parents[1] / 'docs/assets/setup-demo/index.html'
+        self.page.goto(demo.as_uri())
+        expect(self.page.locator('#dependency-warnings')).to_contain_text('inventory is simulated')
+        expect(self.page.locator('#dependency-error')).to_be_hidden()
+        expect(self.page.locator('#dependency-actions button')).to_have_count(0)
+        self.page.locator('#dependency-recheck').click()
+        expect(self.page.locator('#dependency-status')).to_contain_text('verified')
+        self.assertFalse(self.errors, self.errors)
+
     def new_form(self):
         self.page.locator('#choose-new-analysis').click()
         self.page.locator('#variant-fresh').click()

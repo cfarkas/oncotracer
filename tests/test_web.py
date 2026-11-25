@@ -544,6 +544,13 @@ const window={},document={addEventListener(){}},location={href:'https://example.
         script += (assets / 'mock-api.js').read_text().replace('__VARIANT_INSTALL_GUIDES__', '{}').replace('__ANNOVAR_RESOURCE_HELP__', '{}')
         script += r"""
 (async()=>{
+  assert.equal(demoApi('/api/dependencies/install/status',{}).status,'idle');
+  const check=demoApi('/api/dependencies/check',{backend:'docker',image:'demo/image:test'});
+  assert.equal(check.status,'complete');
+  assert.equal(check.report.selection.image,'demo/image:test');
+  assert.match(check.report.warnings[0],/simulated/);
+  assert.deepEqual(check.report.actions,[]);
+  assert.deepEqual(demoApi('/api/dependencies/status',{}),check);
   for(const folder of ['/demo/projects','/demo/resources','/demo/nanopore/pod5_pass']){
     assert.throws(()=>demoApi('/api/scan',{mode:'illumina',folder}),/No sequencing files found\. Check your paths\./);
   }
