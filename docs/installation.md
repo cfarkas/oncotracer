@@ -5,6 +5,9 @@ application for project setup. Use Linux x86-64 and Python 3.10–3.13.
 
 ## Quick start: OncoTracer 6.0.0
 
+The [published study benchmark](benchmarks/2026-11-23.md) records v5 runs.
+See the [v6 release details](releases/6.0.0.md) for this version's changes and validation.
+
 Install [Docker Engine](https://docs.docker.com/engine/install/) and check that
 `docker info` works for your user. Then install the application:
 

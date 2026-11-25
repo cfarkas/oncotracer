@@ -37,9 +37,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
 WORKDIR ${ONCOTRACER_HOME}
 COPY environments/ ${ONCOTRACER_HOME}/environments/
 
-# Core tools live in base so the direct BAM-refinement helper can use the
-# read-only-container fallback without creating another environment.
-RUN conda config --system --set channel_priority strict \
+# Core tools retain /opt/conda for native helpers and packaged caller builds.
+# Stage the base prefix in this writable layer before Conda replaces packages.
+# Updating files directly in Miniforge's lower layer otherwise triggers a copy
+# and filesystem sync for each rename, which is costly on disk-backed CI VMs.
+RUN cp -a /opt/conda /opt/oncotracer-core-stage \
+    && rm -rf /opt/conda \
+    && mv /opt/oncotracer-core-stage /opt/conda \
+    && conda config --system --set channel_priority strict \
     && conda env update --prefix /opt/conda --file environments/native-core.yml \
     && conda clean -afy
 

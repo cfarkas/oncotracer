@@ -327,6 +327,24 @@
         }
       ]
     },
+    "tests/test_copy_paste_paths.py": {
+      "recorded_sha256": "1a8137b02b643bef367a7a3940d083c628f14e361d651fc19bb7c415c16be544",
+      "current_sha256": "0d60c95bec29b1bd2b6981bf8ba67374e5df5ba9c44e02bacb1273a46faa2343",
+      "changes": [
+        {
+          "start": 2306,
+          "end": 2687,
+          "current": "    require_order(block, (\"python3 -m venv oncotracer-env\", \"source oncotracer-env/bin/activate\",\n                          f'python -m pip install \"{url}\"'),\n                  f\"{relative_path} isolated launcher installation\")\n    require(first_command(block) == \"python3 -m venv oncotracer-env\",\n            f\"{relative_path} must create an isolated launcher environment first\")\n",
+          "recorded": "    require(first_command(block) == f'python3 -m pip install --upgrade --force-reinstall \"{url}\"',\n            f\"{relative_path} must start with the versioned release wheel\")\n"
+        },
+        {
+          "start": 2718,
+          "end": 2833,
+          "current": "    require(\"pip install oncotracer\" in text and (\"separate PyPI\" in text or \"separately published PyPI\" in text),\n",
+          "recorded": "    require(\"pip install oncotracer\" in text and \"separately published PyPI\" in text,\n"
+        }
+      ]
+    },
     "tests/test_cpg_setup.py": {
       "recorded_sha256": "52759aa01ed4a501eade69d8a824fe4a354608a3b682150e1ec08cab4b8972eb",
       "current_sha256": "22135125dedf5fecec3f4802c5d13f40c291baec27f63c129e4d567cc29d46ed",
