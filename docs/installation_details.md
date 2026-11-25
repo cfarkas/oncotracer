@@ -64,6 +64,13 @@ add space for your FASTQs, BAMs and temporary copies. Large runs need much more.
 
 The first analysis can take substantially longer because the reference, indexes, packages, and container layers are prepared. If `lpwgs_root/references/samurai_hg38` already exists, OncoTracer treats it as an external, read-only shared reference: every pinned file, index manifest, physical reader lock, and tool identity must validate, and OncoTracer will stop instead of repairing it in place. A plain existing FASTA/index directory is not auto-adopted. When that path is absent, FASTA/index, ichorCNA, and qDNAseq assets go to OncoTracer-owned, content-addressed caches below `lpwgs_root/.oncotracer/reference-cache/`. Later analyses reuse those validated assets even when they use a fresh result directory. Conda channel URLs are retained as informational provenance, but portability validity is based on stable package metadata and the exact indexing-executable SHA-256.
 
+The Docker image includes a parallel downloader for large pinned models and tools.
+It resumes interrupted transfers using up to eight connections and verifies each
+file's size and SHA-256 before use. If parallel downloading fails, OncoTracer
+falls back to its standard resumable downloader. On other backends, it uses
+`aria2c` when available; installing it is optional.
+
+
 ## Standalone executable
 
 The [developer guide](developer_guide.md#build-the-deterministic-copied-executable)

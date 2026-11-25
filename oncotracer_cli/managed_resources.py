@@ -56,6 +56,63 @@ def _safe_directory(path):
     return path
 
 
+PARALLEL_DOWNLOAD_MIN_BYTES = 64 * 1024 * 1024
+BUNDLED_DOWNLOADER = Path('/opt/oncotracer-downloader/bin/aria2c')
+
+
+def _parallel_fetch(item, target):
+    """Resume large pinned assets with bounded connections when aria2 is present."""
+    size=item.get('bytes');expected=item.get('sha256')
+    if not size or size < PARALLEL_DOWNLOAD_MIN_BYTES or not expected:return False
+    executable=str(BUNDLED_DOWNLOADER) if BUNDLED_DOWNLOADER.is_file() else shutil.which('aria2c')
+    if executable is None:return False
+    def verified(path):
+        return path.is_file() and path.stat().st_size==size and sha256_file(path)==expected
+    if verified(target):return True
+    # Separate chunk state by the complete pinned digest. A model update cannot
+    # resume chunks from an earlier asset with the same filename.
+    stage=target.with_name('.'+target.name+'.parts-'+expected)
+    candidate=stage/'payload';control=stage/'payload.aria2';lock=stage/'.lock'
+    if any(p.is_symlink() for p in (stage,candidate,control,lock)):
+        raise OncoTracerError('Parallel download state must not contain symlinks: '+str(stage))
+    stage.mkdir(mode=0o700,exist_ok=True)
+    with exclusive_lock(lock):
+        if verified(target):return True
+        command=[executable,'--no-conf=true','--check-certificate=true',
+            '--auto-file-renaming=false','--allow-overwrite=true','--continue=true',
+            '--file-allocation=none','--max-connection-per-server=8','--split=8',
+            '--min-split-size=4M','--max-tries=5','--retry-wait=3',
+            '--connect-timeout=20','--timeout=60','--lowest-speed-limit=1K',
+            '--auto-save-interval=5','--enable-color=false','--show-console-readout=false','--summary-interval=30',
+            '--console-log-level=warn','--download-result=hide',
+            '--checksum=sha-256='+expected,'--dir='+str(stage),'--out=payload',item['url']]
+        print('Downloading '+target.name+' with up to eight connections',flush=True)
+        try:result=subprocess.run(command,check=False)
+        except OSError as error:
+            print('Parallel downloader unavailable; using the standard downloader: '+str(error),flush=True)
+            return False
+        # Independently verify bytes; a successful external exit is insufficient.
+        if result.returncode==0 and verified(candidate):
+            os.replace(candidate,target);control.unlink(missing_ok=True)
+            return True
+        if result.returncode==0:
+            candidate.unlink(missing_ok=True);control.unlink(missing_ok=True)
+        # Interrupted chunks stay in the isolated directory for the next retry.
+        # The standard downloader has a separate contiguous-prefix partial file.
+        print('Parallel download did not verify; using the standard downloader',flush=True)
+        return False
+
+
+def _clear_parallel_partial(item, target):
+    stage=target.with_name('.'+target.name+'.parts-'+item['sha256'])
+    candidate=stage/'payload';control=stage/'payload.aria2';lock=stage/'.lock'
+    if not stage.exists():return
+    if any(p.is_symlink() for p in (stage,candidate,control,lock)):
+        raise OncoTracerError('Parallel download state must not contain symlinks: '+str(stage))
+    with exclusive_lock(lock):
+        candidate.unlink(missing_ok=True);control.unlink(missing_ok=True)
+
+
 def _fetch(name, folder, *, bundled=None):
     item=assets()[name]; target=folder/item['filename']
     if target.is_symlink():raise OncoTracerError('Resource file must not be a symlink: '+str(target))
@@ -66,6 +123,10 @@ def _fetch(name, folder, *, bundled=None):
         temporary=target.with_name('.'+target.name+'.copy')
         shutil.copyfile(original,temporary);os.replace(temporary,target)
     print('Checking resource: '+name,flush=True)
+    if _parallel_fetch(item,target):
+        partial=target.with_name('.'+target.name+'.part')
+        if partial.is_file() and not partial.is_symlink():partial.unlink()
+        return target
     stopped=threading.Event()
     def progress():
         temporary=target.with_name('.'+target.name+'.part')
@@ -83,6 +144,7 @@ def _fetch(name, folder, *, bundled=None):
     finally:stopped.set();thread.join()
     partial=target.with_name('.'+target.name+'.part')
     if partial.is_file() and not partial.is_symlink():partial.unlink()
+    _clear_parallel_partial(item,target)
     return verified
 
 

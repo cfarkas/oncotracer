@@ -90,7 +90,7 @@ jobs:
         run: |
           python3 -m unittest -v \
             tests/test_bootstrap.py \
-            tests/test_launch.py tests/test_launch_ont_profile.py tests/test_sample_manifest.py tests/test_managed_resources.py \
+            tests/test_launch.py tests/test_launch_ont_profile.py tests/test_sample_manifest.py tests/test_managed_resources.py tests/test_managed_parallel_downloads.py \
             tests/test_native_cli.py \
             tests/test_optional_cohort.py \
             tests/test_nextflow_gateway.py \

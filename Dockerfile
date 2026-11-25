@@ -112,18 +112,11 @@ RUN conda env create --prefix /opt/oncotracer-envs/sturgeon-deps --file environm
 RUN echo 'a73e0d796932b9455cbef207dda4937b98b06b687b049acda46c152d1d25f2c9  /usr/local/bin/nextflow' | sha256sum -c - \
     && echo 'a0fc1d8cadedd6c8aae0532da04da06a3b642d910bc9a15718ba263ac9013a2b  /opt/nextflow/framework/26.04.2/nextflow-26.04.2-one.jar' | sha256sum -c -
 
-# Keep release identity after the expensive dependencies so metadata changes
-# can reuse their verified layers. Environment files still control their cache.
-ARG SOURCE_COMMIT
-ARG SOURCE_SHA256
-
-LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="6.0.0" \
-      org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
-      org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
-      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
-      org.opencontainers.image.source.sha256="${SOURCE_SHA256}" \
-      org.opencontainers.image.licenses="MIT"
+# Large pinned model downloads use bounded parallel connections with resume.
+# Keep this small helper separate from the scientific runtime environments.
+RUN conda create --yes --prefix /opt/oncotracer-downloader --channel conda-forge aria2=1.37.0 \
+    && /opt/oncotracer-downloader/bin/aria2c --version >/dev/null \
+    && conda clean -afy
 
 COPY . ${ONCOTRACER_HOME}/
 
@@ -150,6 +143,19 @@ RUN python -B -c "from pathlib import Path; from oncotracer_cli.variant_install_
 RUN PATH="${ONCOTRACER_VARIANTS_PREFIX}/bin:/opt/micromamba/envs/clairs-to/bin:${PATH}" /opt/conda/bin/python -B -m unittest tests.test_variant_work tests.test_glimpse_parallel tests.test_glimpse_preflight_parallel tests.test_haplotype_evidence tests.test_variant_postcalling tests.test_quilt2_recovery tests.test_gpu_resources tests.test_glimpse_joint tests.test_glimpse_resume tests.test_optional_cohort tests.test_glimpse_storage tests.test_dynamic_resources tests.test_scheduler_recovery tests.test_quilt_parallel tests.test_gistic_eligibility tests.test_project_resume tests.test_podman_backend tests.test_cna_sensitivity tests.test_broad_cna -q
 RUN "${ONCOTRACER_QDNASEQ_PREFIX}/bin/Rscript" --vanilla tests/test_cna_coverage.R
 RUN "${ONCOTRACER_CLASSIFIER_PREFIX}/bin/python" -B -m unittest tests.test_native_classifier.NativeClassifierTests.test_required_gistic_with_one_eligible_sample_finishes_reports_and_preserves_qc -q
+
+# Bind release identity only after runtime/model preparation and checks.
+# A merge commit can reuse those layers while producing its own bound binary.
+ARG SOURCE_COMMIT
+ARG SOURCE_SHA256
+
+LABEL org.opencontainers.image.title="OncoTracer" \
+      org.opencontainers.image.version="6.0.0" \
+      org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
+      org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
+      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
+      org.opencontainers.image.source.sha256="${SOURCE_SHA256}" \
+      org.opencontainers.image.licenses="MIT"
 
 RUN if [[ -z "${SOURCE_COMMIT}" && -z "${SOURCE_SHA256}" ]]; then \
         python scripts/build_native_binary.py \
