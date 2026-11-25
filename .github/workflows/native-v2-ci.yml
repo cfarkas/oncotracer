@@ -539,18 +539,20 @@ jobs:
           set -Eeuo pipefail
           # The existing 40 GiB CNA budget is extended for the variant and ONT
           # runtimes (the tested full image is 31.3 GiB) and upstream pull/export.
-          # GPU runtimes add download and extraction space: require 96 GiB free.
+          # GPU runtimes add download and extraction space: require 120 GiB free.
           FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=14
           TRANSIENT_SOLVE_AND_EXPORT_GIB=18
           VARIANT_AND_ONT_RUNTIME_GIB=20
           ONT_PULL_AND_EXPORT_GIB=12
           GPU_RUNTIME_AND_EXPORT_GIB=24
+          METHYLATION_RUNTIME_AND_EXPORT_GIB=24
           RUNNER_RESERVE_GIB=8
           MIN_PHYSICAL_GIB=15
           MIN_FREE_GIB=$((
             FINAL_SCIENTIFIC_ENVIRONMENTS_GIB +
             TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB +
-            VARIANT_AND_ONT_RUNTIME_GIB + ONT_PULL_AND_EXPORT_GIB + GPU_RUNTIME_AND_EXPORT_GIB
+            VARIANT_AND_ONT_RUNTIME_GIB + ONT_PULL_AND_EXPORT_GIB + GPU_RUNTIME_AND_EXPORT_GIB +
+            METHYLATION_RUNTIME_AND_EXPORT_GIB
           ))
           DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
           bash scripts/ci_resource_preflight.sh \

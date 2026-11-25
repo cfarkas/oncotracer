@@ -18,10 +18,12 @@ Use the release wheel above; `pip install oncotracer` follows the separate PyPI 
 
 Create `samples.csv`. Paths can be relative to this table:
 
-```csv
+```bash
+cat > samples.csv <<'CSV'
 sample,fastq_1,fastq_2,status
 CASE_01,reads/case_R1.fastq.gz,reads/case_R2.fastq.gz,tumor
 NORMAL_01,reads/normal_R1.fastq.gz,reads/normal_R2.fastq.gz,normal
+CSV
 ```
 
 Run fresh Illumina data:

@@ -347,13 +347,49 @@
     },
     "tests/test_docs_style.py": {
       "recorded_sha256": "39b1e871bc600a543a273b13724c32ca79f6da7d1dd7e88c390a92be29b69b50",
-      "current_sha256": "162038aab2efa5272c2a9cb5f384ff18f5ec420edc3f4f91cd04b6d29a01df1e",
+      "current_sha256": "76b27a3277d61e47e9fc7f46bf781f4558f98ec6c58124488922d9006e1f1bde",
       "changes": [
         {
           "start": 6250,
           "end": 6291,
           "current": "        \"carlosfarkas/oncotracer:6.0.0\",\n",
           "recorded": "        \"carlosfarkas/oncotracer:5.0.0\",\n"
+        },
+        {
+          "start": 7695,
+          "end": 7744,
+          "current": "        \"oncotracer-v6.0.0-parity-audit.tar.gz\",\n",
+          "recorded": "        \"oncotracer-v5.0.0-parity-audit.tar.gz\",\n"
+        }
+      ]
+    },
+    "tests/test_hosted_ci_storage_safety.py": {
+      "recorded_sha256": "1517027fe88e839bfdf8de1b20113ea8bce37111662f72a04fb5159ca402a6ef",
+      "current_sha256": "96e45c96d2de613a9fa79d939c8a36de92d46be5f52b9dbeec1f6bf6978e41c1",
+      "changes": [
+        {
+          "start": 137220,
+          "end": 137286,
+          "current": "                self.assertEqual(result.stdout.strip(), \"120 15\")\n",
+          "recorded": "                self.assertEqual(result.stdout.strip(), \"96 15\")\n"
+        }
+      ]
+    },
+    "tests/test_install_safety.py": {
+      "recorded_sha256": "877a7581465186f6b23d08080dba2449411541fe339fb9a8f75a6c03428853c6",
+      "current_sha256": "3bfc193f889e34df4dd14ae02db5fa2f982e00365e54484bee958d27254eb26b",
+      "changes": [
+        {
+          "start": 3179,
+          "end": 3301,
+          "current": "        for version in (\"2.1.0\", \"2.3.0\", \"2.3.1rc2\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\", __version__):\n",
+          "recorded": "        for version in (\"2.1.0\", \"2.3.0\", \"2.3.1rc2\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", __version__):\n"
+        },
+        {
+          "start": 3402,
+          "end": 3461,
+          "current": "        for version in (\"1.1.0\", \"2.3.99\", \"7.0.0\", None):\n",
+          "recorded": "        for version in (\"1.1.0\", \"2.3.99\", \"6.0.0\", None):\n"
         }
       ]
     },

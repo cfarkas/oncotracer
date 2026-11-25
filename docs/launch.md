@@ -9,10 +9,12 @@ references. You do not need host Conda, R, Nextflow or separate caller installs.
 
 Save this as `samples.csv`, replacing the example paths:
 
-```csv
+```bash
+cat > samples.csv <<'CSV'
 sample,fastq_1,fastq_2,status
 CASE_01,reads/case_R1.fastq.gz,reads/case_R2.fastq.gz,tumor
 NORMAL_01,reads/normal_R1.fastq.gz,reads/normal_R2.fastq.gz,normal
+CSV
 ```
 
 ```bash
@@ -51,11 +53,13 @@ how to supply a licensed installation explicitly.
 
 Save `ont.csv` with one row per library:
 
-```csv
+```bash
+cat > ont.csv <<'CSV'
 sample,library,status,tissue
 CASE_01,ONT/library_01,tumor,bone marrow
 CASE_02,ONT/library_02,tumor,CNS
 NORMAL_01,ONT/control_01,normal,blood
+CSV
 ```
 
 Each library contains `fastq_pass/` and `pod5_pass/`. They may contain a single

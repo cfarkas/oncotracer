@@ -132,18 +132,20 @@ jobs:
         run: |
           set -Eeuo pipefail
           # Match Native v2 CI's scientific, ONT, and GPU runtime budget:
-          # 96 GiB before any publication step.
+          # 120 GiB before any publication step.
           FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=14
           TRANSIENT_SOLVE_AND_EXPORT_GIB=18
           VARIANT_AND_ONT_RUNTIME_GIB=20
           ONT_PULL_AND_EXPORT_GIB=12
           GPU_RUNTIME_AND_EXPORT_GIB=24
+          METHYLATION_RUNTIME_AND_EXPORT_GIB=24
           RUNNER_RESERVE_GIB=8
           MIN_PHYSICAL_GIB=15
           MIN_FREE_GIB=$((
             FINAL_SCIENTIFIC_ENVIRONMENTS_GIB +
             TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB +
-            VARIANT_AND_ONT_RUNTIME_GIB + ONT_PULL_AND_EXPORT_GIB + GPU_RUNTIME_AND_EXPORT_GIB
+            VARIANT_AND_ONT_RUNTIME_GIB + ONT_PULL_AND_EXPORT_GIB + GPU_RUNTIME_AND_EXPORT_GIB +
+            METHYLATION_RUNTIME_AND_EXPORT_GIB
           ))
           DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
           bash scripts/ci_resource_preflight.sh \
