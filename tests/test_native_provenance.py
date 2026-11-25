@@ -320,7 +320,7 @@ class NativeProvenanceTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        self.assertIn("OncoTracer 6.0.1", version.stdout)
+        self.assertIn("OncoTracer 6.2.0", version.stdout)
         result = subprocess.run(
             [str(copied), "provenance", "--json"],
             cwd=outside,

@@ -120,8 +120,6 @@ class VariantInstaller:
             reason = "" if executable else f"Install {engine.capitalize()} and enable access to its runtime first."
             if flow == "bam":
                 reason = "The existing-BAM form uses native tools. Container installation is available in FASTQ setup."
-            elif data.get("analysis", "cna") != "cna":
-                reason = f"{engine.capitalize()} supports CNA with optional variants; choose Conda for a methylation workflow."
             reasons[engine] = reason
         options = [{"method": name, "label": "Conda / Mamba" if name == "conda" else name.capitalize(),
                     "available": not reason, "reason": reason} for name, reason in reasons.items()]

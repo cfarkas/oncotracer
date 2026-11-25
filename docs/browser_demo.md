@@ -1,5 +1,7 @@
 # Explore the browser interface
 
+Version 6.2 checks installed tools before configuration and offers approved background installation. The earlier recordings below show the analysis form; they predate this startup check.
+
 **[Open the interactive demo](assets/setup-demo/index.html)**
 
 Try the same setup interface used by `oncotracer --interactive`, with synthetic Illumina

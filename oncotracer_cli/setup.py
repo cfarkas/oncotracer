@@ -262,8 +262,13 @@ def command_setup(args: argparse.Namespace) -> int:
                 args.start_dir = str(Path.cwd())
                 return command_web(args)
             from .wizard import command_wizard
+            from .startup_dependencies import terminal_setup
 
+            terminal_setup(args)
             return command_wizard(args)
+        if not args.non_interactive and not resuming:
+            from .startup_dependencies import terminal_setup
+            terminal_setup(args)
         return _command_setup(args)
     except OSError as error:
         raise OncoTracerError(

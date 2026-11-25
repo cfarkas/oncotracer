@@ -3,10 +3,10 @@
 The recommended v6 route uses Docker for scientific tools and a small Python
 application for project setup. Use Linux x86-64 and Python 3.10–3.13.
 
-## Quick start: OncoTracer 6.0.1
+## Quick start: OncoTracer 6.2.0
 
 The [published study benchmark](benchmarks/2026-11-23.md) records v5 runs.
-See the [v6 release details](releases/6.0.1.md) for this version's changes and validation.
+See the [v6 release details](releases/6.2.0.md) for this version's changes and validation.
 
 Install [Docker Engine](https://docs.docker.com/engine/install/) and check that
 `docker info` works for your user. Then install the application:
@@ -14,7 +14,7 @@ Install [Docker Engine](https://docs.docker.com/engine/install/) and check that
 ```bash
 python3 -m venv oncotracer-env
 source oncotracer-env/bin/activate
-python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.0.1/oncotracer-6.0.1-py3-none-any.whl"
+python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.2.0/oncotracer-6.2.0-py3-none-any.whl"
 ```
 
 No Git checkout is needed. `pip install oncotracer` follows the separate PyPI
@@ -35,15 +35,36 @@ table and inspect CPU/RAM allocation without downloading or writing files.
 ## Browser setup
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:6.0.1
-oncotracer doctor --backend docker
-oncotracer --interactive --backend docker
+oncotracer interactive --backend docker
 ```
 
-Open the complete URL printed in the terminal. Select inputs, sample roles,
-analysis and output folder. Docker methylation prepares tools/models when you
+Open the complete URL printed in the terminal. The first card checks host tools,
+installed analysis environments, Docker access and the selected image. It also
+checks the latest published release. Review any offered installation, then click
+**Install and verify** to start it in the background. Progress, logs, stop and
+retry controls stay in the browser. No installation starts just from opening
+setup.
+
+For terminal questions, run `oncotracer setup --terminal --backend docker`.
+It performs the same check and asks before installing. An explicit custom or
+digest-pinned image is kept unless you choose an alternative. If GitHub is
+unreachable, local checks still run; the update status is shown as unknown.
+
+Then select inputs, sample roles, analysis and output folder. Docker methylation prepares tools/models when you
 save; CNS classification requires the Sturgeon license acknowledgement.
 Select **Run analysis** after reviewing the saved settings.
+
+## Upgrade the launcher
+
+In the environment where you run OncoTracer:
+
+```bash
+python -m pip install --upgrade "https://github.com/cfarkas/oncotracer/releases/download/v6.2.0/oncotracer-6.2.0-py3-none-any.whl"
+oncotracer --version
+```
+
+Save your setup, close the old browser session and restart `oncotracer interactive`.
+An image update does not replace the Python application already running in a terminal.
 
 ## Conda and existing workflows
 

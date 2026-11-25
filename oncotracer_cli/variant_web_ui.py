@@ -83,3 +83,6 @@ from .variant_resource_ui import add_resource_ui
 
 PAGE = PAGE.replace('<!-- VARIANT_FORM -->', variant_form(existing_bam=True))
 PAGE = add_resource_ui(PAGE, existing_bam=True)
+
+from .startup_dependency_ui import add_dependency_ui
+PAGE = add_dependency_ui(PAGE)

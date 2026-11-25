@@ -1,0 +1,613 @@
+{
+  "schema": 1,
+  "description": "Preserve earlier recorded analysis-form evidence through the 6.2.0 dependency setup change. Reversible changes authenticate both source hashes; old videos predate and do not demonstrate the new startup check or installation workflow.",
+  "recorded_commit": "85094927629a12bbefd0a6ca2f72a7432ed32e39",
+  "files": {
+    "oncotracer_cli/__init__.py": {
+      "recorded_sha256": "5eb4288aaa5b4e94b98886034ee7d8aaa452bf9760089ef68c9ab060474b2073",
+      "current_sha256": "1dc9f3ebea76c726d13c44915244be8932da6099e2a6ce1dd357d18235fa12db",
+      "changes": [
+        {
+          "start": 43,
+          "end": 65,
+          "current": "__version__ = \"6.2.0\"\n",
+          "recorded": "__version__ = \"6.0.1\"\n"
+        }
+      ]
+    },
+    "oncotracer_cli/cli.py": {
+      "recorded_sha256": "e149081840eed9d81a9a48865fe19d412e7e9bc860e371d0b0d2c2f768eaadfd",
+      "current_sha256": "7c70431ddd5315d207c659915b43ccf3eb0aeb3165a8ebd6c501a66375c6bb04",
+      "changes": [
+        {
+          "start": 1667,
+          "end": 1715,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:6.2.0\"\n",
+          "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:6.0.1\"\n"
+        },
+        {
+          "start": 4190,
+          "end": 4275,
+          "current": "    from .variant_installer import _executable\n    conda = _executable(\"conda\") or (\n",
+          "recorded": "    conda = shutil.which(\"conda\") or (\n"
+        }
+      ]
+    },
+    "oncotracer_cli/install_safety.py": {
+      "recorded_sha256": "8b9435dff83630d1e05a5e81dd147b6315106c871f0b5978028457b3acf06c83",
+      "current_sha256": "0b8e19fa7b8639931fbabaa3bc112fb4222928bb21bbb82a5bfbcca5d3657f8b",
+      "changes": [
+        {
+          "start": 4249,
+          "end": 4369,
+          "current": "            \"2.3.1rc1\", \"2.3.1rc2\", \"2.3.1rc3\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\", \"6.0.0\", \"6.0.1\",\n",
+          "recorded": "            \"2.3.1rc1\", \"2.3.1rc2\", \"2.3.1rc3\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\", \"6.0.0\",\n"
+        }
+      ]
+    },
+    "oncotracer_cli/setup.py": {
+      "recorded_sha256": "c81c051aecb528aed78af666f3b5e409c90c72aade355b68934584d96649f461",
+      "current_sha256": "7e160e035ebe90c9a889d2d2b9e8195c702f46e7c50d46b9de57cbcf92892bea",
+      "changes": [
+        {
+          "start": 11262,
+          "end": 11323,
+          "current": "            from .startup_dependencies import terminal_setup\n",
+          "recorded": ""
+        },
+        {
+          "start": 11324,
+          "end": 11357,
+          "current": "            terminal_setup(args)\n",
+          "recorded": ""
+        },
+        {
+          "start": 11397,
+          "end": 11545,
+          "current": "        if not args.non_interactive and not resuming:\n            from .startup_dependencies import terminal_setup\n            terminal_setup(args)\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/variant_install_ui.py": {
+      "recorded_sha256": "3e781fdffa0509e7e5c2c2f5430facb04871c4be02fa166eae6b3bdd1548bae0",
+      "current_sha256": "f7b6cb97e6488e6f40e0c8bd8e6b1dc9b4e94317a56ea5d98e4d4af1ba1195ac",
+      "changes": [
+        {
+          "start": 5377,
+          "end": 5529,
+          "current": "  if(variantInstallActive||(typeof dependencyInstallActive!=='undefined'&&dependencyInstallActive)){$('prepare').disabled=true;$('run').disabled=true;}\n",
+          "recorded": "  if(variantInstallActive){$('prepare').disabled=true;$('run').disabled=true;}\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_installer.py": {
+      "recorded_sha256": "5a051cc66c11f3dc2905ddb711dee0b748e89419a9719ddbf7fa9957375698ef",
+      "current_sha256": "9f5b30bd6a73eabf93ed2101f4bad0c54cb1b3ceb08e1ca12632c8f13db4932b",
+      "changes": [
+        {
+          "start": 6088,
+          "end": 6088,
+          "current": "",
+          "recorded": "            elif data.get(\"analysis\", \"cna\") != \"cna\":\n                reason = f\"{engine.capitalize()} supports CNA with optional variants; choose Conda for a methylation workflow.\"\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_web_ui.py": {
+      "recorded_sha256": "9a9374b5a865687baec79d2adddf47190c93bba1b1ade9e1f3a23b7b6ea9f54a",
+      "current_sha256": "d0b334d3cf92c07349700bdc759a7a607411a3dae14055e3717b439adad0f86f",
+      "changes": [
+        {
+          "start": 23887,
+          "end": 23972,
+          "current": "\nfrom .startup_dependency_ui import add_dependency_ui\nPAGE = add_dependency_ui(PAGE)\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/web.py": {
+      "recorded_sha256": "c7f431f23c7963ffd96dbf43dd5abbb2ad443beaa1dbf66cb49d9beaf24894ec",
+      "current_sha256": "c1823aa156157124190edc80de0d83a8f9927a77b1e4966abdb563537e657bc4",
+      "changes": [
+        {
+          "start": 6171,
+          "end": 6293,
+          "current": "        from .startup_dependencies import DependencySetup\n        self.dependency_setup = DependencySetup(self.start_dir)\n",
+          "recorded": ""
+        },
+        {
+          "start": 8861,
+          "end": 8971,
+          "current": "        from . import __version__\n        from .startup_dependencies import selection as dependency_selection\n",
+          "recorded": ""
+        },
+        {
+          "start": 9223,
+          "end": 9443,
+          "current": "                \"default_docker_image\": DEFAULT_IMAGE, \"launcher_version\": __version__,\n                \"dependency_selection\": dependency_selection({\"backend\": defaults.get(\"backend\"), \"image\": defaults.get(\"image\")}),\n",
+          "recorded": "                \"default_docker_image\": DEFAULT_IMAGE,\n"
+        },
+        {
+          "start": 14330,
+          "end": 14368,
+          "current": "        self._require_installs_idle()\n",
+          "recorded": "        self.variant_installer.require_idle()\n"
+        },
+        {
+          "start": 14554,
+          "end": 14596,
+          "current": "            self._require_installs_idle()\n",
+          "recorded": ""
+        },
+        {
+          "start": 37332,
+          "end": 37370,
+          "current": "        self._require_installs_idle()\n",
+          "recorded": "        self.variant_installer.require_idle()\n"
+        },
+        {
+          "start": 37394,
+          "end": 37436,
+          "current": "            self._require_installs_idle()\n",
+          "recorded": ""
+        },
+        {
+          "start": 42603,
+          "end": 43745,
+          "current": "    def _require_installs_idle(self):\n        self.variant_installer.require_idle()\n        self.dependency_setup.require_idle()\n\n    def dependency_check(self, data):\n        with self.lock:\n            self._require_installs_idle()\n            if self.job and self.job['status'] in {'running', 'stopping'}:\n                raise OncoTracerError('Wait for the current analysis before checking or changing its installation.')\n            return self.dependency_setup.inspect(data)\n\n    def dependency_install(self, data):\n        with self.lock:\n            self._require_installs_idle()\n            if self.job and self.job['status'] in {'running', 'stopping'}:\n                raise OncoTracerError('Wait for the current analysis before installing tools.')\n            return self.dependency_setup.start(data)\n\n    def variant_install(self, data):\n        with self.lock:\n            self._require_installs_idle()\n            if self.job and self.job['status'] in {'running', 'stopping'}:\n                raise OncoTracerError('Wait for the current analysis before installing tools.')\n            return self.variant_installer.start(data)\n\n",
+          "recorded": ""
+        },
+        {
+          "start": 44824,
+          "end": 44862,
+          "current": "        self._require_installs_idle()\n",
+          "recorded": "        self.variant_installer.require_idle()\n"
+        },
+        {
+          "start": 44915,
+          "end": 45032,
+          "current": "        with self.lock:\n            self._require_installs_idle()\n            return prepare_for_browser(self, data)\n",
+          "recorded": "        return prepare_for_browser(self, data)\n"
+        },
+        {
+          "start": 45058,
+          "end": 45096,
+          "current": "        self._require_installs_idle()\n",
+          "recorded": "        self.variant_installer.require_idle()\n"
+        },
+        {
+          "start": 45120,
+          "end": 45162,
+          "current": "            self._require_installs_idle()\n",
+          "recorded": ""
+        },
+        {
+          "start": 67793,
+          "end": 68057,
+          "current": "            elif url.path == \"/api/dependencies/status\":\n                value = self.server.state.dependency_setup.check_status()\n            elif url.path == \"/api/dependencies/install/status\":\n                value = self.server.state.dependency_setup.status()\n",
+          "recorded": ""
+        },
+        {
+          "start": 69082,
+          "end": 69438,
+          "current": "                       \"/api/dependencies/check\": self.server.state.dependency_check,\n                       \"/api/dependencies/plan\": self.server.state.dependency_setup.plan,\n                       \"/api/dependencies/install\": self.server.state.dependency_install,\n                       \"/api/dependencies/stop\": self.server.state.dependency_setup.stop,\n",
+          "recorded": ""
+        },
+        {
+          "start": 70006,
+          "end": 70094,
+          "current": "                       '/api/variant-install/start': self.server.state.variant_install,\n",
+          "recorded": "                       '/api/variant-install/start': self.server.state.variant_installer.start,\n"
+        },
+        {
+          "start": 73233,
+          "end": 73272,
+          "current": "        state.dependency_setup.close()\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "oncotracer_cli/web_ui.py": {
+      "recorded_sha256": "06796e083b9b1ba9b0026c0d01bb2d8251ddddf67979f607305886a256cd6b60",
+      "current_sha256": "5461990d7e03d07c0a8913dbd4778232abb5f9a026d6f8e7d53116f5f6a03d8f",
+      "changes": [
+        {
+          "start": 92367,
+          "end": 92452,
+          "current": "\nfrom .startup_dependency_ui import add_dependency_ui\nPAGE = add_dependency_ui(PAGE)\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "tests/native_science_audit.py": {
+      "recorded_sha256": "0a339aa84670da1498f480690b84c448f516724c9fbea7e1b2ab9114e601de22",
+      "current_sha256": "7cd861c44d720a2f8acf39c1dd7a59a22612981e59cc905be28213fa6b756c09",
+      "changes": [
+        {
+          "start": 1537,
+          "end": 1602,
+          "current": "              'candidate':(candidate_sha,source_sha256,'6.2.0')}\n",
+          "recorded": "              'candidate':(candidate_sha,source_sha256,'6.0.1')}\n"
+        }
+      ]
+    },
+    "tests/test_docs_style.py": {
+      "recorded_sha256": "341e882b7b6f64816010b38790b2b3c2729d6b7661855f87f499989422a7773b",
+      "current_sha256": "9f7a587ed93d2249dc75454ef1d69650ffa983e2392cc4b91b8295fa786f357d",
+      "changes": [
+        {
+          "start": 6250,
+          "end": 6291,
+          "current": "        \"carlosfarkas/oncotracer:6.2.0\",\n",
+          "recorded": "        \"carlosfarkas/oncotracer:6.0.1\",\n"
+        },
+        {
+          "start": 7695,
+          "end": 7744,
+          "current": "        \"oncotracer-v6.2.0-parity-audit.tar.gz\",\n",
+          "recorded": "        \"oncotracer-v6.0.1-parity-audit.tar.gz\",\n"
+        }
+      ]
+    },
+    "tests/test_install_safety.py": {
+      "recorded_sha256": "8d8b3d8b76d38888dfca007dbca6d291dfb757b2a62aa31a3ea45957b29843c5",
+      "current_sha256": "2796803e573fd3ca0ab71f8862b169e1cb59680814c74323bf208f922e3538e3",
+      "changes": [
+        {
+          "start": 3179,
+          "end": 3319,
+          "current": "        for version in (\"2.1.0\", \"2.3.0\", \"2.3.1rc2\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\", \"6.0.0\", \"6.0.1\", __version__):\n",
+          "recorded": "        for version in (\"2.1.0\", \"2.3.0\", \"2.3.1rc2\", \"2.3.1\", \"2.3.2\", \"3.0.0\", \"4.0.0\", \"4.1.0\", \"5.0.0\", \"6.0.0\", __version__):\n"
+        }
+      ]
+    },
+    "tests/test_native_cli.py": {
+      "recorded_sha256": "e959a0e45235454388cfd4f08fed281bc28ed5a8b21b008e9032e3374fb23272",
+      "current_sha256": "efe0878c55e465e1655a6d9222332ba7ed313eee25923fcd4b9bc014af6e2d2f",
+      "changes": [
+        {
+          "start": 4723,
+          "end": 4770,
+          "current": "        self.assertEqual(__version__, \"6.2.0\")\n",
+          "recorded": "        self.assertEqual(__version__, \"6.0.1\")\n"
+        },
+        {
+          "start": 6052,
+          "end": 6103,
+          "current": "            ([], \"carlosfarkas/oncotracer:6.2.0\"),\n",
+          "recorded": "            ([], \"carlosfarkas/oncotracer:6.0.1\"),\n"
+        }
+      ]
+    },
+    "tests/test_native_provenance.py": {
+      "recorded_sha256": "146c61845147a43142a17e89dc57812a62915cdb7d17dc230f36b4363a46f538",
+      "current_sha256": "f22d202ee8349fb5d4a3926b8af7878fdf09d5907bd497b2111435e01b9cc43d",
+      "changes": [
+        {
+          "start": 12645,
+          "end": 12703,
+          "current": "        self.assertIn(\"OncoTracer 6.2.0\", version.stdout)\n",
+          "recorded": "        self.assertIn(\"OncoTracer 6.0.1\", version.stdout)\n"
+        }
+      ]
+    },
+    "tests/test_native_science_audit.py": {
+      "recorded_sha256": "17413d734d67f86effe3b62290e9fdd69a624914b03c70c166fde8bb60ee1da8",
+      "current_sha256": "13a97f85a464bc907596e921c9784ed8806caf047924153d00ee5669485d0233",
+      "changes": [
+        {
+          "start": 774,
+          "end": 931,
+          "current": "                       source_sha256=audit.BASELINE_SOURCE if side=='baseline' else self.source,oncotracer_version='3.0.0' if side=='baseline' else '6.2.0',\n",
+          "recorded": "                       source_sha256=audit.BASELINE_SOURCE if side=='baseline' else self.source,oncotracer_version='3.0.0' if side=='baseline' else '6.0.1',\n"
+        }
+      ]
+    },
+    "tests/test_poetry_cli.py": {
+      "recorded_sha256": "ac1e58b69ea8edcc8ca2286cd90a9193014c188f21c17e44e443b0c19341e2fa",
+      "current_sha256": "9b775a596bddef743eb49424f11d22218b6ff582ce267da0d4d0bd552e0bb71d",
+      "changes": [
+        {
+          "start": 448,
+          "end": 495,
+          "current": "        self.assertEqual(__version__, \"6.2.0\")\n",
+          "recorded": "        self.assertEqual(__version__, \"6.0.1\")\n"
+        }
+      ]
+    },
+    "tests/test_project_resume.py": {
+      "recorded_sha256": "63574e7a075ad618b18b029064528eb42384e4fa04d7e92790af6122160bd2ad",
+      "current_sha256": "a185306225c0da2e52ee284ce945fe1de7efe0373be738ea42eac8072534575d",
+      "changes": [
+        {
+          "start": 5006,
+          "end": 5091,
+          "current": "                                         (\"2.3.1rc2\", \"6.2.0\"), (\"4.1.0\", \"2.3.2\")]:\n",
+          "recorded": "                                         (\"2.3.1rc2\", \"6.0.1\"), (\"4.1.0\", \"2.3.2\")]:\n"
+        }
+      ]
+    },
+    "tests/test_release_registry_safety.sh": {
+      "recorded_sha256": "f09e3ba6514274352ca5c13319cbb9813d75e5f3f02c0f3cbf67b21f7f99099f",
+      "current_sha256": "6a20d891081cac032de5a06e70e93d22784f2f437c9aba6ea102f1124191d07c",
+      "changes": [
+        {
+          "start": 537,
+          "end": 645,
+          "current": "  registry.example/oncotracer:6.2.0) prefix=FIRST ;;\n  registry.example/oncotracer:v6.2.0) prefix=SECOND ;;\n",
+          "recorded": "  registry.example/oncotracer:6.0.1) prefix=FIRST ;;\n  registry.example/oncotracer:v6.0.1) prefix=SECOND ;;\n"
+        },
+        {
+          "start": 974,
+          "end": 1068,
+          "current": "FIRST_REF=\"registry.example/oncotracer:6.2.0\"\nSECOND_REF=\"registry.example/oncotracer:v6.2.0\"\n",
+          "recorded": "FIRST_REF=\"registry.example/oncotracer:6.0.1\"\nSECOND_REF=\"registry.example/oncotracer:v6.0.1\"\n"
+        }
+      ]
+    },
+    "tests/test_release_workflow.py": {
+      "recorded_sha256": "5d80d6d0d7fa9d0d3584a5386ec252c398a4b3322e83303ad3d9b902945b1b16",
+      "current_sha256": "a3bc77fde867b54988360f20d3ceeb986545b4987b4ef070a03140a6473d3f94",
+      "changes": [
+        {
+          "start": 1930,
+          "end": 2008,
+          "current": "            self.assertIn(\"`oncotracer interactive --backend docker`\", notes)\n",
+          "recorded": ""
+        },
+        {
+          "start": 2505,
+          "end": 2576,
+          "current": "            \"tag_name\": \"v6.2.0\", \"draft\": False, \"prerelease\": False,\n",
+          "recorded": "            \"tag_name\": \"v6.0.1\", \"draft\": False, \"prerelease\": False,\n"
+        },
+        {
+          "start": 3229,
+          "end": 3289,
+          "current": "  'api /repos/cfarkas/oncotracer/commits/v6.2.0 --jq .sha')\n",
+          "recorded": "  'api /repos/cfarkas/oncotracer/commits/v6.0.1 --jq .sha')\n"
+        },
+        {
+          "start": 3358,
+          "end": 3453,
+          "current": "  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/releases/tags/v6.2.0')\n",
+          "recorded": "  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/releases/tags/v6.0.1')\n"
+        },
+        {
+          "start": 4420,
+          "end": 4504,
+          "current": "                \"GITHUB_REPOSITORY\": \"cfarkas/oncotracer\", \"RELEASE_TAG\": \"v6.2.0\",\n",
+          "recorded": "                \"GITHUB_REPOSITORY\": \"cfarkas/oncotracer\", \"RELEASE_TAG\": \"v6.0.1\",\n"
+        },
+        {
+          "start": 9159,
+          "end": 9231,
+          "current": "        self.assertIn('\"$IMAGE_NAME:6.2.0\" \"$IMAGE_NAME:v6.2.0\"', text)\n",
+          "recorded": "        self.assertIn('\"$IMAGE_NAME:6.0.1\" \"$IMAGE_NAME:v6.0.1\"', text)\n"
+        },
+        {
+          "start": 10819,
+          "end": 11000,
+          "current": "        source = \"ghcr.io/cfarkas/oncotracer:v6.2.0-candidate-123-1\"\n        target = \"ghcr.io/cfarkas/oncotracer:6.2.0\"\n        second_target = \"ghcr.io/cfarkas/oncotracer:v6.2.0\"\n",
+          "recorded": "        source = \"ghcr.io/cfarkas/oncotracer:v6.0.1-candidate-123-1\"\n        target = \"ghcr.io/cfarkas/oncotracer:6.0.1\"\n        second_target = \"ghcr.io/cfarkas/oncotracer:v6.0.1\"\n"
+        },
+        {
+          "start": 11191,
+          "end": 11244,
+          "current": "  ghcr.io/cfarkas/oncotracer:v6.2.0-candidate-123-1)\n",
+          "recorded": "  ghcr.io/cfarkas/oncotracer:v6.0.1-candidate-123-1)\n"
+        },
+        {
+          "start": 11306,
+          "end": 11342,
+          "current": "  ghcr.io/cfarkas/oncotracer:6.2.0)\n",
+          "recorded": "  ghcr.io/cfarkas/oncotracer:6.0.1)\n"
+        },
+        {
+          "start": 11529,
+          "end": 11566,
+          "current": "  ghcr.io/cfarkas/oncotracer:v6.2.0)\n",
+          "recorded": "  ghcr.io/cfarkas/oncotracer:v6.0.1)\n"
+        },
+        {
+          "start": 12805,
+          "end": 12887,
+          "current": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.2.0-candidate-123-1' ]]; then\n",
+          "recorded": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.0.1-candidate-123-1' ]]; then\n"
+        },
+        {
+          "start": 12993,
+          "end": 13058,
+          "current": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/6.2.0' ]]; then\n",
+          "recorded": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/6.0.1' ]]; then\n"
+        },
+        {
+          "start": 13495,
+          "end": 13561,
+          "current": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.2.0' ]]; then\n",
+          "recorded": "if [[ \"$method\" == PUT && \"$url\" == *'/manifests/v6.0.1' ]]; then\n"
+        },
+        {
+          "start": 22253,
+          "end": 22313,
+          "current": "            '\"ghcr.io/cfarkas/oncotracer:v6.2.0-candidate-'\n",
+          "recorded": "            '\"ghcr.io/cfarkas/oncotracer:v6.0.1-candidate-'\n"
+        },
+        {
+          "start": 28798,
+          "end": 28831,
+          "current": "    printf 'OncoTracer 6.2.0\\\\n'\n",
+          "recorded": "    printf 'OncoTracer 6.0.1\\\\n'\n"
+        },
+        {
+          "start": 29862,
+          "end": 29939,
+          "current": "            (release / \"oncotracer-v6.2.0-parity-audit.tar.gz\").write_bytes(\n",
+          "recorded": "            (release / \"oncotracer-v6.0.1-parity-audit.tar.gz\").write_bytes(\n"
+        },
+        {
+          "start": 30056,
+          "end": 30146,
+          "current": "                         \"oncotracer-6.2.0-py3-none-any.whl\", \"oncotracer-6.2.0.tar.gz\"):\n",
+          "recorded": "                         \"oncotracer-6.0.1-py3-none-any.whl\", \"oncotracer-6.0.1.tar.gz\"):\n"
+        },
+        {
+          "start": 30531,
+          "end": 30612,
+          "current": "                (release / \"oncotracer-v6.2.0-parity-audit.tar.gz\").read_bytes()\n",
+          "recorded": "                (release / \"oncotracer-v6.0.1-parity-audit.tar.gz\").read_bytes()\n"
+        },
+        {
+          "start": 30730,
+          "end": 30807,
+          "current": "                \"version\": \"6.2.0\",\n                \"release_tag\": \"v6.2.0\",\n",
+          "recorded": "                \"version\": \"6.0.1\",\n                \"release_tag\": \"v6.0.1\",\n"
+        },
+        {
+          "start": 33579,
+          "end": 33640,
+          "current": "                    \"oncotracer-v6.2.0-parity-audit.tar.gz\",\n",
+          "recorded": "                    \"oncotracer-v6.0.1-parity-audit.tar.gz\",\n"
+        },
+        {
+          "start": 33704,
+          "end": 33808,
+          "current": "                    \"oncotracer-6.2.0-py3-none-any.whl\",\n                    \"oncotracer-6.2.0.tar.gz\",\n",
+          "recorded": "                    \"oncotracer-6.0.1-py3-none-any.whl\",\n                    \"oncotracer-6.0.1.tar.gz\",\n"
+        },
+        {
+          "start": 35794,
+          "end": 35875,
+          "current": "            os.link(release / \"oncotracer-v6.2.0-parity-audit.tar.gz\", hardlink)\n",
+          "recorded": "            os.link(release / \"oncotracer-v6.0.1-parity-audit.tar.gz\", hardlink)\n"
+        }
+      ]
+    },
+    "tests/test_sample_resource_browser.py": {
+      "recorded_sha256": "a835bede0517f5e9fc0f5d488355474299f175b00fab27e6abb0a4ee272c204f",
+      "current_sha256": "6bafab457c295266bd874a5f7bc1e49acb8f6302930b74d8be1295293c9194b8",
+      "changes": [
+        {
+          "start": 1293,
+          "end": 1484,
+          "current": "        from tests.test_startup_dependencies import ready_report\n        self.stack.enter_context(patch('oncotracer_cli.startup_dependencies.inspect_dependencies', side_effect=ready_report))\n",
+          "recorded": ""
+        },
+        {
+          "start": 2055,
+          "end": 2114,
+          "current": "        self.addCleanup(self.state.dependency_setup.close)\n",
+          "recorded": ""
+        },
+        {
+          "start": 3375,
+          "end": 6431,
+          "current": "\n    def test_startup_approval_failure_retry_and_recheck_preserve_form(self):\n        import sys\n        from oncotracer_cli import startup_dependencies as dependencies\n        from tests.test_startup_dependencies import ready_report\n        install = self.root / 'test_installer.py'\n        install.write_text(\"import pathlib,sys\\nr=pathlib.Path(__file__).parent\\n\"\n                           \"print('test download progress',flush=True)\\n\"\n                           \"if (r/'fail').exists(): sys.exit(23)\\n\"\n                           \"(r/'installed').write_text('ready')\\n\")\n        self.state.dependency_setup.install_root = self.root / 'startup-installs'\n        def missing(data, **kwargs):\n            report = ready_report(data)\n            if not (self.root/'installed').exists():\n                report.update(ready=False, actions=[dict(id='native', backend='conda', label='Install missing test tools', reason='Core tools missing.')])\n            return report\n        with patch.object(dependencies, 'inspect_dependencies', side_effect=missing), patch.object(dependencies, 'launcher', return_value=[sys.executable, str(install)]):\n            self.page.locator('#dependency-recheck').click()\n            expect(self.page.locator('#dependency-actions button')).to_have_count(1)\n            self.page.locator('#choose-new-analysis').click()\n            self.page.locator('#variant-fresh').click()\n            self.page.locator('#input-folder').fill(str(self.reads))\n            self.page.locator('#dependency-actions button').click()\n            expect(self.page.locator('#dependency-plan')).to_be_visible()\n            self.assertFalse((self.root/'installed').exists())\n            self.assertFalse((self.root/'startup-installs').exists())\n            (self.root/'fail').touch()\n            self.page.locator('#dependency-confirm').click()\n            expect(self.page.locator('#dependency-install-status')).to_contain_text('failed', timeout=15000)\n            expect(self.page.locator('#dependency-error')).to_contain_text('exit 23')\n            expect(self.page.locator('#input-folder')).to_have_value(str(self.reads))\n            (self.root/'fail').unlink()\n            self.page.locator('#dependency-recheck').click()\n            expect(self.page.locator('#dependency-actions button')).to_have_count(1)\n            self.page.locator('#dependency-actions button').click()\n            self.page.locator('#dependency-confirm').click()\n            expect(self.page.locator('#dependency-install-status')).to_contain_text('complete', timeout=15000)\n            expect(self.page.locator('#dependency-status')).to_contain_text('verified', timeout=15000)\n            self.assertTrue((self.root/'installed').exists())\n            expect(self.page.locator('#backend')).to_have_value('conda')\n            expect(self.page.locator('#dependency-backend')).to_be_enabled()\n            expect(self.page.locator('#input-folder')).to_have_value(str(self.reads))\n            self.assertEqual(self.runs, [])\n            self.assertFalse(self.errors, self.errors)\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "tests/test_setup.py": {
+      "recorded_sha256": "c40361d4422c06850194cfe04512470f286edd89abfc890e92248ae98eddeac0",
+      "current_sha256": "f0553f492d18fd42235b6e3e099933ae0aaf9f678a1ad5b57e2049b28d52e9f7",
+      "changes": [
+        {
+          "start": 633,
+          "end": 870,
+          "current": "    def setUp(self):\n        # Dependency approval has its own terminal and browser integration tests.\n        patcher = patch('oncotracer_cli.startup_dependencies.terminal_setup')\n        patcher.start(); self.addCleanup(patcher.stop)\n\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "tests/test_variant_installer.py": {
+      "recorded_sha256": "4e34780b8af69b44a9290ebffd63a99668a775fdeedd8236d36d2fa9da4d8f65",
+      "current_sha256": "b1dd37c88318e5f5917d3c8bfe38444c509e25e87fbd9c7c87c7372fd5aa6ae5",
+      "changes": [
+        {
+          "start": 7500,
+          "end": 7846,
+          "current": "    def test_docker_install_supports_methylation_and_combined_analysis(self):\n        for analysis in ('methylation', 'both'):\n            plan = self.installer.plan({**self.payload, 'method': 'docker', 'analysis': analysis})\n            self.assertTrue(plan['available'], plan)\n            self.assertEqual(plan['fields']['backend'], 'docker')\n\n",
+          "recorded": ""
+        },
+        {
+          "start": 7915,
+          "end": 7976,
+          "current": "        for extra in ({\"method\": \"docker\", \"flow\": \"bam\"},):\n",
+          "recorded": "        for extra in ({\"method\": \"docker\", \"flow\": \"bam\"}, {\"method\": \"docker\", \"analysis\": \"both\"}):\n"
+        }
+      ]
+    },
+    "tests/test_variant_resources.py": {
+      "recorded_sha256": "a018770b643b03acfe385a5b8ce1ad59acb246a95c548a2be571a217d15b1081",
+      "current_sha256": "bfac2d6867883c3bbff88ad732808a3147c92055aa71402bd29cacb3a466596d",
+      "changes": [
+        {
+          "start": 44160,
+          "end": 44269,
+          "current": "                                                docker_image=\"carlosfarkas/oncotracer:6.2.0\", values=values)\n",
+          "recorded": "                                                docker_image=\"carlosfarkas/oncotracer:6.0.1\", values=values)\n"
+        }
+      ]
+    },
+    "tests/test_wizard.py": {
+      "recorded_sha256": "55551160c672c6256b399b34f76e164abebf618feed657b2c59bba152937f349",
+      "current_sha256": "43cacc2feef0f342252c14e0ddff0eacfce77aec6f0ded9ffcba4e789d886e0b",
+      "changes": [
+        {
+          "start": 860,
+          "end": 1015,
+          "current": "    def setUp(self):\n        patcher = patch('oncotracer_cli.startup_dependencies.terminal_setup')\n        patcher.start(); self.addCleanup(patcher.stop)\n\n",
+          "recorded": ""
+        },
+        {
+          "start": 2137,
+          "end": 2210,
+          "current": "            patch(\"oncotracer_cli.startup_dependencies.terminal_setup\"),\n",
+          "recorded": ""
+        },
+        {
+          "start": 9039,
+          "end": 9312,
+          "current": "                    [sys.executable, \"-B\", \"-c\", \"from unittest.mock import patch; from oncotracer_cli.cli import main; p=patch(\\\"oncotracer_cli.startup_dependencies.terminal_setup\\\"); p.start(); raise SystemExit(main())\", \"setup\", \"--terminal\", \"--project\", str(project),\n",
+          "recorded": "                    [sys.executable, \"-B\", \"-m\", \"oncotracer_cli.cli\", \"setup\", \"--terminal\", \"--project\", str(project),\n"
+        },
+        {
+          "start": 23341,
+          "end": 23422,
+          "current": "                    patch(\"oncotracer_cli.startup_dependencies.terminal_setup\"),\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "PAGE": {
+      "recorded_sha256": "e05905d4de91cb941cbcff1f78442aa3206e43526722befded2d9fad4d44e560",
+      "current_sha256": "684ea4a5021007be78ff354a9e5a0e520d602c7373204a5219dcb973c7967120",
+      "changes": [
+        {
+          "start": 17035,
+          "end": 19779,
+          "current": "<div id=\"error\" role=\"alert\" class=\"error\" hidden></div><section class=\"card\" id=\"dependency-card\" aria-labelledby=\"dependency-title\">\n<div class=\"sectionhead\"><span class=\"step\">\u2713</span><h2 id=\"dependency-title\">Check installed tools</h2></div>\n<p id=\"dependency-versions\" class=\"hint\"></p>\n<p id=\"dependency-status\" role=\"status\" aria-live=\"polite\">Checking installed dependencies\u2026</p>\n<div class=\"grid\"><div><label for=\"dependency-backend\">Use analysis tools from</label><select id=\"dependency-backend\"><option value=\"docker\">Docker</option><option value=\"conda\">Conda</option><option value=\"host\">Existing host tools</option><option value=\"poetry\">Poetry</option><option value=\"singularity\">Apptainer / Singularity</option></select></div><div id=\"dependency-image-field\"><label for=\"dependency-image\">Docker image</label><input id=\"dependency-image\" spellcheck=\"false\" autocomplete=\"off\"></div></div>\n<div class=\"actions\"><button id=\"dependency-recheck\" type=\"button\">Check again</button></div>\n<div id=\"dependency-error\" role=\"alert\" class=\"error\" hidden></div>\n<div id=\"dependency-warnings\" class=\"hint\"></div>\n<ul id=\"dependency-environments\"></ul>\n<div id=\"dependency-actions\" class=\"actions\"></div>\n<details id=\"dependency-inventory\"><summary>Installed tools and paths</summary><p class=\"hint\">Locations are listed separately for the host and Docker image. A found executable is not the same as a verified environment.</p><div style=\"overflow:auto\"><table><thead><tr><th>Tool</th><th>Runtime</th><th>Location</th><th>Status</th></tr></thead><tbody id=\"dependency-tools\"></tbody></table></div></details>\n<div id=\"dependency-plan\" hidden><h3>Review installation</h3><p id=\"dependency-plan-note\"></p><ol id=\"dependency-plan-steps\"></ol><p id=\"dependency-plan-destination\" class=\"hint\"></p><details><summary>Installation commands</summary><pre id=\"dependency-commands\" style=\"white-space:pre-wrap;overflow-wrap:anywhere\"></pre></details><div class=\"actions\"><button id=\"dependency-confirm\" class=\"primary\" type=\"button\">Install and verify</button><button id=\"dependency-dismiss\" type=\"button\">Keep current installation</button></div></div>\n<div id=\"dependency-installation\" hidden><p id=\"dependency-install-status\" role=\"status\" aria-live=\"polite\"></p><progress id=\"dependency-progress\" style=\"width:100%\"></progress><button id=\"dependency-stop\" type=\"button\">Stop installation</button><details id=\"dependency-log-details\"><summary>Installation log</summary><pre id=\"dependency-log\" style=\"max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere\"></pre><p id=\"dependency-log-path\" class=\"hint\"></p></details></div>\n</section><section class=\"card\" id=\"analysis-choice\" aria-label=\"Choose how to start\"><div class=\"grid\">\n",
+          "recorded": "<div id=\"error\" role=\"alert\" class=\"error\" hidden></div><section class=\"card\" id=\"analysis-choice\" aria-label=\"Choose how to start\"><div class=\"grid\">\n"
+        },
+        {
+          "start": 148053,
+          "end": 149946,
+          "current": "(async()=>{try{if(!token)throw Error('Open the complete URL printed by oncotracer web, including the session code after #.');const system=await api('/api/system');await setupDependencies(system);hardware=system.hardware;binsizes=system.qdnaseq_binsizes;for(const place of system.locations||[]){const button=node('button',place.name);button.title=place.path;button.onclick=()=>browse(place.path);$('browser-shortcuts').append(button);}$('input-folder').value=system.start_dir;$('project-parent').value=system.start_dir;$('project-name').value=system.suggested_project_name||'oncotracer-analysis';$('threads').value=system.suggested_threads;$('threads').max=hardware.cpu_workers_available;const ram=bytes=>bytes===null||bytes===undefined?'Unknown':(bytes/1073741824).toFixed(1)+' GiB';for(const [value,label]of[[hardware.cpu_workers_available,'CPU workers available'],[ram(hardware.ram_available_bytes),'RAM available'],[ram(hardware.ram_total_bytes),'RAM total'],[String((hardware.gpus||[]).length),'GPUs detected']]){const item=node('div');item.append(node('strong',String(value)),node('span',label));$('hardware').append(item);}$('gpu-note').textContent=(hardware.gpus||[]).map(gpu=>gpu.name+(gpu.memory_total_bytes?' \u00b7 '+ram(gpu.memory_total_bytes)+' VRAM':'')).join('; ')+' '+(hardware.gpu_note||'CNA analysis uses CPU.');const defaults=system.defaults||{};entryDefaults=defaults;$('variant_merge_vcfs').checked=defaults.variant_merge_vcfs??true;$('variant_storage_mode').value=defaults.variant_storage_mode??'compact';$('variant_resource_mode').value=defaults.variant_resource_mode??'dynamic';for(const key of ['variant_parallel_samples','variant_memory','variant_patients','variant_confidence_gwas','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])if(defaults[key])$(key).value=defaults[key];\n",
+          "recorded": "(async()=>{try{if(!token)throw Error('Open the complete URL printed by oncotracer web, including the session code after #.');const system=await api('/api/system');hardware=system.hardware;binsizes=system.qdnaseq_binsizes;for(const place of system.locations||[]){const button=node('button',place.name);button.title=place.path;button.onclick=()=>browse(place.path);$('browser-shortcuts').append(button);}$('input-folder').value=system.start_dir;$('project-parent').value=system.start_dir;$('project-name').value=system.suggested_project_name||'oncotracer-analysis';$('threads').value=system.suggested_threads;$('threads').max=hardware.cpu_workers_available;const ram=bytes=>bytes===null||bytes===undefined?'Unknown':(bytes/1073741824).toFixed(1)+' GiB';for(const [value,label]of[[hardware.cpu_workers_available,'CPU workers available'],[ram(hardware.ram_available_bytes),'RAM available'],[ram(hardware.ram_total_bytes),'RAM total'],[String((hardware.gpus||[]).length),'GPUs detected']]){const item=node('div');item.append(node('strong',String(value)),node('span',label));$('hardware').append(item);}$('gpu-note').textContent=(hardware.gpus||[]).map(gpu=>gpu.name+(gpu.memory_total_bytes?' \u00b7 '+ram(gpu.memory_total_bytes)+' VRAM':'')).join('; ')+' '+(hardware.gpu_note||'CNA analysis uses CPU.');const defaults=system.defaults||{};entryDefaults=defaults;$('variant_merge_vcfs').checked=defaults.variant_merge_vcfs??true;$('variant_storage_mode').value=defaults.variant_storage_mode??'compact';$('variant_resource_mode').value=defaults.variant_resource_mode??'dynamic';for(const key of ['variant_parallel_samples','variant_memory','variant_patients','variant_confidence_gwas','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])if(defaults[key])$(key).value=defaults[key];\n"
+        },
+        {
+          "start": 186258,
+          "end": 186410,
+          "current": "  if(variantInstallActive||(typeof dependencyInstallActive!=='undefined'&&dependencyInstallActive)){$('prepare').disabled=true;$('run').disabled=true;}\n",
+          "recorded": "  if(variantInstallActive){$('prepare').disabled=true;$('run').disabled=true;}\n"
+        },
+        {
+          "start": 194734,
+          "end": 204725,
+          "current": "\nlet dependencyInstallActive=false;\nconst dependencyUi={check:null,plan:null,job:null,checking:false,timer:null,installTimer:null,queued:false,applied:null,initialized:false,syncing:false,locked:new Map()};\nfunction dependencyError(error){const field=$('dependency-error');field.textContent=error.message||String(error);field.hidden=false;}\nfunction dependencySelection(){return {backend:$('dependency-backend').value,image:$('dependency-image').value.trim()};}\nfunction dependencyImageVisibility(){$('dependency-image-field').hidden=$('dependency-backend').value!=='docker';}\nfunction dependencyApplySelection(fields){\n  dependencyUi.syncing=true;\n  try{\n    if(fields.backend)$('dependency-backend').value=fields.backend;\n    const image=fields.docker_image||fields.image;if(image)$('dependency-image').value=image;\n    const backend=document.getElementById('backend'),imageField=document.getElementById('docker_image');\n    if(backend&&fields.backend)backend.value=fields.backend;\n    if(imageField&&image)imageField.value=image;\n    if(backend&&fields.backend)backend.dispatchEvent(new Event('change',{bubbles:true}));\n    if(imageField&&image)imageField.dispatchEvent(new Event('input',{bubbles:true}));\n    dependencyImageVisibility();\n  }finally{dependencyUi.syncing=false;}\n}\nfunction dependencyLock(){\n  for(const id of ['dependency-backend','dependency-image','dependency-recheck','dependency-confirm','dependency-dismiss','backend','docker_image']){\n    const field=document.getElementById(id);if(!field)continue;\n    if(dependencyInstallActive){if(!dependencyUi.locked.has(field))dependencyUi.locked.set(field,field.disabled);field.disabled=true;}\n    else if(dependencyUi.locked.has(field)){field.disabled=dependencyUi.locked.get(field);dependencyUi.locked.delete(field);}\n  }\n  if(typeof lockVariantInstallActions==='function')lockVariantInstallActions();\n}\nfunction renderDependencyReport(check){\n  dependencyUi.check=check;const report=check.report;\n  $('dependency-status').textContent=check.stage||check.status;\n  if(check.error)dependencyError(new Error(check.error));\n  if(!report)return;\n  const release=report.release||{};\n  $('dependency-versions').textContent='Launcher '+report.launcher_version+(release.version?' \u00b7 Latest stable '+release.version:' \u00b7 Online update check unavailable')+(report.image?.version?' \u00b7 Installed image '+report.image.version:'');\n  $('dependency-status').textContent=(report.ready?'Selected analysis tools verified.':'Some dependencies need attention.')+(report.image?.update_status==='update_available'?' An official image update is available.':'');\n  const warnings=$('dependency-warnings');warnings.replaceChildren();for(const text of report.warnings||[])warnings.append(node('p',text));\n  const environments=$('dependency-environments');environments.replaceChildren();for(const item of report.environments||[])environments.append(node('li',item.name+': '+item.status+(item.message?' \u2014 '+item.message:'')));\n  const tools=$('dependency-tools');tools.replaceChildren();for(const item of [...(report.tools||[]),...(report.container_tools||[])]){const row=node('tr');row.append(node('td',item.name),node('td',item.scope||'Host'),node('td',item.path||'\u2014'),node('td',item.status==='found'?'Found':'Not found'));tools.append(row);}\n  const actions=$('dependency-actions');actions.replaceChildren();for(const action of report.actions||[]){const button=node('button',action.label,'primary');button.type='button';button.onclick=()=>reviewDependencyPlan(action.id);button.disabled=dependencyInstallActive;actions.append(button);}\n}\nasync function pollDependencyCheck(){\n  clearTimeout(dependencyUi.timer);\n  try{\n    const check=await api('/api/dependencies/status');renderDependencyReport(check);\n    dependencyUi.checking=check.status==='checking';\n    if(dependencyUi.checking)dependencyUi.timer=setTimeout(pollDependencyCheck,1000);\n    else if(dependencyUi.queued){dependencyUi.queued=false;await checkDependencies();}\n  }catch(error){dependencyUi.checking=false;dependencyError(error);}\n}\nasync function checkDependencies(){\n  if(dependencyInstallActive)return;\n  if(dependencyUi.checking){dependencyUi.queued=true;return;}\n  dependencyUi.plan=null;$('dependency-plan').hidden=true;$('dependency-error').hidden=true;$('dependency-actions').replaceChildren();\n  $('dependency-status').textContent='Checking installed dependencies\u2026';dependencyUi.checking=true;\n  try{const check=await api('/api/dependencies/check',dependencySelection());renderDependencyReport(check);await pollDependencyCheck();}\n  catch(error){dependencyUi.checking=false;dependencyError(error);}\n}\nasync function reviewDependencyPlan(actionId){\n  if(dependencyInstallActive||dependencyUi.checking)return;\n  $('dependency-error').hidden=true;\n  try{\n    const plan=await api('/api/dependencies/plan',{check_id:dependencyUi.check.id,action_id:actionId});dependencyUi.plan=plan;\n    $('dependency-plan-note').textContent=plan.note;\n    $('dependency-plan-destination').textContent=plan.fields?.docker_image?'Verified image: '+plan.fields.docker_image:'New environment folder: '+plan.directory;\n    const list=$('dependency-plan-steps');list.replaceChildren();for(const step of plan.steps||[])list.append(node('li',step.label));\n    $('dependency-commands').textContent=(plan.steps||[]).map(step=>step.command.map(value=>JSON.stringify(value)).join(' ')).join('\\n');\n    $('dependency-plan').hidden=false;$('dependency-confirm').focus();\n  }catch(error){dependencyError(error);}\n}\nfunction renderDependencyInstall(job){\n  dependencyUi.job=job;dependencyInstallActive=['running','stopping'].includes(job.status);\n  $('dependency-installation').hidden=job.status==='idle';\n  $('dependency-install-status').textContent=job.status+': '+(job.stage||'')+(job.elapsed_seconds!==undefined?' \u00b7 '+job.elapsed_seconds+' s':'');\n  $('dependency-progress').max=job.total_steps||1;$('dependency-progress').value=job.completed_steps||0;\n  $('dependency-stop').hidden=!dependencyInstallActive;$('dependency-stop').disabled=job.status==='stopping';\n  $('dependency-log').textContent=job.log||'';$('dependency-log-path').textContent=job.log_path||'';\n  if(job.error){dependencyError(new Error(job.error));$('dependency-log-details').open=true;}\n  dependencyLock();\n}\nasync function pollDependencyInstall(){\n  clearTimeout(dependencyUi.installTimer);\n  try{\n    const job=await api('/api/dependencies/install/status');renderDependencyInstall(job);\n    if(dependencyInstallActive)dependencyUi.installTimer=setTimeout(pollDependencyInstall,1000);\n    else if(job.status==='complete'&&dependencyUi.applied!==job.id){\n      dependencyUi.applied=job.id;dependencyApplySelection(job.fields||{});if(typeof invalidate==='function')invalidate();\n      $('dependency-plan').hidden=true;await checkDependencies();scheduleAutomaticVariantCheck();\n    }\n  }catch(error){dependencyError(error);if(dependencyInstallActive)dependencyUi.installTimer=setTimeout(pollDependencyInstall,2000);}\n}\n$('dependency-confirm').onclick=async()=>{\n  if(!dependencyUi.plan||dependencyInstallActive)return;\n  $('dependency-error').hidden=true;dependencyInstallActive=true;dependencyLock();\n  try{const job=await api('/api/dependencies/install',{plan_id:dependencyUi.plan.id,confirmed:true});renderDependencyInstall(job);await pollDependencyInstall();}\n  catch(error){dependencyInstallActive=false;dependencyError(error);dependencyLock();}\n};\n$('dependency-dismiss').onclick=()=>{$('dependency-plan').hidden=true;dependencyUi.plan=null;};\n$('dependency-stop').onclick=async()=>{try{renderDependencyInstall(await api('/api/dependencies/stop',{job_id:dependencyUi.job.id}));}catch(error){dependencyError(error);}};\n$('dependency-recheck').onclick=()=>checkDependencies();\n$('dependency-backend').onchange=()=>{dependencyApplySelection(dependencySelection());checkDependencies();};\n$('dependency-image').onchange=()=>{dependencyApplySelection(dependencySelection());checkDependencies();};\nlet automaticVariantTimer=null;\nfunction scheduleAutomaticVariantCheck(){\n  clearTimeout(automaticVariantTimer);automaticVariantTimer=setTimeout(async()=>{\n    if(dependencyInstallActive||(typeof variantInstallActive!=='undefined'&&variantInstallActive))return;\n    try{const payload=variantResourcePayload();if(!payload.specimen_type||!payload.callers?.length)return;await detectVariantResources(payload,'all',false);}\n    catch(error){const status=document.getElementById('variant-detection-status');if(status)status.textContent=error.message||String(error);}\n  },350);\n}\nfor(const id of ['variant-fresh','variant-ffpe','specimen-fresh','specimen-ffpe']){const button=document.getElementById(id);if(button)button.addEventListener('click',scheduleAutomaticVariantCheck);}\nfor(const id of ['backend','docker_image','analysis']){const field=document.getElementById(id);if(field)field.addEventListener('change',()=>{\n  if(dependencyUi.syncing)return;\n  if(id==='backend')$('dependency-backend').value=field.value;\n  if(id==='docker_image')$('dependency-image').value=field.value;\n  dependencyImageVisibility();if(id!=='analysis'&&dependencyUi.initialized)checkDependencies();scheduleAutomaticVariantCheck();\n});}\nasync function setupDependencies(system){\n  const initial={...(system.dependency_selection||{backend:'conda',image:system.default_docker_image})};\n  if(!document.getElementById('backend')){\n    if(['docker','singularity'].includes(initial.backend))initial.backend='conda';\n    for(const option of $('dependency-backend').options)if(['docker','singularity'].includes(option.value))option.disabled=true;\n  }\n  dependencyApplySelection(initial);dependencyUi.initialized=true;\n  $('dependency-versions').textContent='Launcher '+(system.launcher_version||'unknown');\n  try{\n    const job=await api('/api/dependencies/install/status');\n    if(job.status!=='idle'){renderDependencyInstall(job);if(dependencyInstallActive){await pollDependencyInstall();return;}}\n    await checkDependencies();\n  }catch(error){dependencyError(error);}\n}\n\n",
+          "recorded": ""
+        }
+      ]
+    }
+  }
+}

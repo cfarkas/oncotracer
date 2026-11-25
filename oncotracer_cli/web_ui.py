@@ -525,3 +525,6 @@ from .resume_ui import add_resume_ui
 PAGE = add_resume_ui(PAGE)
 from .sample_resource_ui import add_sample_resource_ui
 PAGE = add_sample_resource_ui(PAGE)
+
+from .startup_dependency_ui import add_dependency_ui
+PAGE = add_dependency_ui(PAGE)

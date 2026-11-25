@@ -41,7 +41,7 @@ function openVariantInstall(method){
   return planVariantInstall(method);
 }
 function lockVariantInstallActions(){
-  if(variantInstallActive){$('prepare').disabled=true;$('run').disabled=true;}
+  if(variantInstallActive||(typeof dependencyInstallActive!=='undefined'&&dependencyInstallActive)){$('prepare').disabled=true;$('run').disabled=true;}
   else if(typeof lockSettings==='function')lockSettings();
   else {$('prepare').disabled=false;$('run').disabled=!prepared?.valid;}
 }

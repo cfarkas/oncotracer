@@ -64,7 +64,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:6.0.1"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:6.2.0"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -146,7 +146,8 @@ def _conda_prefixes(prefix: Path | None = None) -> dict[str, Path]:
 def _install_conda(
     root: Path, args: argparse.Namespace, *, save: bool = True
 ) -> dict[str, object]:
-    conda = shutil.which("conda") or (
+    from .variant_installer import _executable
+    conda = _executable("conda") or (
         "conda" if args.dry_run else require_command("conda")
     )
     base = Path(args.prefix) if args.prefix else (_data_home() / "envs")

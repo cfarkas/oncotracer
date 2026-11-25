@@ -32,12 +32,15 @@ class SampleJobBrowserTests(unittest.TestCase):
         self.stack = contextlib.ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(patch('oncotracer_cli.cli._load_install_config', return_value={}))
+        from tests.test_startup_dependencies import ready_report
+        self.stack.enter_context(patch('oncotracer_cli.startup_dependencies.inspect_dependencies', side_effect=ready_report))
         self.gpu_options = {'detected': False, 'devices': [], 'note': 'GPU resource test'}
         self.stack.enter_context(patch('oncotracer_cli.gpu_runtime.options', side_effect=lambda: dict(self.gpu_options)))
         self.stack.enter_context(patch('oncotracer_cli.sample_resources.inspect_hardware', return_value=self.hardware))
         args = parse_arguments(['setup', '--mode', 'illumina', '--backend', 'host',
                                 '--input-folder', str(self.reads), '--project', str(self.root/'project')])
         self.state = WebState(self.root, args)
+        self.addCleanup(self.state.dependency_setup.close)
         self.state.hardware = self.hardware
         self.runs = []
         def record_run(data):
@@ -61,6 +64,50 @@ class SampleJobBrowserTests(unittest.TestCase):
         self.page.on('pageerror', lambda error: self.errors.append(str(error)))
         self.page.goto(self.server.origin + '/#' + self.state.token)
         self.page.wait_for_selector('main:not([inert])')
+
+    def test_startup_approval_failure_retry_and_recheck_preserve_form(self):
+        import sys
+        from oncotracer_cli import startup_dependencies as dependencies
+        from tests.test_startup_dependencies import ready_report
+        install = self.root / 'test_installer.py'
+        install.write_text("import pathlib,sys\nr=pathlib.Path(__file__).parent\n"
+                           "print('test download progress',flush=True)\n"
+                           "if (r/'fail').exists(): sys.exit(23)\n"
+                           "(r/'installed').write_text('ready')\n")
+        self.state.dependency_setup.install_root = self.root / 'startup-installs'
+        def missing(data, **kwargs):
+            report = ready_report(data)
+            if not (self.root/'installed').exists():
+                report.update(ready=False, actions=[dict(id='native', backend='conda', label='Install missing test tools', reason='Core tools missing.')])
+            return report
+        with patch.object(dependencies, 'inspect_dependencies', side_effect=missing), patch.object(dependencies, 'launcher', return_value=[sys.executable, str(install)]):
+            self.page.locator('#dependency-recheck').click()
+            expect(self.page.locator('#dependency-actions button')).to_have_count(1)
+            self.page.locator('#choose-new-analysis').click()
+            self.page.locator('#variant-fresh').click()
+            self.page.locator('#input-folder').fill(str(self.reads))
+            self.page.locator('#dependency-actions button').click()
+            expect(self.page.locator('#dependency-plan')).to_be_visible()
+            self.assertFalse((self.root/'installed').exists())
+            self.assertFalse((self.root/'startup-installs').exists())
+            (self.root/'fail').touch()
+            self.page.locator('#dependency-confirm').click()
+            expect(self.page.locator('#dependency-install-status')).to_contain_text('failed', timeout=15000)
+            expect(self.page.locator('#dependency-error')).to_contain_text('exit 23')
+            expect(self.page.locator('#input-folder')).to_have_value(str(self.reads))
+            (self.root/'fail').unlink()
+            self.page.locator('#dependency-recheck').click()
+            expect(self.page.locator('#dependency-actions button')).to_have_count(1)
+            self.page.locator('#dependency-actions button').click()
+            self.page.locator('#dependency-confirm').click()
+            expect(self.page.locator('#dependency-install-status')).to_contain_text('complete', timeout=15000)
+            expect(self.page.locator('#dependency-status')).to_contain_text('verified', timeout=15000)
+            self.assertTrue((self.root/'installed').exists())
+            expect(self.page.locator('#backend')).to_have_value('conda')
+            expect(self.page.locator('#dependency-backend')).to_be_enabled()
+            expect(self.page.locator('#input-folder')).to_have_value(str(self.reads))
+            self.assertEqual(self.runs, [])
+            self.assertFalse(self.errors, self.errors)
 
     def new_form(self):
         self.page.locator('#choose-new-analysis').click()

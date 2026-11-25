@@ -22,6 +22,11 @@ from tests.test_native_methylation import Fixture
 
 
 class SetupTests(unittest.TestCase):
+    def setUp(self):
+        # Dependency approval has its own terminal and browser integration tests.
+        patcher = patch('oncotracer_cli.startup_dependencies.terminal_setup')
+        patcher.start(); self.addCleanup(patcher.stop)
+
     def cli(self, *args):
         output = io.StringIO()
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):

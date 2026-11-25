@@ -27,6 +27,10 @@ HARDWARE = {
 
 
 class WizardTests(unittest.TestCase):
+    def setUp(self):
+        patcher = patch('oncotracer_cli.startup_dependencies.terminal_setup')
+        patcher.start(); self.addCleanup(patcher.stop)
+
     def fastq(self, path):
         path.parent.mkdir(parents=True, exist_ok=True)
         with gzip.open(path, "wt") as handle:
@@ -54,6 +58,7 @@ class WizardTests(unittest.TestCase):
 
         with (
             patch("builtins.input", side_effect=answer),
+            patch("oncotracer_cli.startup_dependencies.terminal_setup"),
             patch("oncotracer_cli.wizard.inspect_hardware", return_value=HARDWARE),
             patch("oncotracer_cli.cli._load_install_config", return_value={}),
             patch("oncotracer_cli.setup._run_setup", return_value=0) as run,
@@ -166,7 +171,7 @@ class WizardTests(unittest.TestCase):
             ):
                 project = root / project_name
                 result = subprocess.run(
-                    [sys.executable, "-B", "-m", "oncotracer_cli.cli", "setup", "--terminal", "--project", str(project),
+                    [sys.executable, "-B", "-c", "from unittest.mock import patch; from oncotracer_cli.cli import main; p=patch(\"oncotracer_cli.startup_dependencies.terminal_setup\"); p.start(); raise SystemExit(main())", "setup", "--terminal", "--project", str(project),
                      "--mode", "ont", "--input-folder", str(reads.parent), "--threads", "1",
                      "--backend", "conda", "--cpu", "--hg38_build"],
                     cwd=Path(__file__).resolve().parents[1], input=answers, text=True,
@@ -401,6 +406,7 @@ class WizardTests(unittest.TestCase):
                     return ""
                 with (
                     patch("builtins.input", side_effect=answer),
+                    patch("oncotracer_cli.startup_dependencies.terminal_setup"),
                     patch("oncotracer_cli.wizard.inspect_hardware", return_value=HARDWARE),
                     patch("oncotracer_cli.cli._load_install_config", return_value={}),
                     contextlib.redirect_stdout(output), contextlib.redirect_stderr(output),

@@ -103,7 +103,7 @@ class CommandHelpTests(unittest.TestCase):
 
 class NativeCliTests(unittest.TestCase):
     def test_version_is_v2(self) -> None:
-        self.assertEqual(__version__, "6.0.1")
+        self.assertEqual(__version__, "6.2.0")
 
     def test_parser_exposes_native_commands(self) -> None:
         parser = build_parser()
@@ -131,7 +131,7 @@ class NativeCliTests(unittest.TestCase):
     def test_docker_install_default_still_pulls(self) -> None:
         from oncotracer_cli import cli
         for flags, image in [
-            ([], "carlosfarkas/oncotracer:6.0.1"),
+            ([], "carlosfarkas/oncotracer:6.2.0"),
             (["--image", "registry/image:tag"], "registry/image:tag"),
         ]:
             with self.subTest(image=image):

@@ -128,8 +128,14 @@ print('fixture installation completed', flush=True)
         for image in ("--privileged", "repo/image; touch /tmp/no", "repo/image\nanything"):
             with self.assertRaises(OncoTracerError): self.installer.plan({**self.payload, "method": "docker", "docker_image": image})
 
+    def test_docker_install_supports_methylation_and_combined_analysis(self):
+        for analysis in ('methylation', 'both'):
+            plan = self.installer.plan({**self.payload, 'method': 'docker', 'analysis': analysis})
+            self.assertTrue(plan['available'], plan)
+            self.assertEqual(plan['fields']['backend'], 'docker')
+
     def test_unsupported_routes_offer_reason_and_do_not_start(self):
-        for extra in ({"method": "docker", "flow": "bam"}, {"method": "docker", "analysis": "both"}):
+        for extra in ({"method": "docker", "flow": "bam"},):
             plan = self.installer.plan({**self.payload, **extra})
             self.assertFalse(plan["available"])
             self.assertTrue(plan["reason"])

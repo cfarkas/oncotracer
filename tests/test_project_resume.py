@@ -89,7 +89,7 @@ class ResumeTests(unittest.TestCase):
 
     def test_unreviewed_major_transitions_leave_project_untouched(self):
         for old_version, new_version in [("2.2.1", "4.1.0"), ("2.3.99", "4.1.0"),
-                                         ("2.3.1rc2", "6.0.1"), ("4.1.0", "2.3.2")]:
+                                         ("2.3.1rc2", "6.2.0"), ("4.1.0", "2.3.2")]:
             with self.subTest(previous=old_version, target=new_version):
                 owner_path = self.output / OUTPUT_OWNER_RELATIVE
                 owner = json.loads(owner_path.read_text())

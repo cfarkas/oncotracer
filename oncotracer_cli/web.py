@@ -146,6 +146,8 @@ class WebState:
                                   "file_count": len(sample.files), "files": [str(path) for path in sample.files],
                                   "layout": "ONT batches"} for index, sample in enumerate(discovered.samples)]}
         self.variant_installer = VariantInstaller(self.start_dir)
+        from .startup_dependencies import DependencySetup
+        self.dependency_setup = DependencySetup(self.start_dir)
 
     def system(self):
         if self.hardware is None:
@@ -182,10 +184,13 @@ class WebState:
                   ("Other mounts", Path("/mnt"))]
         locations = [{"name": name, "path": str(path)} for name, path in places if path.is_dir()]
         from .cli import DEFAULT_IMAGE
+        from . import __version__
+        from .startup_dependencies import selection as dependency_selection
         from .gpu_runtime import options as gpu_options
         return {"hardware": self.hardware, "defaults": defaults, "locations": locations,
                 "gpu": gpu_options() if self.hardware.get('gpus') else {"detected": False, "devices": []},
-                "default_docker_image": DEFAULT_IMAGE,
+                "default_docker_image": DEFAULT_IMAGE, "launcher_version": __version__,
+                "dependency_selection": dependency_selection({"backend": defaults.get("backend"), "image": defaults.get("image")}),
                 "resume_project": defaults.get("project") if defaults.get("project") and
                     (Path(defaults["project"]) / "config/run.yml").is_file() else None,
                 "cpg": copy.deepcopy(self.cpg_context.public(self.cpg_scan)) if self.cpg_context else None,
@@ -268,12 +273,13 @@ class WebState:
         return result
 
     def prepare(self, data):
-        self.variant_installer.require_idle()
+        self._require_installs_idle()
         from .cli import build_parser
         from .setup import _command_setup
 
         # Serialize saves so concurrent requests cannot mix configuration files.
         with self.lock:
+            self._require_installs_idle()
             if self.job and self.job["status"] in {"running", "stopping"}:
                 raise OncoTracerError("An analysis is running. Wait for it to finish before preparing another project.")
             discovered = self.scans.get(_text(data, "scan_id"))
@@ -578,8 +584,9 @@ class WebState:
 
     def resume(self, data):
         from .project_resume import resume_project, sample_snapshot
-        self.variant_installer.require_idle()
+        self._require_installs_idle()
         with self.lock:
+            self._require_installs_idle()
             if self.job and self.job["status"] in {"running", "stopping"}:
                 raise OncoTracerError("Stop the active analysis before loading another project.")
             # An explicit blank means use the saved selection, not a launch-time
@@ -644,6 +651,31 @@ class WebState:
             return {key: value for key, value in prepared.items() if key not in
                     {"fingerprint", "input_snapshot", "project_identity", "protected_paths"}}
 
+    def _require_installs_idle(self):
+        self.variant_installer.require_idle()
+        self.dependency_setup.require_idle()
+
+    def dependency_check(self, data):
+        with self.lock:
+            self._require_installs_idle()
+            if self.job and self.job['status'] in {'running', 'stopping'}:
+                raise OncoTracerError('Wait for the current analysis before checking or changing its installation.')
+            return self.dependency_setup.inspect(data)
+
+    def dependency_install(self, data):
+        with self.lock:
+            self._require_installs_idle()
+            if self.job and self.job['status'] in {'running', 'stopping'}:
+                raise OncoTracerError('Wait for the current analysis before installing tools.')
+            return self.dependency_setup.start(data)
+
+    def variant_install(self, data):
+        with self.lock:
+            self._require_installs_idle()
+            if self.job and self.job['status'] in {'running', 'stopping'}:
+                raise OncoTracerError('Wait for the current analysis before installing tools.')
+            return self.variant_installer.start(data)
+
     def variant_resources(self, data):
         return discover_variant_resources(data, roots=tools_roots(self.start_dir, data))
 
@@ -667,13 +699,16 @@ class WebState:
         return load_for_browser(self, data)
 
     def variant_prepare(self, data):
-        self.variant_installer.require_idle()
+        self._require_installs_idle()
         from .variant_web import prepare_for_browser
-        return prepare_for_browser(self, data)
+        with self.lock:
+            self._require_installs_idle()
+            return prepare_for_browser(self, data)
 
     def run(self, data):
-        self.variant_installer.require_idle()
+        self._require_installs_idle()
         with self.lock:
+            self._require_installs_idle()
             prepared = self.projects.get(_text(data, "project_id"))
             if not prepared or not prepared["valid"]:
                 raise OncoTracerError("Save and validate a project before running it.")
@@ -1082,6 +1117,10 @@ class WebHandler(BaseHTTPRequestHandler):
                 value = self.server.state.browse(query.get("path", [None])[0], query.get("kind", ["folder"])[0])
             elif url.path == "/api/status":
                 value = self.server.state.status()
+            elif url.path == "/api/dependencies/status":
+                value = self.server.state.dependency_setup.check_status()
+            elif url.path == "/api/dependencies/install/status":
+                value = self.server.state.dependency_setup.status()
             elif url.path == "/api/variant-install/status":
                 value = self.server.state.variant_installer.status()
             else:
@@ -1104,13 +1143,17 @@ class WebHandler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise OncoTracerError("Expected a JSON object.")
             methods = {"/api/pick-path": self.server.state.pick_path,
+                       "/api/dependencies/check": self.server.state.dependency_check,
+                       "/api/dependencies/plan": self.server.state.dependency_setup.plan,
+                       "/api/dependencies/install": self.server.state.dependency_install,
+                       "/api/dependencies/stop": self.server.state.dependency_setup.stop,
                        "/api/resource-options": self.server.state.resource_options,
                        "/api/resume": self.server.state.resume,
                        "/api/sturgeon-resources": self.server.state.sturgeon_resources,
                        "/api/ont-inputs": self.server.state.ont_inputs, "/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
                        '/api/variant-resources': self.server.state.variant_resources,
                        '/api/variant-install/plan': self.server.state.variant_installer.plan,
-                       '/api/variant-install/start': self.server.state.variant_installer.start,
+                       '/api/variant-install/start': self.server.state.variant_install,
                        '/api/variant-install/stop': self.server.state.variant_installer.stop,
                        '/api/variant-load': self.server.state.variant_load, '/api/variant-prepare': self.server.state.variant_prepare,
                        "/api/run": self.server.state.run, "/api/stop": self.server.state.stop,
@@ -1174,6 +1217,7 @@ def command_web(args):
             print(f"Analysis continues (PID {state.job['pid']}). Log: {state.job['log_path']}", flush=True)
     finally:
         state.variant_installer.close()
+        state.dependency_setup.close()
         if server is not None:
             server.server_close()
     return 0
