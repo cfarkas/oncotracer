@@ -18,6 +18,10 @@ from oncotracer_cli.variant_resources import (MAX_CHILDREN, MAX_FFPERASE_REGISTE
     MAX_SEARCHED, discover_variant_resources)
 
 
+# Resolve before fixture isolation clears PATH; hosted Node may live outside /usr/bin.
+NODE = shutil.which("node")
+
+
 class VariantResourceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="oncotracer-resources-")
@@ -647,7 +651,7 @@ class VariantResourceTests(unittest.TestCase):
         docker = installation_guides(["strelka2_runtime", "variant_tools"], backend="docker", mode="illumina")
         self.assertEqual([g["id"] for g in docker], ["docker_image"])
 
-    @unittest.skipUnless(shutil.which("node"), "Node is required for the browser request contract")
+    @unittest.skipUnless(NODE, "Node is required for the browser request contract")
     def test_actual_browser_resource_values_are_accepted_for_all_workflows(self):
         from oncotracer_cli.variant_resource_ui import SCRIPT
         keys = re.search(r"const variantPathKeys=([^;]+);", SCRIPT).group(0)
@@ -665,7 +669,7 @@ class VariantResourceTests(unittest.TestCase):
                         script = "const mode=" + json.dumps(mode) + ";const selected=" + json.dumps(selected) + ";"
                         script += "const document={getElementById:key=>({value:selected[key]||'',checked:['variant_download_resources','variant_accept_ffperase_license'].includes(key)})};"
                         script += keys + function + "console.log(JSON.stringify(variantResourceValues()));"
-                        result = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+                        result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, check=True)
                         values = json.loads(result.stdout)
                         with patch("subprocess.run", side_effect=AssertionError("Detection executed a tool")):
                             found = self.detect(mode=mode, backend=backend, callers=callers, specimen_type=specimen,
