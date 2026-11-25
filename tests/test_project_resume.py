@@ -448,6 +448,25 @@ class ResumeTests(unittest.TestCase):
 
 
 class RuntimeIdentityTests(unittest.TestCase):
+    def test_slow_container_start_can_verify_but_still_has_a_deadline(self):
+        identity = current_runtime_identity()
+        for startup_seconds, expected_success in ((76, True), (181, False)):
+            with self.subTest(startup_seconds=startup_seconds):
+                def delayed(command, **kwargs):
+                    deadline = kwargs["timeout"]
+                    self.assertIsInstance(deadline, (int, float))
+                    self.assertLessEqual(deadline, 180)
+                    if startup_seconds > deadline:
+                        raise subprocess.TimeoutExpired(command, deadline)
+                    return subprocess.CompletedProcess(command, 0, json.dumps(identity), "")
+                with patch("oncotracer_cli.project_resume.subprocess.run", side_effect=delayed) as command:
+                    if expected_success:
+                        self.assertEqual(_runtime("docker", {"docker_image": "oncotracer:tested"}), identity)
+                    else:
+                        with self.assertRaisesRegex(OncoTracerError, "Cannot verify"):
+                            _runtime("docker", {"docker_image": "oncotracer:tested"})
+                    self.assertEqual(command.call_count, 1)
+
     def test_missing_docker_tag_explains_browser_recovery_without_fallback(self):
         from oncotracer_cli.cli import DEFAULT_IMAGE
         failure = subprocess.CompletedProcess([], 125, "", "manifest for oncotracer:typo not found: manifest unknown")
