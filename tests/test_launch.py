@@ -47,7 +47,9 @@ class LaunchTests(unittest.TestCase):
         self.assertNotIn('ont_barcodes',values);self.assertNotIn('ont_folder',values)
         rows=read_manifest(Path(values['ont_samplesheet']))
         self.assertEqual([(r.sample,r.status) for r in rows],[('CASE','tumor'),('CONTROL','normal')])
-        mounts=dict(docker_mounts(config,environment={}))
+        # Model a host project directory even when CI runs inside the image.
+        with patch('oncotracer_cli.docker_runtime.Path.cwd',return_value=self.root):
+            mounts=dict(docker_mounts(config,environment={}))
         self.assertEqual(mounts[self.inputs/'one/fastq_pass'],'ro')
         self.assertEqual(mounts[Path(values['ont_samplesheet'])],'ro')
         self.assertTrue(project_plan(args)['resume'])
