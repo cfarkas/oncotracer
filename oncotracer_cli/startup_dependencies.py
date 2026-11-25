@@ -232,9 +232,11 @@ def inspect_dependencies(data=None, *, progress=lambda message: None):
     report['ready'] = bool(health.get('success'))
     report['health'] = health
     for name, value in health.get('environments', {}).items():
+        failed = [name for name, check in value.get('probes', {}).items() if not check.get('success')]
+        message = value.get('error', '') or ('Failed checks: ' + ', '.join(failed) if failed else '')
         report['environments'].append({'name': name, 'status': 'verified' if value.get('success') else 'missing',
             'path': health.get('prefixes', {}).get(name, {}).get('path', ''),
-            'message': value.get('error', ''), 'probes': value.get('probes', {})})
+            'message': message, 'probes': value.get('probes', {})})
     environments_ready = bool(report['environments']) and all(item['status'] == 'verified' for item in report['environments'])
     if health.get('source', {}).get('success') is False:
         report['warnings'].append('The launcher or image source identity could not be verified. Use an official release; reinstalling analysis tools alone will not fix this check.')

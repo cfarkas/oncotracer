@@ -70,6 +70,12 @@ class DependencyInventoryTests(unittest.TestCase):
         self.assertEqual(report['actions'][1]['id'], 'official-docker')
         self.assertIn(DIGEST, report['actions'][1]['image'])
 
+    def test_report_names_failed_tools(self):
+        self.health = {'success': False, 'environments': {'core': {'success': False,
+                       'probes': {'bwa': {'success': False}, 'samtools': {'success': True}}}}}
+        report = dependency.inspect_dependencies({'backend': 'docker', 'image': 'local/broken:test'})
+        self.assertEqual(report['environments'][0]['message'], 'Failed checks: bwa')
+
     def test_pinned_image_and_newer_version_are_not_silently_replaced(self):
         for image in ('carlosfarkas/oncotracer:6.1.0@sha256:' + 'b' * 64, 'custom/image:test', 'carlosfarkas/oncotracer:9.0.0'):
             self.version = image.split(':')[-1]; self.digests = []

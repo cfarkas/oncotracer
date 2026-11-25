@@ -22,6 +22,8 @@ function dependencyError(error){const field=$('dependency-error');field.textCont
 function dependencySelection(){return {backend:$('dependency-backend').value,image:$('dependency-image').value.trim()};}
 function dependencyImageVisibility(){$('dependency-image-field').hidden=$('dependency-backend').value!=='docker';}
 function dependencyApplySelection(fields){
+  const option=Array.from($('dependency-backend').options).find(item=>item.value===fields.backend);
+  if(option?.disabled)return;
   dependencyUi.syncing=true;
   try{
     if(fields.backend)$('dependency-backend').value=fields.backend;
@@ -141,7 +143,11 @@ async function setupDependencies(system){
   $('dependency-versions').textContent='Launcher '+(system.launcher_version||'unknown');
   try{
     const job=await api('/api/dependencies/install/status');
-    if(job.status!=='idle'){renderDependencyInstall(job);if(dependencyInstallActive){await pollDependencyInstall();return;}}
+    if(job.status!=='idle'){
+      renderDependencyInstall(job);
+      if(dependencyInstallActive){await pollDependencyInstall();return;}
+      if(job.status==='complete'){dependencyUi.applied=job.id;dependencyApplySelection(job.fields||{});}
+    }
     await checkDependencies();
   }catch(error){dependencyError(error);}
 }

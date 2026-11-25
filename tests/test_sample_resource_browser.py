@@ -107,6 +107,9 @@ class SampleJobBrowserTests(unittest.TestCase):
             expect(self.page.locator('#dependency-backend')).to_be_enabled()
             expect(self.page.locator('#input-folder')).to_have_value(str(self.reads))
             self.assertEqual(self.runs, [])
+            self.page.reload()
+            expect(self.page.locator('#dependency-backend')).to_have_value('conda')
+            expect(self.page.locator('#dependency-status')).to_contain_text('verified')
             self.assertFalse(self.errors, self.errors)
 
     def new_form(self):
