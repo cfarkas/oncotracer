@@ -324,6 +324,7 @@ class WebState:
             if self.cpg_context:
                 self.cpg_context.validate_selections(entries)
             methylation_group = None
+            mixed_assignments = None
             methylation_excluded = []
             if "methylation_excluded_samples" in data:
                 excluded = data["methylation_excluded_samples"]
@@ -336,9 +337,9 @@ class WebState:
                     raise OncoTracerError("Methylation is off for every sample. Choose Continue without methylation to keep CNA and selected variants.")
                 methylation_excluded = [r["sample"] for r in entries if r["scan_index"] in excluded]
             if "methylation_assignments" in data:
-                if discovered.mode != "ont" or data.get("analysis") != "methylation":
-                    raise OncoTracerError("Classifier sample groups require ONT methylation-only analysis.")
-                classifier = _choice(data, "classifier", ("marlin", "sturgeon"))
+                if discovered.mode != "ont" or data.get("analysis") not in {"methylation", "both"}:
+                    raise OncoTracerError("Classifier sample groups require ONT methylation analysis.")
+                classifier = _choice(data, "classifier", ("assigned", "marlin", "sturgeon"), "assigned")
                 assignments = data["methylation_assignments"]
                 if not isinstance(assignments, list):
                     raise OncoTracerError("Provide explicit methylation sample assignments.")
@@ -352,12 +353,23 @@ class WebState:
                     assigned[assignment["id"]] = assignment["classifier"]
                 if set(assigned) != indices:
                     raise OncoTracerError("Assign or explicitly exclude every included sample from methylation classification.")
-                included = [row for row in entries if assigned[row["scan_index"]] == classifier]
-                if not included:
-                    raise OncoTracerError("The selected classifier group is empty. Assign at least one sample to it.")
-                methylation_group = {"classifier": classifier, "included": len(included),
-                                     "excluded": len(entries) - len(included)}
-                entries = included
+                if classifier == "assigned" or data.get("analysis") == "both":
+                    from .methylation_assignments import validate
+                    mixed_assignments = validate({row["sample"]: assigned[row["scan_index"]] for row in entries}, names)
+                    if any(mixed_assignments[name] for name in methylation_excluded):
+                        raise OncoTracerError("A sample cannot be both assigned and excluded from methylation.")
+                    methylation_excluded = [name for name, choice in mixed_assignments.items() if not choice]
+                    counts = {name: list(mixed_assignments.values()).count(name) for name in ("marlin", "sturgeon", "")}
+                    methylation_group = {"classifier": "assigned", "included": len(entries) - counts[""],
+                                         "excluded": counts[""], "counts": counts}
+                else:
+                    # Retain explicit single-classifier continuation for older clients.
+                    included = [row for row in entries if assigned[row["scan_index"]] == classifier]
+                    if not included:
+                        raise OncoTracerError("The selected classifier group is empty. Assign at least one sample to it.")
+                    methylation_group = {"classifier": classifier, "included": len(included),
+                                         "excluded": len(entries) - len(included)}
+                    entries = included
             if discovered.mode == "illumina" and len({row["source"].fastq_2 is not None for row in entries}) > 1:
                 raise OncoTracerError("Select either paired-end or single-end samples for this project; use separate projects for different layouts.")
             # Recheck the discovery before saving, so changed folders need a fresh review.
@@ -376,7 +388,7 @@ class WebState:
             if project == discovered.root or project in discovered.root.parents or discovered.root in project.parents:
                 raise OncoTracerError("Choose a project directory outside the input FASTQ folder.")
             analysis = _choice(data, "analysis", ("cna",) if discovered.mode == "illumina" else ("cna", "methylation", "both"), "cna")
-            if methylation_group and (project / "config/run.yml").exists():
+            if methylation_group and analysis == "methylation" and (project / "config/run.yml").exists():
                 prior = load_flat_yaml(project / "config/run.yml")
                 if (prior.get("methylation_only") is not True
                         or prior.get("methylation_classifier") != methylation_group["classifier"]):
@@ -491,7 +503,9 @@ class WebState:
                 args.hg38_build = _text(data, "reference_path")
             args.build_reference = reference == "build"
             if analysis != "cna":
-                args.classifier = _choice(data, "classifier", ("marlin", "sturgeon"))
+                args.classifier = "assigned" if mixed_assignments is not None else _choice(data, "classifier", ("marlin", "sturgeon"))
+                if mixed_assignments is not None:
+                    args._wizard_methylation_assignments = mixed_assignments
                 args.methylation_caller = _choice(data, "methylation_caller", ("rockfish", "modkit"), "rockfish")
                 source = _choice(data, "methylation_source", ("modbam", "pod5"))
                 if not data.get("methylation_path"):
@@ -501,7 +515,8 @@ class WebState:
                 args.resource_cache = _text(data, "resource_cache") if data.get("resource_cache") else None
                 from .setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
                 resources = data.get("resource_paths", {})
-                allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[args.classifier])
+                active_classifiers = sorted(set(mixed_assignments.values()) - {""}) if mixed_assignments else [args.classifier]
+                allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | {key for name in active_classifiers for key in RESOURCE_FILES[name]}
                 if not isinstance(resources, dict) or any(key not in allowed for key in resources):
                     raise OncoTracerError("Choose valid methylation tool and model resource paths.")
                 for key in resources:
@@ -557,6 +572,10 @@ class WebState:
                 paths.append(project / "config/samplesheet.csv")
             # Keep only reviewed display fields, never arbitrary YAML or patient metadata.
             saved = load_flat_yaml(config_path)
+            if saved.get("methylation_sample_metadata"):
+                paths.append(Path(saved["methylation_sample_metadata"]))
+            from .methylation_assignments import summary as methylation_summary
+            saved_assignments = methylation_summary(saved, [row["sample"] for row in entries])
             reviewed_summary = {
                 "project_id": project_id, "project": str(project), "config_path": str(config_path),
                 "config": {"mode": discovered.mode, "backend": backend, "analysis": analysis,
@@ -569,6 +588,7 @@ class WebState:
                 "methylation_excluded_samples": list(methylation_excluded),
                 "samples": [{"name": row["sample"], "sample_type": row["sample_type"],
                              "analysis_role": row["analysis_role"],
+                             "methylation_classifier": saved_assignments[row["sample"]],
                              "detected_name": row["source"].sample,
                              "barcode": row["source"].barcode,
                              "file_count": len(row["source"].files)} for row in entries],
@@ -587,7 +607,7 @@ class WebState:
                 reviewed_summary["config"]["methylation_classifier"] = args.classifier
             if methylation_excluded:
                 report.setdefault("warnings", []).append("Methylation is off for " + ", ".join(methylation_excluded) + ". These samples remain in CNA and selected variant analyses.")
-            if methylation_group:
+            if methylation_group and methylation_group["classifier"] != "assigned":
                 report.setdefault("warnings", []).append(
                     f"Only the {methylation_group['classifier'].upper()} group ({methylation_group['included']} samples) is saved. "
                     f"{methylation_group['excluded']} other/unassigned samples are excluded and are not queued. "
@@ -646,6 +666,11 @@ class WebState:
             paths = [config_path, *(path for path in (project / "config/samplesheet.csv", project / "config/sample_metadata.csv") if path.exists())]
             project_id = secrets.token_urlsafe(18)
             analysis = "methylation" if config.get("methylation_only") else "both" if config.get("methylation") else "cna"
+            if config.get("methylation_sample_metadata"):
+                paths.append(Path(config["methylation_sample_metadata"]))
+            from .methylation_assignments import summary as methylation_summary
+            assignments = methylation_summary(config, [row["name"] for row in samples])
+            samples = [{**row, "methylation_classifier": assignments[row["name"]]} for row in samples]
             prepared = {**result, "id": project_id, "kind": "existing_project", "config": config_path.read_text(),
                         "docker_image": config.get("docker_image", ""),
                         "resource_choices": resource_choices, "resources_confirmed": data.get('resources') is not None,

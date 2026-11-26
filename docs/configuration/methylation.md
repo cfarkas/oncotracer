@@ -47,15 +47,17 @@ Named libraries automatically link `pod5_pass`; saved/explicit modified BAMs sta
 selected. Failed siblings are excluded. Legacy barcode/ligation layouts also work.
 Assign and name the samples, then choose **Methylation classification** or **CNA and methylation**.
 
-Choose the linked POD5 or modified-base BAM input. For methylation-only analysis,
-drag included samples into the MARLIN or Sturgeon classifier group according to
-documented clinical context, then select **Classifier group to save and run**.
-Other groups and unassigned samples are excluded, not queued; save each classifier
-to a separate project. **CNA and methylation** uses one chosen classifier for the samples enabled under
-**Methylation for each sample**. Uncheck other cancers or samples without signal;
-they remain in CNA and selected variants. **Continue without methylation** turns
-off the methylation branch for the whole project. For mixed CNS/blood routing,
-use [sample-table launch](../launch.md#ont-with-methylation).
+Choose the linked POD5 or modified-base BAM input. In either methylation mode,
+drag each sample into **MARLIN**, **Sturgeon**, or **Skip methylation** using the
+known specimen context. Dropdowns provide the same assignment. Both classifier
+groups run in one project. Skipping methylation retains that sample's CNA and
+selected variants in a combined analysis.
+
+Review the counts and each sample's classifier before **Run analysis**.
+Assignments are saved in `config/methylation_assignments.tsv`, and remain visible
+during processing. **Continue without methylation** turns off the methylation
+branch for the project. [Sample-table launch](../launch.md#ont-with-methylation)
+also supports mixed CNS/blood routing.
 
 Docker prepares these paths automatically. For advanced external installations,
 browse to the tools/model files or reuse a resource YAML. Modkit

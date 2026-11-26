@@ -673,7 +673,7 @@ class VariantResourceTests(unittest.TestCase):
                         values = json.loads(result.stdout)
                         with patch("subprocess.run", side_effect=AssertionError("Detection executed a tool")):
                             found = self.detect(mode=mode, backend=backend, callers=callers, specimen_type=specimen,
-                                                docker_image="carlosfarkas/oncotracer:6.2.0", values=values)
+                                                docker_image="carlosfarkas/oncotracer:6.3.0", values=values)
                         self.assertEqual(found["backend"], backend)
                         self.assertTrue(found["resources"])
         self.assertEqual(before, set(self.project.rglob("*")))

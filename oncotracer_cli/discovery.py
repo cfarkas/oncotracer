@@ -307,10 +307,10 @@ def discover_ont_inputs(folder: str | Path, *, fastq_root: Path | None = None, n
         mappings = {library.name: discover_ont_inputs(library.fastq_dir, fastq_root=library.fastq_root,
                                                      named_ont=False) for library in named}
         return {"run": str(selected), "fastq": str(selected),
-                "pod5": str(selected) if all(row["pod5"] for row in mappings.values()) else "",
-                "modbam": str(selected) if all(row["modbam"] for row in mappings.values()) else "",
+                "pod5": str(selected) if any(row["pod5"] for row in mappings.values()) else "",
+                "modbam": str(selected) if any(row["modbam"] for row in mappings.values()) else "",
                 "samples": mappings, "named_samples": True,
-                "notes": ["Signal inputs are matched per selected named library; failed and unselected libraries are excluded."]}
+                "notes": ["Signal inputs are matched per assigned named library; failed and unselected libraries are excluded. A suggested cohort path may include samples without signal; only samples assigned to methylation require it."]}
     notes: list[str] = []
     fastq_names = {"fastq_pass", "fastq", "fastqs"}
     signal_names = {"pod5_pass", "pod5", "bam_pass", "modbam", "modified_bam"}

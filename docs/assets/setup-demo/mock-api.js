@@ -15,7 +15,7 @@ function demoFixture(platform){
 function demoAssertPath(path){if(typeof path!=='string'||!(path==='/demo'||path.startsWith('/demo/')))throw Error('This demo only contains the fictional /demo folders. Load an example or browse its synthetic folders.');}
 function demoMethylationSelection(payload){
   if(!Object.hasOwn(payload,'methylation_assignments'))return {payload,group:null};
-  if(demoState.scan?.mode!=='ont'||payload.analysis!=='methylation'||!['marlin','sturgeon'].includes(payload.classifier))throw Error('Classifier sample groups require ONT methylation-only analysis and an explicit classifier.');
+  if(demoState.scan?.mode!=='ont'||!['methylation','both'].includes(payload.analysis)||!['assigned','marlin','sturgeon'].includes(payload.classifier))throw Error('Classifier sample groups require ONT methylation and explicit assignments.');
   const samples=payload.samples||[],ids=new Set(samples.map(sample=>sample.id)),assignments=payload.methylation_assignments,assigned=new Map();
   if(!Array.isArray(assignments)||ids.size!==samples.length)throw Error('Provide explicit, unique sample assignments.');
   for(const row of assignments){
@@ -23,6 +23,8 @@ function demoMethylationSelection(payload){
     assigned.set(row.id,row.classifier);
   }
   if(assigned.size!==ids.size)throw Error('Assign or explicitly exclude every included sample.');
+  if(payload.analysis==='both')payload={...payload,classifier:'assigned'};
+  if(payload.classifier==='assigned'){if(![...assigned.values()].some(Boolean))throw Error('Assign at least one sample to a classifier.');return {payload,group:{classifier:'assigned',included:[...assigned.values()].filter(Boolean).length,excluded:[...assigned.values()].filter(value=>!value).length}};}
   const included=samples.filter(sample=>assigned.get(sample.id)===payload.classifier);
   if(!included.length)throw Error('The selected classifier group is empty.');
   return {payload:{...payload,samples:included},group:{classifier:payload.classifier,included:included.length,excluded:samples.length-included.length}};
@@ -70,8 +72,9 @@ function demoYaml(payload){
   if(payload.analysis!=='cna'){
     Object.assign(cfg,{methylation:true,methylation_only:payload.analysis==='methylation',methylation_classifier:payload.classifier,methylation_gpu:payload.device==='gpu'});
     cfg[payload.methylation_source==='pod5'?'methylation_pod5_dir':'methylation_modbam']=payload.methylation_path;
+    if(payload.classifier==='assigned')cfg.methylation_sample_metadata=payload.project+'/config/methylation_assignments.tsv';
     Object.assign(cfg,payload.resource_paths||{});
-    if(payload.classifier==='sturgeon'&&payload.accept_sturgeon_license)cfg.sturgeon_license_acknowledged=true;
+    if((payload.classifier==='sturgeon'||payload.methylation_assignments?.some(row=>row.classifier==='sturgeon'))&&payload.accept_sturgeon_license)cfg.sturgeon_license_acknowledged=true;
   }
   cfg.sample_metadata=payload.project+'/config/sample_metadata.csv';
   const lines=['# ILLUSTRATIVE NATIVE CONFIGURATION — browser simulation only.','# Uses the real setup field names; no files have been written or validated.','# The paths, reads and resources are fictional and this is not a runnable project.'];
@@ -212,8 +215,12 @@ function demoApi(path,payload){
     case '/api/prepare':{
       const selection=demoMethylationSelection(payload);payload=selection.payload;
       const check=demoCheck(payload);demoState.lastPayload=structuredClone(payload);demoState.job=null;
-      if(selection.group)check.warnings.push(`Only the ${selection.group.classifier.toUpperCase()} group (${selection.group.included} samples) is included in this preview. ${selection.group.excluded} other/unassigned samples are excluded and are not queued.`);
+      if(selection.group&&selection.group.classifier!=='assigned')check.warnings.push(`Only the ${selection.group.classifier.toUpperCase()} group (${selection.group.included} samples) is included in this preview. ${selection.group.excluded} other/unassigned samples are excluded and are not queued.`);
       demoState.prepared={id:'synthetic-project-'+(++demoState.revision),project:payload.project,config_path:payload.project+'/config/run.yml (preview only)',config:demoYaml(payload),backend:payload.backend,valid:check.errors.length===0,check,outdir:payload.project+'/results'};
+      const byId=new Map((payload.methylation_assignments||[]).map(row=>[row.id,row.classifier]));
+      demoState.prepared.reviewed_summary={project_id:demoState.prepared.id,config_path:demoState.prepared.config_path,
+        config:{mode:demoState.scan.mode,analysis:payload.analysis,run_variants:!!payload.variants},
+        samples:payload.samples.map(row=>({name:row.name,methylation_classifier:payload.analysis==='cna'?'off':byId.get(row.id)||'skip'}))};
       return demoState.prepared;
     }
     case '/api/run':

@@ -463,7 +463,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
         self.assertEqual(variant_plan.config, variant_run.config)
         self.assertEqual(variant_run.threads, 8)
 
-    def test_post_ont_guide_saves_and_plans_each_classifier_separately(self):
+    def test_post_ont_guide_supports_mixed_and_legacy_classifier_projects(self):
         from oncotracer_cli.reference_bundle import _files, reference_paths
         from oncotracer_cli.runtime import render_flat_yaml
         from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
@@ -483,8 +483,8 @@ class DocumentedWorkflowTests(unittest.TestCase):
         self.assertEqual(str(fresh.input_folder), "/data/ONT")
         self.assertTrue(fresh.interactive)
         self.assertFalse(fresh.run)
-        self.assertIn("https://github.com/cfarkas/oncotracer/tree/main", text)
-        self.assertIn("installation_details.md#install-from-github", text)
+        self.assertIn("OncoTracer 6.3 or later", text)
+        self.assertIn("Both assigned groups are included", text)
         self.assertNotIn("releases/latest", text)
         from oncotracer_cli.nextflow_gateway import parser as gateway_parser
         gateway, = list(self.commands(text, "nextflow"))
@@ -558,11 +558,11 @@ class DocumentedWorkflowTests(unittest.TestCase):
             assignments = [{"id": 0, "classifier": "marlin"}, {"id": 1, "classifier": "sturgeon"},
                            {"id": 2, "classifier": ""}]
             projects = []
-            for offset, classifier in enumerate(("marlin", "sturgeon")):
+            for offset, classifier in enumerate(("marlin", "sturgeon", "assigned")):
                 project = Path(restored["projects"][classifier])
                 self.assertNotEqual(project, source)
                 self.assertEqual(project.parent, source.parent)
-                allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[classifier])
+                allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | {key for model in (("marlin","sturgeon") if classifier=="assigned" else (classifier,)) for key in RESOURCE_FILES[model]}
                 with contextlib.redirect_stdout(io.StringIO()):
                     saved = state.prepare({
                         "scan_id": restored["scan"]["scan_id"], "project": str(project),
@@ -573,7 +573,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                         "reference_path": defaults["reference_path"], "variants": False,
                         "resource_paths": {key: value for key, value in restored["resource_paths"].items() if key in allowed},
                         "variant_specimen_type": defaults["variant_specimen_type"],
-                        "accept_sturgeon_license": classifier == "sturgeon",
+                        "accept_sturgeon_license": classifier in {"sturgeon", "assigned"},
                     })
                 self.assertTrue(saved["valid"], saved["check"])
                 config = load_flat_yaml(Path(saved["config_path"]))
@@ -582,10 +582,15 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 self.assertEqual(config["methylation_classifier"], classifier)
                 self.assertEqual(config["methylation_modbam"], str(bam))
                 self.assertEqual(Path(config["lpwgs_root"]), reference)
-                selected, = parse_ont_samples(config)
-                self.assertEqual((selected.sample, selected.barcode), (names[offset], f"barcode{offset + 1:02d}"))
-                self.assertEqual(saved["reviewed_summary"]["methylation_group"],
-                                 {"classifier": classifier, "included": 1, "excluded": 2})
+                if classifier == "assigned":
+                    self.assertEqual([sample.sample for sample in parse_ont_samples(config)], names)
+                    self.assertEqual(saved["reviewed_summary"]["methylation_group"]["included"], 2)
+                    self.assertEqual([row["methylation_classifier"] for row in saved["reviewed_summary"]["samples"]], ["marlin","sturgeon","skip"])
+                else:
+                    selected, = parse_ont_samples(config)
+                    self.assertEqual((selected.sample, selected.barcode), (names[offset], f"barcode{offset + 1:02d}"))
+                    self.assertEqual(saved["reviewed_summary"]["methylation_group"],
+                                     {"classifier": classifier, "included": 1, "excluded": 2})
                 code, output = self.cli("run", "--backend", "conda", "--config", saved["config_path"], "--dry-run")
                 self.assertEqual(code, 0, output)
                 self.assertIn("oncotracer-native-dry-run-v1", output)
@@ -593,7 +598,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 self.assertFalse((project / "reference").exists())
                 self.assertIsNone(state.job)
                 projects.append(project)
-            self.assertNotEqual(*projects)
+            self.assertEqual(len(set(projects)),3)
             self.assertEqual(original, {path: path.read_bytes() for path in original})
             self.assertEqual(source_files, {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()})
             for classifier in ("marlin", "sturgeon"):
@@ -633,7 +638,12 @@ for(const assignments of [[],[{id:0,classifier:'marlin'}],
   [{id:0,classifier:''},{id:1,classifier:'sturgeon'},{id:2,classifier:''}]]){
   assert.throws(()=>demoApi('/api/prepare',{...payload,methylation_assignments:assignments}));
 }
-assert.throws(()=>demoApi('/api/prepare',{...payload,analysis:'both'}));
+const mixed=demoApi('/api/prepare',{...payload,analysis:'both',classifier:'assigned'});
+assert.equal(mixed.valid,true);assert.deepEqual(mixed.check.plan.samples,['LEUKEMIA','CNS','UNKNOWN']);
+assert.ok(mixed.config.includes('methylation_classifier: "assigned"'));
+assert.ok(mixed.config.includes('methylation_assignments.tsv'));
+assert.deepEqual(mixed.reviewed_summary.samples.map(row=>row.methylation_classifier),['marlin','sturgeon','skip']);
+
 assert.equal(demoState.job,null);
 """
         result = subprocess.run([shutil.which("node"), "-e", script], capture_output=True,

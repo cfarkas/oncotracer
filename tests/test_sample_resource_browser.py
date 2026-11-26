@@ -233,7 +233,7 @@ class SampleJobBrowserTests(unittest.TestCase):
                 self.assertIsNone(self.state.job)
                 self.assertFalse(self.errors, self.errors)
 
-    def test_methylation_sample_checkboxes_and_fastq_only_escape_keep_samples(self):
+    def test_methylation_assignments_and_fastq_only_escape_keep_samples(self):
         ont=self.root/'ont-inputs'
         for name in ('MARROW','OTHER'):
             fastq=ont/name/'fastq_pass';fastq.mkdir(parents=True)
@@ -247,12 +247,11 @@ class SampleJobBrowserTests(unittest.TestCase):
         for index in range(self.page.locator('#samples .type-select').count()):
             self.page.locator(f'#samples .sample[data-id="{index}"] .type-select').select_option('cancer')
         self.page.locator('#analysis').select_option('both')
-        self.page.locator('#classifier').select_option('marlin')
+        self.page.get_by_label('CpG classifier for MARROW',exact=True).select_option('marlin')
         expect(self.page.locator('#methylation-availability-note')).to_contain_text('No methylation input')
-        expect(self.page.locator('.methylation-enabled')).to_have_count(2)
-        self.page.get_by_role('checkbox',name='Methylation for OTHER',exact=True).uncheck()
-        expect(self.page.locator('#methylation-selection-note')).to_contain_text('1 of 2')
-        self.assertEqual(self.page.evaluate('methylationAssignmentPayload()'),{'methylation_excluded_samples':[1]})
+        expect(self.page.locator('.methylation-classifier-select')).to_have_count(2)
+        expect(self.page.locator('#methylation-group-note')).to_contain_text('MARLIN: 1 · Sturgeon: 0 · Skip methylation: 1')
+        self.assertEqual(self.page.evaluate('methylationAssignmentPayload()'),{'methylation_assignments':[{'id':0,'classifier':'marlin'},{'id':1,'classifier':''}]})
         selected=self.page.evaluate('selectedRows().map(row=>row.querySelector(".sample-name").value)')
         variants=self.page.locator('#variants').is_checked()
         self.page.locator('#skip-methylation').click()
@@ -276,7 +275,7 @@ class SampleJobBrowserTests(unittest.TestCase):
         self.page.wait_for_selector('#samples-card:not([hidden])')
         self.page.locator('.type-select').first.select_option('cancer')
         self.page.locator('#analysis').select_option('methylation')
-        self.page.locator('#classifier').select_option('sturgeon')
+        self.page.get_by_label('CpG classifier for SYNTHETIC',exact=True).select_option('sturgeon')
         self.page.locator('#backend').select_option('docker')
         expect(self.page.locator('#backend')).to_have_value('docker')
         expect(self.page.locator('#managed-methylation-settings')).to_be_visible()
@@ -288,6 +287,61 @@ class SampleJobBrowserTests(unittest.TestCase):
         expect(self.page.locator('#sturgeon_model')).to_be_hidden()
         self.assertFalse(self.errors,self.errors)
         self.assertEqual(self.runs,[])
+
+    def test_drag_mixed_classifiers_saves_one_project_and_reviews_each_sample(self):
+        from tests.test_native_methylation import Fixture
+        from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
+        ont=self.root/'mixed-ont'
+        for name in ('MARROW','CNS','OTHER'):
+            folder=ont/name/'fastq_pass';folder.mkdir(parents=True)
+            (folder/'reads.fastq').write_text('@'+name+'\nACGT\n+\nIIII\n')
+            if name!='OTHER':
+                folder=ont/name/'pod5_pass';folder.mkdir()
+                (folder/'reads.pod5').write_bytes(b'synthetic signal fixture')
+        resources={}
+        for classifier in ('marlin','sturgeon'):
+            folder=self.root/classifier;folder.mkdir();fixture=Fixture(folder,classifier)
+            allowed=set(EXECUTABLES)|set(RESOURCE_FLAGS)|set(RESOURCE_FILES[classifier])
+            resources.update({key:str(value) for key,value in fixture.config().items() if key in allowed})
+        self.page.locator('#choose-new-analysis').click()
+        self.page.locator('#choose-ont').click();self.page.locator('#variant-fresh').click()
+        self.page.locator('#input-folder').fill(str(ont));self.page.locator('#scan').click()
+        self.page.wait_for_selector('#samples-card:not([hidden])')
+        for index in range(3):self.page.locator(f'#samples .sample[data-id="{index}"] .type-select').select_option('cancer')
+        self.page.locator('#analysis').select_option('both')
+        expect(self.page.locator('#methylation-assignment-board')).to_be_visible()
+        card=self.page.locator('.methylation-sample').filter(has=self.page.get_by_text('MARROW',exact=True))
+        card.locator('.drag-handle').scroll_into_view_if_needed()
+        source=card.locator('.drag-handle').bounding_box()
+        target=self.page.locator('[data-methylation-classifier="marlin"]').bounding_box()
+        self.page.mouse.move(source['x']+20,source['y']+10);self.page.mouse.down()
+        self.page.mouse.move(target['x']+target['width']/2,target['y']+30,steps=15);self.page.mouse.up()
+        expect(self.page.locator('#methylation-marlin')).to_contain_text('MARROW')
+        self.page.get_by_label('CpG classifier for CNS',exact=True).select_option('sturgeon')
+        expect(self.page.locator('#methylation-group-note')).to_contain_text('MARLIN: 1 · Sturgeon: 1 · Skip methylation: 1')
+        expect(self.page.locator('#sturgeon-license-field')).to_be_visible()
+        self.page.locator('#license').check()
+        self.page.locator('#methylation-caller').select_option('modkit')
+        self.page.locator('#methylation-source').select_option('pod5')
+        self.page.locator('#backend').select_option('host')
+        for key,value in resources.items():self.page.locator('#'+key).fill(value)
+        self.page.locator('#variants').uncheck()
+        self.page.locator('#project-parent').fill(str(self.root));self.page.locator('#project-name').fill('mixed-project')
+        self.page.locator('#prepare').click()
+        expect(self.page.locator('#run')).to_be_enabled(timeout=30000)
+        expect(self.page.locator('#saved-analysis-summary')).to_contain_text('CNA: Enabled')
+        expect(self.page.locator('#saved-analysis-summary')).to_contain_text('Methylation: Enabled — MARLIN 1, Sturgeon 1, skipped 1')
+        config=load_flat_yaml(self.root/'mixed-project/config/run.yml')
+        self.assertEqual(config['methylation_classifier'],'assigned')
+        self.assertEqual(set(config['ont_sample_names'].split(',')),{'CNS','MARROW','OTHER'})
+        from oncotracer_cli.methylation_assignments import read
+        self.assertEqual(read(config['methylation_sample_metadata'],['CNS','MARROW','OTHER']),{'CNS':'sturgeon','MARROW':'marlin','OTHER':''})
+        evidence=os.environ.get('ONCOTRACER_BROWSER_EVIDENCE')
+        if evidence:
+            path=Path(evidence);path.mkdir(parents=True,exist_ok=True)
+            self.page.locator('#saved-analysis-summary').screenshot(path=str(path/'mixed-methylation-review.png'))
+            self.page.locator('#methylation-assignment-board').screenshot(path=str(path/'mixed-methylation-assignments.png'))
+        self.assertEqual(self.runs,[]);self.assertFalse(self.errors,self.errors)
 
     def test_docker_setup_saves_image_and_reaches_reviewed_run(self):
         self.new_form()

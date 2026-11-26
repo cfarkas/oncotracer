@@ -92,7 +92,8 @@ COMMENTS = {
     "methylation": "Request methylation analysis in addition to the default copy-number workflow.",
     "methylation_only": "true skips copy-number analysis; false runs both requested branches.",
     "methylation_excluded_samples": "Comma-separated sample IDs that skip methylation only; other selected analyses remain enabled.",
-    "methylation_classifier": "marlin: leukemia research; sturgeon: CNS-tumor research.",
+    "methylation_classifier": "assigned: use each sample\'s TSV assignment; marlin: leukemia; sturgeon: CNS.",
+    "methylation_sample_metadata": "TSV recording each selected sample and its classifier or skip choice.",
     "methylation_gpu": "false keeps methylation on CPU. Existing BAM calls never require GPU basecalling.",
     "methylation_modbam": "Existing modified-base BAM file or directory. Reuses MM/ML calls; aligns to hg38 on CPU.",
     "methylation_pod5_dir": "Existing raw-signal directory. Only FASTQ-selected read IDs are re-basecalled.",
@@ -531,7 +532,7 @@ def _validate_setup_destination(project: Path) -> None:
     for path in (directory, directory / "backups"):
         if path.is_symlink() or (path.exists() and not path.is_dir()):
             raise OncoTracerError(f"Setup needs a regular configuration directory: {path}")
-    for name in ("run.yml", "samplesheet.csv", "sample_metadata.csv"):
+    for name in ("run.yml", "samplesheet.csv", "sample_metadata.csv", "methylation_assignments.tsv"):
         path = directory / name
         if path.is_symlink() or (path.exists() and not path.is_file()):
             raise OncoTracerError(f"Setup cannot replace a symlink or non-file: {path}")
@@ -539,7 +540,7 @@ def _validate_setup_destination(project: Path) -> None:
 
 def _save_setup_files(project: Path, files: dict[str, str]) -> Path | None:
     """Replace validated setup files, retaining the previous settings together."""
-    if set(files) - {"run.yml", "samplesheet.csv", "sample_metadata.csv"}:
+    if set(files) - {"run.yml", "samplesheet.csv", "sample_metadata.csv", "methylation_assignments.tsv"}:
         raise OncoTracerError("Unsupported setup configuration file.")
     _validate_setup_destination(project)
     directory = project / "config"
@@ -688,6 +689,7 @@ def _command_setup(args: argparse.Namespace) -> int:
         getattr(args, key)
         for key in (
             "classifier",
+            "methylation_assignments",
             "modbam",
             "pod5_dir",
             "resources",
@@ -879,23 +881,52 @@ def _command_setup(args: argparse.Namespace) -> int:
     if args.backend in {"docker"} and getattr(args, 'image', None):
         values['docker_image'] = args.image
 
+    methylation_table = None
+    methylation_metadata_path = project / "config/methylation_assignments.tsv"
     if analysis != "cna":
         from .methylation_selection import excluded_samples
         selected_names = [sample.sample for sample in parse_ont_samples({**values, "mode": mode})]
+        supplied_assignments = getattr(args, "_wizard_methylation_assignments", None)
+        assignments_path = getattr(args, "methylation_assignments", None)
+        classifier = _ask(
+            args.classifier or ("assigned" if supplied_assignments is not None or assignments_path else None),
+            "Methylation classifier (--classifier; assigned=choose per sample, marlin=leukemia, sturgeon=CNS)",
+            choices=("assigned", "marlin", "sturgeon"), interactive=interactive,
+        )
         excluded = getattr(args, "methylation_exclude", None)
-        if interactive and excluded is None:
+        if interactive and excluded is None and classifier != "assigned":
             print("Methylation supports CNS and blood/marrow classifiers. Other samples can keep CNA and variants without methylation.")
             print("Selected samples: " + ", ".join(selected_names))
             excluded = input("Skip methylation for sample IDs (comma-separated; Enter keeps all): ").strip()
         if excluded:
             values["methylation_excluded_samples"] = ",".join(excluded_samples(
                 {"methylation_excluded_samples": excluded}, selected_names))
-        classifier = _ask(
-            args.classifier,
-            "Methylation classifier (--classifier; marlin=leukemia, sturgeon=CNS)",
-            choices=("marlin", "sturgeon"),
-            interactive=interactive,
-        )
+        if classifier == "assigned":
+            from .methylation_assignments import read, validate, render
+            if supplied_assignments is not None:
+                assignments = validate(supplied_assignments, selected_names)
+            elif assignments_path:
+                assignments = read(assignments_path, selected_names)
+            elif interactive:
+                assignments = {}
+                for name in selected_names:
+                    value = _ask(None, name + " — methylation classifier", default="skip",
+                                 choices=("marlin", "sturgeon", "skip"), interactive=True)
+                    assignments[name] = "" if value == "skip" else value
+                assignments = validate(assignments, selected_names)
+            else:
+                raise OncoTracerError("Use --methylation-assignments TSV with a classifier or skip for every selected sample.")
+            for name in excluded_samples(values, selected_names):
+                if assignments[name]:
+                    raise OncoTracerError("A sample cannot be both assigned and excluded from methylation: " + name)
+            classifiers = sorted(set(assignments.values()) - {""})
+            methylation_table = render(assignments)
+            values["methylation_sample_metadata"] = str(methylation_metadata_path)
+        else:
+            if supplied_assignments is not None or assignments_path:
+                raise OncoTracerError("Per-sample assignments require --classifier assigned.")
+            classifiers = [classifier]
+        classifier_files = {key: label for name in classifiers for key, label in RESOURCE_FILES[name].items()}
         if args.backend not in {"host", "conda", "poetry", "docker"}:
             raise OncoTracerError("Methylation supports Docker, Conda, host or Poetry. Use --backend docker for managed tools and models.")
         resources = (
@@ -906,25 +937,25 @@ def _command_setup(args: argparse.Namespace) -> int:
         from .rockfish import resolve_caller
         args.methylation_caller = resolve_caller(getattr(args, "methylation_caller", None) or resources.get("methylation_caller"))
         managed_docker = args.backend == "docker" and not args.resources and not any(
-            getattr(args, key, None) for key in (*EXECUTABLES, *RESOURCE_FILES[classifier]))
+            getattr(args, key, None) for key in (*EXECUTABLES, *classifier_files))
         if managed_docker:
             from .launch import cache_directory, _docker_image
             from .managed_resources import prepare_for_launch
             from .cli import DEFAULT_IMAGE
             args.image = args.image or DEFAULT_IMAGE
-            if classifier == "sturgeon" and not args.accept_sturgeon_license and interactive:
+            if "sturgeon" in classifiers and not args.accept_sturgeon_license and interactive:
                 from .sturgeon_resources import LICENSE_URL
                 print("Sturgeon license: " + LICENSE_URL)
                 args.accept_sturgeon_license = _ask(None, "Have you reviewed and accepted these terms?",
                     default="no", choices=("yes", "no"), interactive=True) == "yes"
-            if classifier == "sturgeon" and not args.accept_sturgeon_license:
+            if "sturgeon" in classifiers and not args.accept_sturgeon_license:
                 from .sturgeon_resources import LICENSE_URL
                 raise OncoTracerError("Review " + LICENSE_URL + " then pass --accept-sturgeon-license.")
             _docker_image(args.image)
-            resources.update(prepare_for_launch(cache_directory(getattr(args, "resource_cache", None)), [classifier], args))
+            resources.update(prepare_for_launch(cache_directory(getattr(args, "resource_cache", None)), classifiers, args))
             values.update(resources)
             values["docker_image"] = args.image
-        if classifier == "sturgeon" and args.sturgeon_model == "general":
+        if "sturgeon" in classifiers and args.sturgeon_model == "general":
             from .sturgeon_resources import LICENSE_URL, prepare_sturgeon
             acknowledged = args.accept_sturgeon_license
             if not acknowledged and interactive:
@@ -976,7 +1007,7 @@ def _command_setup(args: argparse.Namespace) -> int:
         values[
             "methylation_modbam" if source_kind == "modbam" else "methylation_pod5_dir"
         ] = str(source)
-        for key in _resource_keys(classifier, caller):
+        for key in dict.fromkeys(key for name in classifiers for key in _resource_keys(name, caller)):
             program, label = EXECUTABLES[key]
             supplied = getattr(args, key) or resources.get(key)
             if args.backend == "docker" and key == "methylation_rockfish_python" and not supplied:
@@ -998,7 +1029,7 @@ def _command_setup(args: argparse.Namespace) -> int:
                 ),
                 label,
             )
-        files = dict(RESOURCE_FILES[classifier])
+        files = dict(classifier_files)
         if caller == "rockfish":
             files.update(methylation_rockfish_model="Pinned Rockfish 5kHz checkpoint", methylation_rockfish_source="Pinned Rockfish source directory")
         if source_kind == "pod5":
@@ -1036,10 +1067,9 @@ def _command_setup(args: argparse.Namespace) -> int:
                 )
             values[key] = str(value)
             values[key + "_sha256"] = digest
-        values[f"{classifier}_interface_contract_commit"] = (
-            SUPPORTED_CLASSIFIER_INTERFACE_COMMITS[classifier]
-        )
-        if classifier == "sturgeon":
+        for name in classifiers:
+            values[f"{name}_interface_contract_commit"] = SUPPORTED_CLASSIFIER_INTERFACE_COMMITS[name]
+        if "sturgeon" in classifiers:
             acknowledged = (
                 args.accept_sturgeon_license
                 or resources.get("sturgeon_license_acknowledged") is True
@@ -1071,9 +1101,18 @@ def _command_setup(args: argparse.Namespace) -> int:
 
         from .docker_runtime import docker_host_preview
         with docker_host_preview() if args.backend == "docker" else contextlib.nullcontext():
-            resolve_methylation_request(values, mode=mode)
+            if methylation_table is None:
+                resolve_methylation_request(values, mode=mode)
+            else:
+                # Validate before the atomic project save, without leaving a partial TSV.
+                with tempfile.TemporaryDirectory(prefix="oncotracer-methylation-") as temporary:
+                    path = Path(temporary) / "assignments.tsv"
+                    path.write_text(methylation_table)
+                    resolve_methylation_request({**values, "methylation_sample_metadata": str(path)}, mode=mode)
 
     files = {}
+    if methylation_table is not None:
+        files[methylation_metadata_path.name] = methylation_table
     if sample_rows is not None:
         handle = io.StringIO(newline="")
         writer = csv.writer(handle)
@@ -1423,12 +1462,13 @@ def add_setup_commands(subparsers) -> None:
     variant.add_argument('--variant-varlociraptor-events', help='comma-separated uppercase scenario events; default PRESENT')
     variant.add_argument('--variant-varlociraptor-sample', help='observed sample name in custom scenario; default sample')
     meth = parser.add_argument_group("ONT methylation")
+    meth.add_argument("--methylation-assignments", metavar="TSV", help="TSV with sample and classifier columns; choose marlin, sturgeon or skip per sample")
     meth.add_argument("--methylation-exclude", metavar="SAMPLE1,SAMPLE2", help="Skip methylation for these sample IDs; retain their other selected analyses")
     meth.add_argument("--methylation-caller", choices=("rockfish", "modkit"), help="CpG caller; default rockfish (requires raw POD5)")
     meth.add_argument(
         "--classifier",
-        choices=("marlin", "sturgeon"),
-        help="marlin=leukemia; sturgeon=CNS-tumor research",
+        choices=("assigned", "marlin", "sturgeon"),
+        help="assigned=per-sample TSV or terminal choices; marlin=leukemia; sturgeon=CNS",
     )
     inputs = meth.add_mutually_exclusive_group()
     inputs.add_argument(

@@ -11,10 +11,10 @@ You need **Linux x86-64, Python 3.10–3.13 and [Docker Engine](https://docs.doc
 ```bash
 python3 -m venv oncotracer-env
 source oncotracer-env/bin/activate
-python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.2.0/oncotracer-6.2.0-py3-none-any.whl"
+python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.3.0/oncotracer-6.3.0-py3-none-any.whl"
 ```
 
-Use the release wheel above; `pip install oncotracer` follows the separate PyPI release.
+Use this wheel; `pip install oncotracer` follows the separate PyPI release.
 
 ### Interactive setup (recommended)
 
@@ -24,9 +24,11 @@ Start the browser setup:
 oncotracer --interactive --backend docker
 ```
 
-`oncotracer interactive --backend docker` opens the same setup. For terminal questions, use `oncotracer setup --terminal --backend docker`. Use `oncotracer help` or `oncotracer help run` to see available commands and options.
+Equivalent: `oncotracer interactive --backend docker`. Terminal questions: `oncotracer setup --terminal --backend docker`. Command help: `oncotracer help run`.
 
 Setup checks tools and image updates first. Review any installation plan and click **Install and verify**. Choose your platform, inputs and project folder, then review and select **Run analysis**. Keep the terminal open. [First run: your inputs and automatic setup](docs/first_run.md) · [SSH](docs/headless.md).
+
+For mixed ONT cohorts, select **CNA and methylation** and drag samples to **MARLIN**, **Sturgeon**, or **Skip methylation**. Both groups run together. [Guide](docs/first_run.md#4-choose-analyses-and-methylation-inputs).
 
 ### Run from a sample table
 
@@ -59,7 +61,7 @@ oncotracer launch --samples ffpe.csv --project ffpe-run --specimen ffpe --accept
 
 Review [FFPErase terms](https://github.com/papaemmelab/nf-ffperase/blob/b0dd56cbd0a939896a966b9ce30c4d719b158170/LICENSE) before accepting. CNS classification similarly requires `--accept-sturgeon-license` after reviewing the [Sturgeon license](https://github.com/UMCUGenetics/sturgeon/blob/main/LICENSE). Its software and model are prepared privately. MARLIN and the permitted caller runtimes are supplied by Docker. Rockfish is the default; `--methylation-caller modkit` reuses modified-base BAMs. Compatible raw signal remains necessary for Rockfish.
 
-Version 6 retains ichorCNA fallback, Broad profiles and coarse rescues. See [release details](docs/releases/6.2.0.md) and [CNA evidence](docs/cna_evidence_assessment.md). GPU methylation also requires the [NVIDIA container setup](docs/gpu.md).
+Version 6 retains ichorCNA fallback, Broad profiles and coarse rescues. See [release details](docs/releases/6.3.0.md) and [CNA evidence](docs/cna_evidence_assessment.md). GPU methylation also requires the [NVIDIA container setup](docs/gpu.md).
 
 ## Run a saved project
 

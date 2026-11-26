@@ -1,6 +1,11 @@
 # After ONT: drag samples into a CpG classifier
 
-Version 5 defaults to Rockfish and requires raw POD5 plus its pinned runtime. Select **Modkit** to follow the archived video’s modification-calling workflow. Classifier grouping is unchanged; see [version 5 caller setup](releases/5.0.0.md).
+Version 6.3 supports **MARLIN and Sturgeon in one project**, with an explicit
+**Skip methylation** group. Rockfish is the default caller and requires compatible
+raw POD5. Choose Modkit to reuse existing MM/ML calls.
+
+The archived video below shows an earlier interface that saved each classifier
+separately. Use the current instructions on this page for version 6.3.
 
 Start methylation directly from named ONT inputs, or reuse a saved ONT project.
 A completed CNA analysis is not required. Keep original inputs grouped by intended
@@ -47,9 +52,7 @@ settings directly into the CpG assignment page. The original stays unchanged:
 oncotracer --interactive --cpg-from /path/to/ONT-project
 ```
 
-These named-input and reuse routes require the [current main source](https://github.com/cfarkas/oncotracer/tree/main);
-use the [GitHub installation option](installation_details.md#install-from-github).
-Previously published releases and PyPI 2.1.0 do not include it.
+Use [OncoTracer 6.3 or later](first_run.md) for this workflow.
 
 [Open the playable guide](https://cfarkas.github.io/oncotracer/post_ont_cpg/).
 
@@ -75,33 +78,27 @@ and separate checks.
 Drag documented **leukemia** samples to **MARLIN**, or **CNS-tumour** samples to
 **Sturgeon**. Use the dropdown if preferred. Choose from clinical records, not a
 previous classifier prediction. **Cancer/Normal** records the clinical role;
-**MARLIN/Sturgeon/Unknown** chooses a CpG classifier independently. Drag unknown
-or unsuitable samples to **Unknown / do not classify**. This excludes their CpG
+**MARLIN/Sturgeon/Skip methylation** chooses a CpG classifier independently. Drag unknown
+or unsuitable samples to **Skip methylation**. This excludes their CpG
 classification without changing their clinical role or labeling them normal.
 
 ## 2. Save and check
 
-Choose the classifier group, then **Save configuration and check**. OncoTracer
-suggests a separate `ONT-project_MARLIN` or `ONT-project_Sturgeon` folder.
-Only the chosen group is included; other samples are **not queued**.
+Keep **Per-sample assignments · both groups**, then click **Save configuration
+and check**. Continuation suggests a separate `ONT-project_CpG` folder, preserving
+the original project. Both assigned groups are included.
 
-If a requirement is missing, the page shows what to supply once: original
-modified-base BAMs or POD5, installed classifier resources, and any required
-license confirmation. For Sturgeon, read the linked license and explicitly
-acknowledge its terms, then choose **Download / verify Sturgeon general model**.
-This fills the pretrained model and hg38 probe paths after verification; your
-Sturgeon executable must also be installed. Resolve missing items before running.
-See [model acquisition and recorded acknowledgement](configuration/methylation_reference.md#sturgeon-pretrained-model-setup).
-
-The video demonstrates assignment and Save/check with fixtures. The model-download
-control described here is available in the current GitHub version.
+The review lists the enabled analyses and each sample's classifier. Docker
+prepares the managed tools and model resources. Review and accept the linked
+Sturgeon license when assigning CNS samples. Resolve missing inputs or resources
+before running; [resource details](configuration/methylation_reference.md) explain
+the advanced path settings. No classifier is inferred from a sample name.
 
 ## 3. Run when ready
 
-Click **Run analysis** explicitly after checks pass. The video stops after saving.
-To run the other group, open the same command in another terminal and choose that
-group. You can append `--classifier marlin` or `--classifier sturgeon` to preselect
-the group; still review its sample assignments.
+Click **Run analysis** after checks pass. Both groups run from the saved
+assignments. The live page continues to show each sample's classifier. Legacy
+single-group continuation remains available through the assignment-mode selector.
 
 <details markdown="1">
 <summary>Input requirements and result details</summary>
@@ -115,12 +112,11 @@ nextflow run main.nf --interactive --cpg_from /path/to/ONT-project --backend con
 - The original sample FASTQs select read membership. Modified-base BAMs must
   contain `MM`/`ML` tags; an ordinary CNA BAM is insufficient. Alternatively,
   completed POD5 files need compatible Dorado basecalling/modification models.
-- Reused tool/model paths must exist. Optional methylation tools and licensed
-  assets are separate from the base installation; use the
-  [resource reference](configuration/methylation_reference.md). Setup does not
-  download them or accept terms for you. Native Conda/host/Poetry is required.
-- Each project runs one classifier. Divide CPU/GPU capacity between concurrent
-  projects; see [run, stop and resume](running.md).
+- Docker supplies supported runtimes and prepares model resources after any
+  required license acceptance. Conda/host/Poetry can reuse explicitly provided
+  tools and models; see the [resource reference](configuration/methylation_reference.md).
+- Both classifier groups share one project. CPU/GPU limits still apply to the
+  whole run; see [run, stop and resume](running.md).
 - Review `results/07_methylation/methylation_status.json`, classifier scores and
   usable CpG/probe coverage. Missing predictions do not mean normal. See
   [result meanings](configuration/methylation.md#read-the-result).

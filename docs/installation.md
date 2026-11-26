@@ -3,10 +3,10 @@
 The recommended v6 route uses Docker for scientific tools and a small Python
 application for project setup. Use Linux x86-64 and Python 3.10–3.13.
 
-## Quick start: OncoTracer 6.2.0
+## Quick start: OncoTracer 6.3.0
 
 The [published study benchmark](benchmarks/2026-11-23.md) records v5 runs.
-See the [v6 release details](releases/6.2.0.md) for this version's changes and validation.
+See the [v6 release details](releases/6.3.0.md) for this version's changes and validation.
 
 Install [Docker Engine](https://docs.docker.com/engine/install/) and check that
 `docker info` works for your user. Then install the application:
@@ -14,7 +14,7 @@ Install [Docker Engine](https://docs.docker.com/engine/install/) and check that
 ```bash
 python3 -m venv oncotracer-env
 source oncotracer-env/bin/activate
-python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.2.0/oncotracer-6.2.0-py3-none-any.whl"
+python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.3.0/oncotracer-6.3.0-py3-none-any.whl"
 ```
 
 No Git checkout is needed. `pip install oncotracer` follows the separate PyPI
@@ -59,7 +59,7 @@ Select **Run analysis** after reviewing the saved settings.
 In the environment where you run OncoTracer:
 
 ```bash
-python -m pip install --upgrade "https://github.com/cfarkas/oncotracer/releases/download/v6.2.0/oncotracer-6.2.0-py3-none-any.whl"
+python -m pip install --upgrade "https://github.com/cfarkas/oncotracer/releases/download/v6.3.0/oncotracer-6.3.0-py3-none-any.whl"
 oncotracer --version
 ```
 

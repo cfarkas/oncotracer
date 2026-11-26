@@ -319,7 +319,7 @@ else:
             assert js("return document.querySelector('#ont-pod5').value") == str(resources.pod5)
             assert js("return document.querySelector('#ont-modbam').value") == str(bam_dir)
             fill('.sample[data-id="0"] .type-select', 'cancer')
-            fill('#analysis', 'methylation');fill('#classifier', classifier);fill('#methylation-source', source)
+            fill('#analysis', 'methylation');fill('.methylation-classifier-select', classifier);fill('#methylation-caller','modkit');fill('#methylation-source', source)
             assert js("return document.querySelector('#methylation-input-note').textContent").endswith(str(resources.pod5 if source == 'pod5' else bam_dir))
             assert js("return document.querySelector('#dorado-model-fields').hidden") == (source != 'pod5')
             allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[classifier])

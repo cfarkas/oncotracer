@@ -10,7 +10,7 @@ configuration from your choices and checks it before enabling **Run analysis**.
 | --- | --- |
 | Completed sequencing files and their locations | Discovers FASTQ files, groups lanes or ONT libraries, and checks that the selected files exist. Your original files stay in place. |
 | Sample names, Cancer/Normal roles, and Fresh/FFPE preservation from your records | Writes the sample tables and `config/run.yml`. Sample names do not determine biological roles. |
-| For methylation: the specimen tissue and suitable signal files | Checks the selected methylation inputs and prepares the selected classifier. With a sample table, blood/marrow routes to MARLIN and CNS to Sturgeon. |
+| For methylation: the specimen tissue and suitable signal files | Checks the selected methylation inputs and prepares both classifiers when needed. You assign each sample to MARLIN, Sturgeon or Skip methylation. |
 | Which analyses to run, including which samples should skip methylation | Saves those choices. Skipping methylation for a sample keeps its other selected analyses. |
 | A project folder outside the input folders | Creates configuration and results folders. It can download a prepared hg38 reference or reuse a compatible reference you select. |
 | Approval for a proposed tool installation and any required license acceptance | Installs the selected runtime, verifies it, and prepares permitted models and reference files. Completed downloads are reused. |
@@ -30,7 +30,7 @@ not install or reconfigure them.
 ```bash
 python3 -m venv oncotracer-env
 source oncotracer-env/bin/activate
-python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.2.0/oncotracer-6.2.0-py3-none-any.whl"
+python -m pip install "https://github.com/cfarkas/oncotracer/releases/download/v6.3.0/oncotracer-6.3.0-py3-none-any.whl"
 oncotracer interactive --backend docker
 ```
 
@@ -77,9 +77,24 @@ roles; custom labels still require a role. Input files are not renamed or moved.
 
 ## 4. Choose analyses and methylation inputs
 
-Enable CNA and any optional variants or reports you need. For ONT methylation,
-choose the classifier appropriate to the specimen: **MARLIN** for leukemia
-research in blood/marrow, or **Sturgeon** for CNS tumor research.
+Selecting ONT alone does not enable methylation. Under **Analysis**, choose
+**CNA and methylation** to run both branches, or **Methylation classification**
+for methylation alone. Variants are a separate option.
+
+Drag each sample into one of the three groups, or use its dropdown:
+
+- **MARLIN:** leukemia research in blood/marrow.
+- **Sturgeon:** CNS tumor research.
+- **Skip methylation:** other cancers, uncertain specimen types or samples without
+  suitable signal. In a combined run, these samples keep CNA and selected variants.
+
+![MARLIN, Sturgeon and Skip methylation sample groups](assets/tutorial/methylation-6.3-assignments.png)
+
+*Version 6.3 setup with synthetic examples; no patient data or predictions.*
+
+Both classifier groups run in the same project. Cancer/Normal roles and sample
+names never assign a classifier automatically. Review the Sturgeon license and
+accept it before using that classifier.
 
 | What remains from the ONT run | What to select |
 | --- | --- |
@@ -92,12 +107,12 @@ signal. Confirm the flow cell and basecalling profile from sequencing records;
 Fresh/FFPE is not a substitute for chemistry information. See the
 [ONT input guide](launch.md#ont-with-methylation) for supported profiles.
 
-For **CNA and methylation**, use the **Methylation for each sample** checkboxes.
-Turn it off for other cancers or samples without suitable inputs. These samples
-remain in CNA and any enabled variant analysis. If no sample needs methylation,
-click **Continue without methylation**. The browser uses one classifier per
-project; [sample-table launch](launch.md) supports mixed CNS and blood/marrow
-routing in one project.
+The page shows the number assigned to each classifier and the number skipped.
+**Save configuration and check** records the choices in
+`config/methylation_assignments.tsv`, alongside `config/run.yml`. The review
+shows **CNA**, **Small variants** and **Methylation** as enabled or off, followed
+by each sample's classifier. The same assignments remain visible during the run.
+If no sample needs methylation, click **Continue without methylation**.
 
 A detected BAM filename does not prove that methylation calls exist. During
 processing, OncoTracer checks matching reads and modification tags. If matching

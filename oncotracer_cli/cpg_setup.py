@@ -46,7 +46,7 @@ class CpgProject:
     @property
     def projects(self):
         return {name: str(self.project.with_name(self.project.name + suffix))
-                for name, suffix in (("marlin", "_MARLIN"), ("sturgeon", "_Sturgeon"))}
+                for name, suffix in (("assigned", "_CpG"), ("marlin", "_MARLIN"), ("sturgeon", "_Sturgeon"))}
 
     def validate_unchanged(self):
         for path, expected in self.fingerprints.items():

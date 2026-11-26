@@ -19,16 +19,13 @@ Keep the terminal open. Use its complete URL. See [concurrent projects](nextflow
 4. **Review settings.** Choose resources and a caller. QDNAseq defaults to **100 kb**;
    ONT ichorCNA uses **500 kb**. Both support ONT normal/control labels.
    GISTIC needs at least two assigned samples.
-5. **Select a new or existing project folder.** Choose your installed Conda or Docker
-   backend. Keep automatic reference download.
+5. **Choose a project folder and runtime.** Keep automatic reference download.
 6. Click **Save configuration and check**, resolve any check errors, then
    **Run analysis**. Follow progress and open results here.
 
 Settings use `PROJECT/config/run.yml`; Illumina also gets `config/samplesheet.csv`.
-Saving again overwrites settings and assignments, backing them up in `config/backups/`.
-Save/check detects tools and records their paths. Results and references stay.
-**Stop analysis** asks **Delete incomplete run?** **Yes** deletes the selected project;
-**No** keeps it. Both close the dialog and return to setup.
+Saving replaces settings, with backups in `config/backups/`. Save/check verifies tools.
+After **Stop analysis**, **Delete incomplete run?** offers **Yes** to delete the project or **No** to keep it.
 
 **Terminal alternative:**
 
@@ -40,7 +37,7 @@ oncotracer setup --terminal --backend docker --run
 
 Enable [variants](variants.md) to choose compatible callers for the selected preservation.
 ONT [methylation](configuration/methylation.md) requires modBAMs or raw POD5 and
-classifier resources; FASTQs alone lack methylation calls. In **CNA and methylation**, uncheck individual samples under **Methylation for each sample**, or choose **Continue without methylation** for the project. Other selected analyses remain enabled. Docker prepares the
+classifier resources; FASTQs alone lack methylation calls. Select **CNA and methylation**, then drag each sample to **MARLIN**, **Sturgeon** or **Skip methylation**. Both groups run in one project. Skipped samples keep CNA and selected variants. The review lists all enabled analyses and each sample's classifier. Choose **Continue without methylation** to turn off the methylation branch for the project. Docker prepares the
 managed resources automatically; see [launch](launch.md). Reports and [paper panels](paper_report.md) are optional.
 
 <details markdown="1">

@@ -202,8 +202,9 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual((linked["pod5"], linked["modbam"]), ("", ""))
         cohort = discover_ont_inputs(self.reads / "selected" / "..")
         self.assertTrue(cohort["named_samples"])
-        self.assertEqual(cohort["pod5"], "")
+        self.assertEqual(cohort["pod5"], str(self.reads.resolve()))
         self.assertEqual(cohort["samples"]["selected"]["pod5"], "")
+        self.assertEqual(cohort["samples"]["other"]["pod5"], str(other_pod5))
 
     def test_ont_signal_discovery_direct_files_requires_one_nonempty_bam(self):
         fastq = self.fastq("run/fastq_pass/batch.fastq.gz")

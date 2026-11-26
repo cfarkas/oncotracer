@@ -220,7 +220,8 @@ class CpgSetupTests(unittest.TestCase):
         self.assertTrue(restored["missing_input"])
         self.assertTrue(all(restored["missing_resources"].values()))
         self.assertIsNone(system["defaults"]["classifier"])
-        self.assertEqual(restored["projects"], {"marlin": str(self.root / "original ONT_MARLIN"),
+        self.assertEqual(restored["projects"], {"assigned": str(self.root / "original ONT_CpG"),
+                                                "marlin": str(self.root / "original ONT_MARLIN"),
                                               "sturgeon": str(self.root / "original ONT_Sturgeon")})
         self.assertEqual(before, self.snapshot())
         self.assertIsNone(state.job)

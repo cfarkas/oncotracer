@@ -429,12 +429,15 @@ def resolve_methylation_request(
         classifier_override
         or str(config.get("methylation_classifier") or "").strip().lower()
     )
+    if classifier == "assigned":
+        from .methylation_assignments import resolve
+        return resolve(config, mode=mode, gpu_override=gpu_override)
     if classifier in {"auto", "tissue"}:
         from .methylation_routing import resolve
         return resolve(config, mode=mode, gpu_override=gpu_override)
     if classifier not in {"sturgeon", "marlin"}:
         raise OncoTracerError(
-            "methylation requires exactly one classifier: --sturgeon or --marlin"
+            "Choose methylation_classifier: marlin, sturgeon, assigned or tissue"
         )
     from .methylation_selection import excluded_samples
     excluded = excluded_samples(config)

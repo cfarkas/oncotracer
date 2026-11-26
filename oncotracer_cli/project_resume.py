@@ -266,7 +266,7 @@ def resume_project(value, *, backend=None, image=None, resources=None, variant_o
         if updated.get('run_variants'):
             updated['variant_monte_carlo_linkage'] = False
         changes = {"run.yml": _render_config(updated)}
-        for name in ("samplesheet.csv", "sample_metadata.csv"):
+        for name in ("samplesheet.csv", "sample_metadata.csv", "methylation_assignments.tsv"):
             file = project / "config" / name
             if recovered and (recovered.parent / name).is_file():
                 file = recovered.parent / name

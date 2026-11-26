@@ -27,7 +27,7 @@ MARLIN's files are `marlin_v1.model.hdf5`, `marlin_v1.features.RData`, `marlin_v
 
 MARLIN needs compatible R/Keras and Python/TensorFlow packages. `marlin_rscript` and `marlin_python` must point to that environment, not an unrelated system installation. `oncotracer setup` collects these paths and records hashes; `--resources` can reuse them for another project. A locally computed hash records the file you chose; it does not authenticate the file's upstream origin.
 
-OncoTracer can run an optional methylation branch for Oxford Nanopore Technologies (ONT) analyses. Choose Sturgeon for a CNS-tumor research classifier or MARLIN for a leukemia research classifier. OncoTracer does not infer the disease type. A single-classifier project selects it explicitly; launch routes mixed cohorts using the tissue column.
+OncoTracer can run an optional methylation branch for Oxford Nanopore Technologies (ONT) analyses. Choose Sturgeon for a CNS-tumor research classifier or MARLIN for a leukemia research classifier. OncoTracer does not infer the disease type. Browser setup assigns each sample explicitly and can run both classifiers in one project. Sample-table launch routes mixed cohorts using the tissue column.
 
 This branch is research-only. A methylation class is not a diagnosis and must be reviewed with morphology, immunophenotyping, cytogenetics, validated molecular assays, and the assay-specific quality controls.
 
@@ -44,8 +44,7 @@ and check the acknowledgement only if you accept the terms for your intended use
 Click **Download / verify Sturgeon general model**. OncoTracer downloads the
 general CNS model directly from the upstream link and hg38 probes from the pinned
 Sturgeon interface revision. It fills in both paths; **Save/check** still validates
-all required tools and inputs before **Run** is enabled. The other classifier
-group is not started automatically.
+all required tools and inputs before **Run** is enabled. Preparing a model does not start analysis. With per-sample assignments, both assigned groups run after you choose Run.
 
 The model, probe table, license text, acknowledgement time and SHA-256 receipts
 are kept under `~/.local/share/oncotracer/models/sturgeon` (or `$XDG_DATA_HOME`).
@@ -283,3 +282,20 @@ classifier probes produce explicit no-call statuses. Old processing receipts and
 changed prediction/probe files cannot satisfy the new resume checks. Native
 class scores and measured-probe counts are retained at full precision under
 `07_methylation/`; no target score is supplied to the classifier.
+
+### Scripted per-sample methylation assignments
+
+For scripted setup, supply `--classifier assigned --methylation-assignments assignments.tsv`
+with `--analysis both` or `--analysis methylation`. Use tab-separated columns:
+
+```text
+sample	classifier
+MARROW_CASE	marlin
+CNS_CASE	sturgeon
+OTHER_CASE	skip
+```
+
+Include exactly one row per selected sample, using the final sample names.
+The usual POD5 or modified-base BAM option supplies the signal location.
+Setup validates the table and stores a copy inside the project. With terminal
+questions, choose `assigned` and answer once per sample instead of preparing a TSV.

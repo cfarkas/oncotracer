@@ -335,7 +335,7 @@ class WebTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("node"), "Node is required for browser reload checks")
     def test_reloaded_browser_restores_readonly_review_before_any_discovery(self):
         from oncotracer_cli.web_ui import PAGE
-        render_and_poll = PAGE.split("function showReviewedRun(job){", 1)[1].split("$('stop').onclick=", 1)[0]
+        render_and_poll = PAGE.split("function showSavedAnalyses(review){", 1)[1].split("$('stop').onclick=", 1)[0]
         restore = PAGE.split("async function restoreRunOrDiscover(defaults){", 1)[1].split("(async()=>", 1)[0]
         script = r"""
 const assert=require('node:assert/strict');
@@ -354,7 +354,7 @@ const clearTimeout=()=>{},setTimeout=()=>1;
 const summary={project_id:'saved-job',config_path:'/project/config/run.yml',config:{mode:'ont',backend:'docker',threads:20,analysis:'cna',caller:'ichorcna',bin_size_kb:500,run_variants:true,variant_callers:'clair3',specimen_type:'fresh'},samples:[{name:'reviewed-name',sample_type:'cancer',analysis_role:'tumor',detected_name:'barcode01',barcode:'barcode01',file_count:3}]};
 let reply={project_id:'saved-job',project_path:'/project',status:'running',log:'alignment',log_path:'/project/log',reviewed_summary:summary};
 const api=async endpoint=>{requests.push(endpoint);if(requestError)throw requestError;return reply;};
-""" + "function showReviewedRun(job){" + render_and_poll + "async function restoreRunOrDiscover(defaults){" + restore + r"""
+""" + "function showSavedAnalyses(review){" + render_and_poll + "async function restoreRunOrDiscover(defaults){" + restore + r"""
 (async()=>{
   const defaults={mode:'ont',input_folder:'/newly-scanned-inputs'};
   await restoreRunOrDiscover(defaults);
@@ -664,8 +664,8 @@ const window={},document={addEventListener(){}},location={href:'https://example.
                 self.prepare(mode="ont", analysis="methylation", classifier="marlin",
                              methylation_assignments=assignments)
             self.assertFalse((self.root / "project").exists())
-        for analysis in ("cna", "both"):
-            with self.subTest(analysis=analysis), self.assertRaisesRegex(OncoTracerError, "methylation-only"):
+        for analysis in ("cna",):
+            with self.subTest(analysis=analysis), self.assertRaisesRegex(OncoTracerError, "methylation analysis"):
                 self.prepare(mode="ont", analysis=analysis, classifier="marlin",
                              methylation_assignments=valid)
 
@@ -695,9 +695,10 @@ assert.deepEqual(methylationAssignmentPayload(),{methylation_assignments:[{id:0,
 classifier='sturgeon';assert.equal(methylationAssignmentPayload().methylation_assignments[0].classifier,'marlin');
 classifier='';assert.throws(methylationAssignmentPayload,/Assign at least one/);
 classifier='marlin';ids=[1,2];assert.throws(methylationAssignmentPayload,/Assign at least one/);
-analysis='both';assert.deepEqual(methylationAssignmentPayload(),{methylation_excluded_samples:[2]});
-methylationExcluded.add(1);assert.throws(methylationAssignmentPayload,/off for every sample/);
-ids=[0,1,2];assert.deepEqual(methylationAssignmentPayload(),{methylation_excluded_samples:[1,2]});
+analysis='both';classifier='assigned';ids=[0,1,2];
+assert.deepEqual(methylationAssignmentPayload(),{methylation_assignments:[{id:0,classifier:'marlin'},{id:1,classifier:'sturgeon'},{id:2,classifier:''}]});
+ids=[1,2];assert.equal(methylationAssignmentPayload().methylation_assignments[0].classifier,'sturgeon');
+ids=[2];assert.throws(methylationAssignmentPayload,/Assign at least one/);
 analysis='cna';assert.deepEqual(methylationAssignmentPayload(),{});
 mode='illumina';analysis='methylation';assert.deepEqual(methylationAssignmentPayload(),{});
 """
@@ -1265,6 +1266,7 @@ nodes['project-mode'].value='new';assert.equal(projectDestination(),'/work/fresh
         requirements = PAGE.split("function cpgRequirementFields(){", 1)[1].split("function updateCpgRequirements", 1)[0]
         script = r"""
 const assert=require('node:assert/strict');
+const selectedMethylationClassifiers=()=>['marlin'];
 const nodes={classifier:{value:'marlin'},'methylation-source':{value:'modbam'},'ont-modbam':{value:'/missing/original.bam'},'ont-pod5':{value:''},marlin_model:{value:'',matches:()=>true,closest:()=>null},sturgeon_model:{value:'',matches:()=>true,closest:()=>({hidden:true})},unsupported:{value:'',matches:()=>false}};
 const $=id=>nodes[id];
 const document={querySelector:()=>({textContent:'Classifier model'})};

@@ -109,7 +109,7 @@ def resolve(config, *, mode, gpu_override=None):
 
 def plan(request):
     from .methylation import methylation_plan
-    return {"enabled": True, "classifier": "tissue", "input_kind": "pod5" if request.caller == "rockfish" else "modbam",
+    return {"enabled": True, "classifier": request.classifier, "input_kind": "per_sample" if request.classifier == "assigned" else "pod5" if request.caller == "rockfish" else "modbam",
             "methylation_caller": request.caller,
             "metadata": str(request.metadata), "metadata_sha256": request.metadata_sha256,
             "assignments": list(request.assignments), "threads_per_sample": "allocated_at_runtime" if request.caller == "rockfish" else 1, "memory_budget_gb": request.memory,
@@ -120,7 +120,7 @@ def plan(request):
 def publish(outdir, request, records):
     from .methylation import _status_payload, CPG_POLICY
     from types import SimpleNamespace
-    description = SimpleNamespace(classifier="tissue", modbam_alignment=request.modbam_alignment,
+    description = SimpleNamespace(classifier=request.classifier, modbam_alignment=request.modbam_alignment,
                                   gpu=request.gpu, dorado_device="cpu", caller=request.caller)
     payload = _status_payload(description, records)
     payload.update(metadata=str(request.metadata), metadata_sha256=request.metadata_sha256,
@@ -129,13 +129,14 @@ def publish(outdir, request, records):
     directory = outdir / "07_methylation"
     atomic_write_json(directory / "methylation_status.json", payload)
     atomic_write_json(directory / "methylation_provenance.json",
-                      {"schema": "oncotracer-tissue-methylation-v1", "created_at": utc_now(),
+                      {"schema": "oncotracer-tissue-methylation-v1", "assignment_mode": request.classifier, "created_at": utc_now(),
                        "cpg_processing_policy": CPG_POLICY, "routing": plan(request),
                        "samples": records, "overall_status": payload["overall_status"]})
     cells = "".join("<tr>" + "".join("<td>" + html.escape(str(r.get(k, ""))) + "</td>"
                                      for k in ("sample", "tissue", "classifier", "status", "reason")) + "</tr>" for r in records)
+    heading = 'Per-sample methylation assignments' if request.classifier == 'assigned' else 'Tissue-routed methylation'
     atomic_write_text(directory / "tissue_routing_summary.html", '<!doctype html><meta charset="utf-8"><title>Methylation</title>'
-                      '<h1>Tissue-routed methylation</h1><p>MARLIN: peripheral blood or marrow. Sturgeon: CNS. '
+                      '<h1>' + heading + '</h1><p>MARLIN: peripheral blood or marrow. Sturgeon: CNS. '
                       'Unspecified or other tissues remain unassigned. Scores do not establish diagnoses.</p>'
                       '<table><tr><th>Sample</th><th>Tissue</th><th>Model</th><th>Status</th><th>Reason</th></tr>' + cells + '</table>')
     return payload

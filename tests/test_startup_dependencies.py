@@ -17,12 +17,12 @@ from oncotracer_cli.runtime import OncoTracerError
 from oncotracer_cli.web import WebState
 
 DIGEST = 'sha256:' + 'a' * 64
-RELEASE = {'status': 'checked', 'version': '6.2.0', 'digest': DIGEST}
+RELEASE = {'status': 'checked', 'version': '6.3.0', 'digest': DIGEST}
 
 
 def ready_report(data=None, **kwargs):
     chosen = {'backend': 'host', 'image': 'test/image:1', **(data or {})}
-    return {'schema': 'oncotracer-setup-dependencies-v1', 'launcher_version': '6.2.0',
+    return {'schema': 'oncotracer-setup-dependencies-v1', 'launcher_version': '6.3.0',
             'selection': chosen, 'release': RELEASE, 'ready': True, 'tools': [],
             'environments': [{'name': 'core', 'status': 'verified'}], 'actions': [], 'warnings': [], 'image': {}}
 
@@ -36,7 +36,7 @@ class DependencyInventoryTests(unittest.TestCase):
         self.stack.enter_context(patch.object(dependency, '_executable', side_effect=lambda name: '/test/' + name if name in ('docker', 'conda') else None))
         self.stack.enter_context(patch.object(dependency, 'latest_release', return_value=RELEASE))
         self.health = {'success': True, 'environments': {'core': {'success': True}}}
-        self.present = True; self.version = '6.2.0'; self.digests = ['test/image@' + DIGEST]
+        self.present = True; self.version = '6.3.0'; self.digests = ['test/image@' + DIGEST]
         self.commands = []
         self.stack.enter_context(patch.object(dependency, 'probe', side_effect=self.probe))
 
@@ -50,7 +50,7 @@ class DependencyInventoryTests(unittest.TestCase):
         return {'returncode': 0, 'stdout': json.dumps(result), 'stderr': ''}
 
     def test_current_image_is_checked_without_pulling_or_installing(self):
-        report = dependency.inspect_dependencies({'backend': 'docker', 'image': 'carlosfarkas/oncotracer:6.2.0'})
+        report = dependency.inspect_dependencies({'backend': 'docker', 'image': 'carlosfarkas/oncotracer:6.3.0'})
         self.assertTrue(report['ready']); self.assertEqual(report['actions'], [])
         self.assertEqual(report['image']['update_status'], 'current')
         self.assertIn('--pull=never', self.commands[-1]); self.assertIn('--network', self.commands[-1])
@@ -58,9 +58,9 @@ class DependencyInventoryTests(unittest.TestCase):
 
     def test_missing_image_offers_published_immutable_image(self):
         self.present = False
-        report = dependency.inspect_dependencies({'backend': 'docker', 'image': 'carlosfarkas/oncotracer:6.2.0'})
+        report = dependency.inspect_dependencies({'backend': 'docker', 'image': 'carlosfarkas/oncotracer:6.3.0'})
         self.assertFalse(report['ready']); self.assertNotIn('run', [cmd[1] for cmd in self.commands])
-        self.assertEqual(report['actions'][0]['image'], 'carlosfarkas/oncotracer:6.2.0@' + DIGEST)
+        self.assertEqual(report['actions'][0]['image'], 'carlosfarkas/oncotracer:6.3.0@' + DIGEST)
 
     def test_broken_custom_image_has_explicit_official_alternative(self):
         self.health = {'success': False, 'environments': {'core': {'success': False, 'error': 'samtools missing'}}}
@@ -102,11 +102,11 @@ class DependencyInventoryTests(unittest.TestCase):
 
 class ReleaseMetadataTests(unittest.TestCase):
     def test_official_asset_and_digest_are_required(self):
-        asset_url = 'https://github.com/cfarkas/oncotracer/releases/download/v6.2.0/release-provenance.json'
-        provenance = {'version': '6.2.0', 'container': {'digest': DIGEST}}
+        asset_url = 'https://github.com/cfarkas/oncotracer/releases/download/v6.3.0/release-provenance.json'
+        provenance = {'version': '6.3.0', 'container': {'digest': DIGEST}}
         asset = {'name': 'release-provenance.json', 'browser_download_url': asset_url}
         for change, expected in (({}, 'checked'), ({'browser_download_url': 'https://example.test/file'}, 'unavailable'), ({'digest': 'sha256:' + '0'*64}, 'unavailable')):
-            release = {'tag_name': 'v6.2.0', 'assets': [{**asset, **change}]}
+            release = {'tag_name': 'v6.3.0', 'assets': [{**asset, **change}]}
             with patch.object(dependency, '_RELEASE_CACHE', None), patch.object(dependency, '_json_url', side_effect=[(release, b'{}'), (provenance, b'{}')]):
                 self.assertEqual(dependency.latest_release()['status'], expected)
 
